@@ -1,16 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, TextInput, Button, FlatList } from 'react-native';
-
-import EditScreenInfo from '@/components/EditScreenInfo';
 import { Text, View } from '@/components/Themed';
 
 export default function TabOneScreen() {
   const [text, setText] = useState('');
   const [items, setItems] = useState([]);
+  const ws = useRef(null);
+
+  useEffect(() => {
+    ws.current = new WebSocket('ws://47.98.112.211:8080');
+
+    ws.current.onopen = () => {
+      console.log('WebSocket connection opened');
+    };
+
+    ws.current.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      //setItems((prevItems) => [...prevItems, message]);
+      if (Array.isArray(data)) {
+        // If received data is an array, concatenate it to the list
+        setItems((prevItems) => [...prevItems, ...data]);
+      } else {
+        // Otherwise, just add the single item
+        setItems((prevItems) => [...prevItems, data]);
+      }
+    };
+
+    ws.current.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
+    return () => {
+      ws.current.close();
+    };
+  }, []);
 
   const addItem = () => {
     if (text.trim()) {
-      setItems([...items, text]);
+      ws.current.send(text);
       setText('');
     }
   };
@@ -18,9 +45,7 @@ export default function TabOneScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Tab One</Text>
-      <Text style={styles.title}>Tab TWO</Text>
       <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/(tabs)/index.tsx" />
       
       <TextInput
         style={styles.input}
@@ -34,7 +59,9 @@ export default function TabOneScreen() {
         keyExtractor={(item, index) => index.toString()}
         renderItem={({ item }) => (
           <View style={styles.listItem}>
-            <Text>{item}</Text>
+            <Text style={styles.itemText} numberOfLines={1} ellipsizeMode="tail">
+              {item}
+            </Text>
           </View>
         )}
       />
@@ -69,7 +96,11 @@ const styles = StyleSheet.create({
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
-    width: '80%',
+    width: '100%',
     alignItems: 'center',
+  },
+  itemText: {
+    textAlign: 'left',
+    width: '100%',
   },
 });
