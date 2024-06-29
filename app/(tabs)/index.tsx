@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, TextInput, Button, FlatList } from 'react-native';
+import { StyleSheet, TextInput, Button, ScrollView, TouchableOpacity } from 'react-native';
 import { Text, View } from '@/components/Themed';
+import AddItemModal from './addNewItem';
 
 export default function TabOneScreen() {
-  const [text, setText] = useState('');
-  const [items, setItems] = useState([]);
+  const [inputs, setInputs] = useState([
+    { title: 'name', value: '' },
+    { title: 'age', value: '' },
+    { title: 'male', value: '' },
+  ]);
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const ws = useRef(null);
 
   useEffect(() => {
@@ -16,64 +21,92 @@ export default function TabOneScreen() {
 
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      //setItems((prevItems) => [...prevItems, message]);
-      if (Array.isArray(data)) {
-        // If received data is an array, concatenate it to the list
-        setItems((prevItems) => [...prevItems, ...data]);
-      } else {
-        // Otherwise, just add the single item
-        setItems((prevItems) => [...prevItems, data]);
-      }
+      console.log('Message from server:', data);
     };
 
     ws.current.onclose = () => {
       console.log('WebSocket connection closed');
     };
 
-    return () => {
-      ws.current.close();
-    };
+    // return () => {
+    //   ws.current.close();
+    // };
   }, []);
 
+  const handleInputChange = (text, index, field) => {
+    const newInputs = [...inputs];
+    newInputs[index][field] = text;
+    setInputs(newInputs);
+  };
+
+  const addInputField = () => {
+    setInputs([...inputs, { title: '', value: '' }]);
+  };
+
+  const removeInputField = (index) => {
+    const newInputs = inputs.filter((_, i) => i !== index);
+    setInputs(newInputs);
+  };
+
   const addItem = () => {
-    if (text.trim()) {
-      ws.current.send(text);
-      setText('');
+    const newItems = inputs.reduce((acc, item) => {
+      if (item.title.trim() && item.value.trim()) {
+        acc[item.title] = item.value;
+      }
+      return acc;
+    }, {});
+
+    console.log('newItems:', JSON.stringify(newItems));
+    if (Object.keys(newItems).length) {
+      ws.current.send(JSON.stringify(newItems));
+      setInputs([
+        { title: 'name', value: '' },
+        { title: 'age', value: '' },
+        { title: 'male', value: '' },
+      ]);
     }
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Tab One</Text>
       <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Enter an item"
-        value={text}
-        onChangeText={setText}
-      />
-      <Button title="Add Item" onPress={addItem} />
-      <FlatList
-        data={items}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.listItem}>
-            <Text style={styles.itemText} numberOfLines={1} ellipsizeMode="tail">
-              {item}
-            </Text>
-          </View>
-        )}
-      />
-    </View>
+
+      {inputs.map((input, index) => (
+        <View key={index} style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder={`Enter title ${index + 1}`}
+            value={input.title}
+            onChangeText={(text) => handleInputChange(text, index, 'title')}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder={`Enter value ${index + 1}`}
+            value={input.value}
+            onChangeText={(text) => handleInputChange(text, index, 'value')}
+          />
+          <TouchableOpacity style={styles.removeButton} onPress={() => removeInputField(index)}>
+            <Text style={styles.removeButtonText}>Remove</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+
+      <View style={styles.buttonContainer}>
+        <Button title="Submit Items" onPress={addItem} />
+        <Button title="Add More Items" onPress={addInputField} />
+      </View>
+
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 20,
   },
   title: {
     fontSize: 20,
@@ -84,23 +117,34 @@ const styles = StyleSheet.create({
     height: 1,
     width: '80%',
   },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 5,
+    width: '100%',
+  },
   input: {
+    flex: 1,
     height: 40,
     borderColor: 'gray',
     borderWidth: 1,
     paddingHorizontal: 10,
-    width: '80%',
-    marginVertical: 10,
+    marginHorizontal: 5,
   },
-  listItem: {
+  removeButton: {
+    marginLeft: 10,
     padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-    width: '100%',
-    alignItems: 'center',
+    backgroundColor: 'red',
+    borderRadius: 5,
   },
-  itemText: {
-    textAlign: 'left',
+  removeButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     width: '100%',
+    marginTop: 10,
   },
 });
