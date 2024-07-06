@@ -33,12 +33,25 @@ export default function TabOneScreen() {
     console.log('Selected Location:', location);
   };
 
-  useEffect(() => {
+  const initializeWebSocket = () => {
     ws.current = new WebSocket('ws://47.98.112.211:8080');
 
     ws.current.onopen = () => {
       console.log('WebSocket connection opened');
     };
+  };
+
+  const refreshPage = () => {
+  
+    if (ws.current) {
+      ws.current.close();
+    }
+
+    initializeWebSocket();
+  }
+
+  useEffect(() => {
+    initializeWebSocket();
 
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -104,6 +117,7 @@ export default function TabOneScreen() {
 
     console.log('newItems:', JSON.stringify(newItems));
     if (Object.keys(newItems).length) {
+      console.log('sending data:', JSON.stringify(newItems));
       ws.current.send(JSON.stringify(newItems));
       // setInputs([
       //   { title: 'name', value: '' },
@@ -322,6 +336,7 @@ export default function TabOneScreen() {
         <Button title="Submit Items" onPress={addItem} />
         <Button title="Add More Items" onPress={openModal} />
       </View>
+      <Button title='刷新' onPress={refreshPage} />
 
       <Modal visible={isModalVisible} animationType="slide">
         <View style={styles.modalContainer}>

@@ -10,7 +10,7 @@ export default function TabOneScreen() {
   ]);
   const ws = useRef(null);
 
-  useEffect(() => {
+  const initializeWebSocket = () => {
     ws.current = new WebSocket('ws://47.98.112.211:8080');
 
     ws.current.onopen = () => {
@@ -20,23 +20,22 @@ export default function TabOneScreen() {
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
       console.log("received data: ", data, '\n', "ori_items: ", eventList, '\n');
-      //check if the received data is already in the items
-      //data is a array, so we need to check each element in the array
-      //if the data is not in the items, then add it to the items
-      
-      //clear the items
-      setEventList([]);
-      data.map((item) => {
-        setEventList(prevItems => [...prevItems, item]);
-      })
+      // Clear the existing items and set the new ones
+      setEventList(data);
     };
 
     ws.current.onclose = () => {
       console.log('WebSocket connection closed');
     };
+  };
+
+  useEffect(() => {
+    initializeWebSocket();
 
     return () => {
-      ws.current.close();
+      if (ws.current) {
+        ws.current.close();
+      }
     };
   }, []);
 
@@ -44,7 +43,15 @@ export default function TabOneScreen() {
     console.log('use effect items: ', eventList, '\n');
   }, [eventList]);
 
-
+  const refreshPage = () => {
+    if (ws.current) {
+      ws.current.close();
+    }
+    setEventList([
+      { 'id': '', 'name': '', 'age': '', 'gender': '', 'date': '', 'location': '' }
+    ]);
+    initializeWebSocket();
+  };
 
   const addItem = () => {
     if (text.trim()) {
@@ -55,14 +62,7 @@ export default function TabOneScreen() {
 
   // 根据字段名渲染单元格内容
   const renderItemCell = (item, title) => {
-   // console.log("in renderItemCell, the item: ", item[0],'\n');
-    // const itemsArray = JSON.parse(item);
-    // console.log("in renderItemCell, the itemsArray: ", itemsArray,'\n');
-    //const value = itemsArray[0][title] || ''; // 如果数据中没有对应字段，则显示为空字符串
-    //WAHT IS THE type of item??
-    // const json_item = JSON.parse(item);
-     const value = item[title] || ''; // 如果数据中没有对应字段，则显示为空字符串
-    //console.log("in renderItemCell, the value: ", value, "the title:",title,"the item:",item,'\n');
+    const value = item[title] || ''; // 如果数据中没有对应字段，则显示为空字符串
     return (
       <View style={styles.cell}>
         <Text style={styles.cellText}>{value}</Text>
@@ -72,18 +72,10 @@ export default function TabOneScreen() {
 
   return (
     <View style={styles.container}>
-      <Button title='筛选' onPress={()=>{}}/>
-      <FlatList
-        data={eventList} // Add an empty object to ensure at least one empty form is displayed
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.listItem}>
-            {eventList.map((event) => (
-              EventDisplay({ eventDetails: event })
-            ))}
-          </View>
-        )}
-      />
+      <Button title='筛选' onPress={refreshPage}/>
+
+      <EventDisplay eventDetailsArray={eventList}/>
+        
     </View>
   );
 }
@@ -131,5 +123,16 @@ const styles = StyleSheet.create({
   columnHeader: {
     flex: 1,
     alignItems: 'center',
+  },
+  cell: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 5,
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  cellText: {
+    textAlign: 'center',
   },
 });

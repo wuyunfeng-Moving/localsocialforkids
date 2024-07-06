@@ -1,6 +1,5 @@
-/*this is for display the event detail on the screen */
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, FlatList } from 'react-native';
 
 type EventDetails = {
   name: string | null;
@@ -8,20 +7,30 @@ type EventDetails = {
   gender: string | null;
   date: string | null;
   location: string | null;
+  id: string | null;
 };
 
-const EventDisplay: React.FC<{ eventDetails: EventDetails }> = ({ eventDetails }) => {
+const EventDisplay: React.FC<{ eventDetailsArray: EventDetails[] }> = ({ eventDetailsArray }) => {
   // Helper function to check for null values
-  const displayValue = (value: string | null) => value ? value : '--';
+  const displayValue = (value: string | null) => (value ? value : '--');
+
+  const renderEvent = ({ item }: { item: EventDetails }) => (
+    <View style={styles.container}>
+      <Text style={styles.title}>{displayValue(item.name)}</Text>
+      <Text style={styles.detail}>Age: {displayValue(item.age)}</Text>
+      <Text style={styles.detail}>Gender: {displayValue(item.gender)}</Text>
+      <Text style={styles.detail}>Date: {displayValue(item.date)}</Text>
+      <Text style={styles.detail}>Location: {displayValue(item.location)}</Text>
+      <Text style={styles.detail}>ID: {displayValue(item.id)}</Text>
+    </View>
+  );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{displayValue(eventDetails.name)}</Text>
-      <Text style={styles.detail}>Age: {displayValue(eventDetails.age)}</Text>
-      <Text style={styles.detail}>Gender: {displayValue(eventDetails.gender)}</Text>
-      <Text style={styles.detail}>Date: {displayValue(eventDetails.date)}</Text>
-      <Text style={styles.detail}>Location: {displayValue(eventDetails.location)}</Text>
-    </View>
+    <FlatList
+      data={eventDetailsArray}
+      renderItem={renderEvent}
+      keyExtractor={(item, index) => index.toString()}
+    />
   );
 };
 
@@ -35,6 +44,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+    marginBottom: 10,
   },
   title: {
     fontSize: 20,
