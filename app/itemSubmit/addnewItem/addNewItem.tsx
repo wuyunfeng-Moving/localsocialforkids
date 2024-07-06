@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-const AddItemModal = ({ visible, onClose, onItemSelect }) => {
-  const [options] = useState(['option1', 'option2', 'option3']); // Example options
+const AddItemModal = ({ onClose, onItemSelect }) => {
+  const [options] = useState(['localtion', 'requirement']); // Example options
 
   const handleItemSelect = (item) => {
     onItemSelect(item);
@@ -13,7 +13,7 @@ const AddItemModal = ({ visible, onClose, onItemSelect }) => {
     <Modal
       animationType="slide"
       transparent={true}
-      visible={visible}
+    //   visible={visible}
       onRequestClose={onClose}
     >
       <View style={styles.centeredView}>

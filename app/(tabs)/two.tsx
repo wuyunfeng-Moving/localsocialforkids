@@ -4,8 +4,10 @@ import { Text, View } from '@/components/Themed';
 
 export default function TabOneScreen() {
   const [text, setText] = useState('');
-  const [items, setItems] = useState([]);
-  const [titles, setTitles] = useState(['name','age','male']);
+  const [items, setItems] = useState([
+    { 'id': '1', 'name': '2', 'age': '3', 'gender': 'male', 'date': '', 'location': '' }
+  ]);
+  const titles = ['age', 'name', 'gender', 'date', 'location'];
   const ws = useRef(null);
 
   useEffect(() => {
@@ -17,21 +19,13 @@ export default function TabOneScreen() {
 
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
-
-      console.log("received data: ", data)
-
-      // if (titles.length === 0 && data.length > 0) {
-      //   // Use the first message to set titles
-      //   const firstMessage = data[0];
-      //   const newTitles = Object.keys(firstMessage);
-      //   setTitles(newTitles);
-      // }
-
-      if (Array.isArray(data)) {
-        setItems((prevItems) => [...prevItems, ...data]);
-      } else {
-        setItems((prevItems) => [...prevItems, data]);
-      }
+      console.log("received data: ", data, '\n', "ori_items: ", items, '\n');
+      //check if the received data is already in the items
+      //data is a array, so we need to check each element in the array
+      //if the data is not in the items, then add it to the items
+      data.map((item) => {
+        setItems(prevItems => [...prevItems, item]);
+      })
     };
 
     ws.current.onclose = () => {
@@ -41,7 +35,13 @@ export default function TabOneScreen() {
     return () => {
       ws.current.close();
     };
-  }, [titles]);
+  }, []);
+
+  useEffect(() => {
+    console.log('use effect items: ', items, '\n');
+  }, [items]);
+
+
 
   const addItem = () => {
     if (text.trim()) {
@@ -50,36 +50,27 @@ export default function TabOneScreen() {
     }
   };
 
+  // 根据字段名渲染单元格内容
+  const renderItemCell = (item, title) => {
+   // console.log("in renderItemCell, the item: ", item[0],'\n');
+    // const itemsArray = JSON.parse(item);
+    // console.log("in renderItemCell, the itemsArray: ", itemsArray,'\n');
+    //const value = itemsArray[0][title] || ''; // 如果数据中没有对应字段，则显示为空字符串
+    //WAHT IS THE type of item??
+    // const json_item = JSON.parse(item);
+     const value = item[title] || ''; // 如果数据中没有对应字段，则显示为空字符串
+    //console.log("in renderItemCell, the value: ", value, "the title:",title,"the item:",item,'\n');
+    return (
+      <View style={styles.cell}>
+        <Text style={styles.cellText}>{value}</Text>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
-
-      <FlatList
-        data={items}
-        keyExtractor={(item, index) => index.toString()}
-        
-        ListHeaderComponent={() => (
-          <View style={styles.listItem}>
-            {titles.map((title, index) => (
-              <Text key={index} style={styles.headerText,{width: 200}} numberOfLines={1} ellipsizeMode="tail">
-                {title}
-              </Text>
-            ))}
-          </View>
-        )}
-
-        renderItem={({ item }) => (
-          <View style={styles.listItem}>
-            {titles.map((title, index) => (
-              <Text key={index} style={styles.itemText} numberOfLines={1} ellipsizeMode="tail">
-                {item[title]}
-              </Text>
-            ))}
-          </View>
-        )}
-      />
-
-<Text style={styles.title}>Tab One</Text>
-<View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
+      <Text style={styles.title}>Tab One</Text>
+      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
       <TextInput
         style={styles.input}
         placeholder="Enter an item"
@@ -87,7 +78,21 @@ export default function TabOneScreen() {
         onChangeText={setText}
       />
       <Button title="Add Item" onPress={addItem} />
-    
+
+      <FlatList
+        data={items} // Add an empty object to ensure at least one empty form is displayed
+        keyExtractor={(item, index) => index.toString()}
+        renderItem={({ item }) => (
+          <View style={styles.listItem}>
+            {titles.map((title) => (
+              <View key={title} style={styles.columnHeader}>
+                {<Text>{title.toUpperCase()}</Text>}
+                {renderItemCell(item, title)}
+              </View>
+            ))}
+          </View>
+        )}
+      />
     </View>
   );
 }
@@ -116,22 +121,24 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   listItem: {
-    flexDirection: 'row', // Add this line to arrange titles in a row
-    alignItems: 'center', // Optional: center the items vertically
+    flexDirection: 'row', // Arrange titles in a row
+    alignItems: 'center', // Optional: center items vertically
     justifyContent: 'space-between', // Optional: add space between items
     borderBottomColor: '#ccc',
     width: '100%',
-    // alignItems: 'center',
   },
-  itemText: {
-    textAlign: 'left',
-    width: '100%',
+  inputGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 5,
   },
-  headerText: {
-    marginHorizontal: 50, // Adjust this value as needed to create spacing between titles
-    // Your existing styles for headerText
+  label: {
+    marginRight: 10,
+    fontWeight: 'bold',
+    width: 100,
+  },
+  columnHeader: {
     flex: 1,
-    textAlign: 'center',
-    width: '100%',
+    alignItems: 'center',
   },
 });

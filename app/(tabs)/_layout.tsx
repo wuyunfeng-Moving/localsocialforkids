@@ -47,13 +47,23 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
+      { <Tabs.Screen
         name="two"
         options={{
+          // href:null,
           title: '活动列表',
           tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
         }}
-      />
+      /> }
+      { <Tabs.Screen
+        name="jslearn"
+        options={{
+          // href:null,
+          title: '页面学习',
+          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+        }}
+      /> }
+      
       {/* <Tabs.Screen
         name="map"
         options={{
