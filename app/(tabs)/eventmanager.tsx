@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, TextInput, Button, FlatList } from 'react-native';
 import { Text, View } from '@/components/Themed';
+import EventDisplay from '../itemSubmit/eventdisplay';
 
 export default function TabOneScreen() {
   const [text, setText] = useState('');
-  const [items, setItems] = useState([
-    { 'id': '1', 'name': '2', 'age': '3', 'gender': 'male', 'date': '', 'location': '' }
+  const [eventList, setEventList] = useState([
+    { 'id': '', 'name': '', 'age': '', 'gender': '', 'date': '', 'location': '' }
   ]);
-  const titles = ['age', 'name', 'gender', 'date', 'location'];
   const ws = useRef(null);
 
   useEffect(() => {
@@ -19,12 +19,15 @@ export default function TabOneScreen() {
 
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      console.log("received data: ", data, '\n', "ori_items: ", items, '\n');
+      console.log("received data: ", data, '\n', "ori_items: ", eventList, '\n');
       //check if the received data is already in the items
       //data is a array, so we need to check each element in the array
       //if the data is not in the items, then add it to the items
+      
+      //clear the items
+      setEventList([]);
       data.map((item) => {
-        setItems(prevItems => [...prevItems, item]);
+        setEventList(prevItems => [...prevItems, item]);
       })
     };
 
@@ -38,8 +41,8 @@ export default function TabOneScreen() {
   }, []);
 
   useEffect(() => {
-    console.log('use effect items: ', items, '\n');
-  }, [items]);
+    console.log('use effect items: ', eventList, '\n');
+  }, [eventList]);
 
 
 
@@ -69,25 +72,14 @@ export default function TabOneScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <TextInput
-        style={styles.input}
-        placeholder="Enter an item"
-        value={text}
-        onChangeText={setText}
-      />
-      <Button title="Add Item" onPress={addItem} />
-
+      <Button title='筛选' onPress={()=>{}}/>
       <FlatList
-        data={items} // Add an empty object to ensure at least one empty form is displayed
+        data={eventList} // Add an empty object to ensure at least one empty form is displayed
         keyExtractor={(item, index) => index.toString()}
         renderItem={({ item }) => (
           <View style={styles.listItem}>
-            {titles.map((title) => (
-              <View key={title} style={styles.columnHeader}>
-                {<Text>{title.toUpperCase()}</Text>}
-                {renderItemCell(item, title)}
-              </View>
+            {eventList.map((event) => (
+              EventDisplay({ eventDetails: event })
             ))}
           </View>
         )}
@@ -122,7 +114,7 @@ const styles = StyleSheet.create({
   listItem: {
     flexDirection: 'row', // Arrange titles in a row
     alignItems: 'center', // Optional: center items vertically
-    justifyContent: 'space-between', // Optional: add space between items
+    justifyContent: 'center', // Optional: add space between items
     borderBottomColor: '#ccc',
     width: '100%',
   },

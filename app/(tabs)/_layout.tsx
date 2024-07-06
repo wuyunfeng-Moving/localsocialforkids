@@ -48,7 +48,7 @@ export default function TabLayout() {
         }}
       />
       { <Tabs.Screen
-        name="two"
+        name="eventmanager"
         options={{
           // href:null,
           title: '活动列表',
