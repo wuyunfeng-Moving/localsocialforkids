@@ -1,63 +1,38 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, TextInput, Button, FlatList } from 'react-native';
+import { StyleSheet, TextInput, Button, FlatList, Modal, TouchableOpacity } from 'react-native';
 import { Text, View } from '@/components/Themed';
+import { Picker } from '@react-native-picker/picker';
 import EventDisplay from '../itemSubmit/eventdisplay';
+import { useCurrentLocation } from '../itemSubmit/LocationContext'; // 引入useLocation
+import {send,connectWebSocket} from '../context/WebSocketProvider';
 
 export default function TabOneScreen() {
-  const [text, setText] = useState('');
+  const [index, setIndex] = useState(1);
+  const getLoacationResult = useCurrentLocation();
+
   const [eventList, setEventList] = useState([
     { 'id': '', 'name': '', 'age': '', 'gender': '', 'date': '', 'location': '' }
   ]);
-  const ws = useRef(null);
 
-  const initializeWebSocket = () => {
-    ws.current = new WebSocket('ws://47.98.112.211:8080');
-
-    ws.current.onopen = () => {
-      console.log('WebSocket connection opened');
-    };
-
-    ws.current.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log("received data: ", data, '\n', "ori_items: ", eventList, '\n');
-      // Clear the existing items and set the new ones
-      setEventList(data);
-    };
-
-    ws.current.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
-  };
-
-  useEffect(() => {
-    initializeWebSocket();
-
-    return () => {
-      if (ws.current) {
-        ws.current.close();
-      }
-    };
-  }, []);
+  const options = [
+    { label: '1公里', value: 1000 },
+    { label: '3公里', value: 3000 },
+    { label: '5公里', value: 5000 },
+    { label: '10公里', value: 10000 },
+    { label: '50公里', value: 50000 },
+    { label: '不限', value: 1000000 }
+  ];
 
   useEffect(() => {
     console.log('use effect items: ', eventList, '\n');
   }, [eventList]);
 
   const refreshPage = () => {
-    if (ws.current) {
-      ws.current.close();
-    }
+    connectWebSocket();
     setEventList([
       { 'id': '', 'name': '', 'age': '', 'gender': '', 'date': '', 'location': '' }
     ]);
-    initializeWebSocket();
-  };
-
-  const addItem = () => {
-    if (text.trim()) {
-      ws.current.send(text);
-      setText('');
-    }
+    
   };
 
   // 根据字段名渲染单元格内容
@@ -70,12 +45,70 @@ export default function TabOneScreen() {
     );
   };
 
+  const sendFilter = (filterItem) => {
+      const jsonmsg = {};
+      jsonmsg.type = 'filter';
+
+
+        console.log('location:', getLoacationResult.currentRegion);
+        jsonmsg.location = {
+          distance: filterItem.distance,
+          location: [getLoacationResult.currentRegion.longitude,getLoacationResult.currentRegion.latitude]
+        };
+    send(JSON.stringify(jsonmsg));
+  }
+
+  const FilterEvents = () => {
+
+    const [modalVisible, setModalVisible] = useState(false);
+
+
+    const handleFilter = (index) => {
+      setIndex(index);
+      console.log('index:', index,options[index].value);
+      const jsonObj = { 'distance': options[index].value };
+      sendFilter(jsonObj);
+      setModalVisible(false); // 选择后关闭模态窗口
+    };
+
+    
+    return (
+      <View >
+        <TouchableOpacity onPress={() => setModalVisible(true)}>
+          <Text>距离：{options[index].label}</Text>
+        </TouchableOpacity>
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => {
+            setModalVisible(!modalVisible);
+          }}
+        >
+          <View style={styles.modalView}>
+            <Picker
+              selectedValue={index}
+              onValueChange={handleFilter}
+            >
+              {options.map((option, index) => (
+                <Picker.Item key={index} label={option.label} value={index} />
+              ))}
+            </Picker>
+          </View>
+        </Modal>
+      </View>
+    );
+
+  };
+
+
+
   return (
     <View style={styles.container}>
-      <Button title='筛选' onPress={refreshPage}/>
+      <Button title='刷新' onPress={refreshPage} />
+      {FilterEvents()}
+      <EventDisplay eventDetailsArray={eventList} />
 
-      <EventDisplay eventDetailsArray={eventList}/>
-        
     </View>
   );
 }

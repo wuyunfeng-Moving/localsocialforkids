@@ -5,6 +5,11 @@ import AddItemModal from '../itemSubmit/addnewItem/addNewItem';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import LocationPickerModal from '../itemSubmit/setLocation';
+import { useCurrentLocation } from '../itemSubmit/LocationContext'; // 引入useLocation
+import { useWebSocket } from '../context/WebSocketProvider';
+import LoginStatus from '../itemSubmit/loginStateDisplay';
+import { useNavigation } from '@react-navigation/native';
+import LoginScreen from './login';
 
 
 export default function TabOneScreen() {
@@ -13,7 +18,7 @@ export default function TabOneScreen() {
     { title: 'age', value: '3' },
     { title: 'gender', value: '男' },
     { title: 'date', value: new Date().toDateString() },
-    { title: 'location', value: '' }
+    { title: 'location', value: [] }
   ]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isDateTimeSelecting, setDateTimeSelecting] = useState(false);
@@ -23,51 +28,26 @@ export default function TabOneScreen() {
   const [isLocationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   // const [selectedNewItem, setSelectedNewItem] = useState('');
-  const ws = useRef(null);
+  const {send, loginState,connectWebSocket} = useWebSocket();
+  const navigation = useNavigation();
+
+  const refreshPage = () => {
+    console.log("refreshing page");
+    connectWebSocket();
+  }
+
+  useCurrentLocation();
 
   const handleSelectLocation = (location) => {
     setSelectedLocation(location);
     // 这里可以处理位置信息，例如更新状态或发送到服务器
     //add to the input
-    handleInputChange(`${location.latitude}, ${location.longitude}`, 'location', 'value');
+    const data = [location.longitude, location.latitude];
+    handleInputChange(data, 'location', 'value');
     console.log('Selected Location:', location);
   };
 
-  const initializeWebSocket = () => {
-    ws.current = new WebSocket('ws://47.98.112.211:8080');
-
-    ws.current.onopen = () => {
-      console.log('WebSocket connection opened');
-    };
-  };
-
-  const refreshPage = () => {
-  
-    if (ws.current) {
-      ws.current.close();
-    }
-
-    initializeWebSocket();
-  }
-
-  useEffect(() => {
-    initializeWebSocket();
-
-    ws.current.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log('Message from server:', data);
-    };
-
-    ws.current.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
-
-    // return () => {
-    //   ws.current.close();
-    // };
-  }, []);
-
-  const handleInputChange = (text, title, field) => {
+ const handleInputChange = (text, title, field) => {
     console.log("text:", text, "index:", index, "field:", field);
     const newInputs = [...inputs];
     //look up the inputs array to get the index of title
@@ -100,7 +80,16 @@ export default function TabOneScreen() {
   const addItem = () => {
     let ischeckok = true;
     const newItems = inputs.reduce((acc, item) => {
-      if (item.title.trim() && item.value.trim()) {
+      //handle location data
+      if (item.title === 'location') {
+        if (item.value.length === 0) {
+          ischeckok = false;
+          return;
+        }
+        acc[item.title] = item.value;
+        return acc;
+      }
+      else if (item.title.trim() && item.value.trim()) {
         acc[item.title] = item.value;
       }
       else {
@@ -115,10 +104,11 @@ export default function TabOneScreen() {
       return;
     }
 
+    newItems.type = 'addNewEvent';
     console.log('newItems:', JSON.stringify(newItems));
     if (Object.keys(newItems).length) {
       console.log('sending data:', JSON.stringify(newItems));
-      ws.current.send(JSON.stringify(newItems));
+      send(JSON.stringify(newItems));
       // setInputs([
       //   { title: 'name', value: '' },
       //   { title: 'age', value: '' },
@@ -283,8 +273,6 @@ export default function TabOneScreen() {
 
   //use this function to handle the item select
   const handleItemSelect = (index, item) => {
-    //if input title is gender
-    console.log("input:", item, "index:", index);
     if (item.title === 'gender') {
       return genderSelect(index, item);
     } else if (item.title === 'age') {
@@ -308,15 +296,11 @@ export default function TabOneScreen() {
     }
   };
 
-
-
-
-
-
-
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
+      {/* display login state */}
+      <LoginStatus isLoggedIn={loginState.logined} username={loginState.userName} onLoginButtonPress={()=>{navigation.navigate('login')}}/>
 
       {inputs.map((input, index) => (
         <View key={index} style={styles.inputContainer}>

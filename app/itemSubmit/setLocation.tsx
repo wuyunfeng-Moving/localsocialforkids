@@ -1,33 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import * as Location from 'expo-location';
+import { useCurrentLocation } from './LocationContext'; // 引入useLocation
+import { LocationProvider } from './LocationContext';
 
 const LocationPickerModal = ({ isVisible, onClose, onSelectLocation }) => {
+  const {currentRegion,err} = useCurrentLocation(); // 使用useLocation获取当前位置
   const [selectedLocation, setSelectedLocation] = useState(null);
-  const [currentRegion, setCurrentRegion] = useState(null);
-
-  useEffect(() => {
-    (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        console.error('Permission to access location was denied');
-        return;
-      }
-
-      let location = await Location.getCurrentPositionAsync({});
-      setCurrentRegion({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        latitudeDelta: 0.09, // Approx. 10 km range for latitude
-        longitudeDelta: 0.04, // Approx. 10 km range for longitude
-      });
-    })();
-  }, []);
 
   const handleMapPress = (event) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;
-    setSelectedLocation({ latitude, longitude });
+    setSelectedLocation({longitude, latitude });
   };
 
   const handleConfirmLocation = () => {
