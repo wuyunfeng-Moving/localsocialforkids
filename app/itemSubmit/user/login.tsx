@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Modal, View, TextInput, TouchableOpacity, StyleSheet, Text, KeyboardAvoidingView, Platform, Button } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import RegisterScreen from '../itemSubmit/register';
-import { useWebSocket } from '../context/WebSocketProvider';
+import RegisterScreen from './register';
+import { useWebSocket } from '../../context/WebSocketProvider';
 
-const LoginScreen = () => {
+const LoginScreen = ({closeModal}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,7 +18,7 @@ const LoginScreen = () => {
   useEffect(() => {
     console.log('loginState:', loginState);
     if (loginState.logined) {
-      navigation.navigate('addEvent');
+      closeModal();
     }
   }, [loginState.logined]);
 
@@ -67,9 +67,11 @@ const LoginScreen = () => {
       </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Login</Text>
+        <Text style={styles.buttonText}>登录</Text>
       </TouchableOpacity>
-       <Button title="Register" onPress={() => setModalVisible(true)} />
+      
+       <Button title="注册" onPress={() => setModalVisible(true)} />
+       <Button title="取消" onPress={() => setModalVisible(false)} />
       <Modal
         animationType="slide"
         transparent={false}

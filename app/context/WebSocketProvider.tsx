@@ -1,3 +1,4 @@
+import { useSegments } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import * as Keychain from 'react-native-keychain';
 
@@ -6,28 +7,26 @@ const storeToken = async (token) => {
     await Keychain.setGenericPassword('user', token);
   } catch (e) {
     // saving error
+    console.error('Error saving token:', e);
+    return null;
   }
 };
 
 const getToken = async () => {
   try {
     const credentials = await Keychain.getGenericPassword();
-    if (credentials) {
-      return credentials.password;
-    }
+    return credentials ? credentials.password : null;
   } catch (e) {
-    // reading error
+    console.error('Error reading token:', e);
+    return null;
   }
-  return null;
 };
-
 
 
 const WebSocketContext = createContext(null);
 
 
 export const useWebSocket = () => {
-  console.log('useWebSocket');
   try {
     return useContext(WebSocketContext);
   } catch (e) {
@@ -35,20 +34,25 @@ export const useWebSocket = () => {
   }
 };
 
-export const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
+export const WebSocketProvider = ({ children }) => {
   const [ws, setWs] = useState(null);
+  const [token, setToken] = useState(null);
   const [messageHandle, setMessageHandle] = useState([]);
-  const [loginState,setLoginState] = useState({
+  const [loginState, setLoginState] = useState({
     logined: false,
-    userName: '',
     error: ''
   });
+  const [userInfo, setUserInfo] = useState(null);
 
+  console.log("read the token from stroge:", token);
 
-  console.log('WebSocketProvider start!');
+  useEffect(() => {
+    getToken().then(fetchedToken => {
+      console.log("Read token from storage:", fetchedToken);
+      setToken(fetchedToken);
+    });
+  }, []);
 
-  const token =getToken();
-  
 
   function handleMessages(event) {
     const message = JSON.parse(event.data);
@@ -60,16 +64,32 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
 
     if (message.type === 'login') {
       //clear loginState
-      setLoginState({'userName':'','logined':false,'error':''});
-      
+      setLoginState({'logined': false, 'error': '' });
+
       if (message.success) {
         console.log("get the data", message.token);
         storeToken(message.token);
-        setLoginState({'userName':message.name,'logined':true,'error':''});
-        
+        // console.log("store token:",message.token);
+        setLoginState({'logined': true, 'error': '' });
+
+        //check if userinfo is exist and store it
+        if (message.userInfo) {
+          setUserInfo(message.userInfo);
+        }
       } else {
         console.log("get the error", message.message);
-        setLoginState({'userName':'','logined':false,'error':message.message});
+        setLoginState({'logined': false, 'error': message.message });
+      }
+    }
+    else if (message.type === 'authentication') {
+      if (message.success) {
+        setLoginState({ 'logined': true, 'error': '' });
+        if (message.userInfo) {
+          setUserInfo(message.userInfo);
+        }
+      }
+      else {
+        setLoginState({'logined': false, 'error': message.message });
       }
     }
   }
@@ -77,7 +97,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
   useEffect(() => {
     console.log('loginState in provider:', loginState);
   }
-  , [loginState]);
+    , [loginState]);
 
 
   const registerMessageHandle = (on, handle) => {
@@ -93,31 +113,53 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
     }
   }
 
-  const send = async (data) => {
-    if (!ws) {
-      console.log('WebSocket not connected');
+
+  /*
+  所有的与服务器的发送通信都是通过此接口。
+  通信是以json格式：
+  token:token
+  type:type
+  
+  */
+  const send = useCallback((data) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.log('WebSocket not connected or not ready, can\'t send the data');
       return;
     }
 
-    data.token = token;
+    if (!((token)||(data.type === 'login'))) {
+      console.log('No token available, can\'t send the data');
+      return;
+    }
 
-    ws.send(JSON.stringify(data));
-  };
+    console.log("Sending data:", { ...data, token });
+    ws.send(JSON.stringify({ ...data, token }));
+  }, [ws, token]);
 
   const connectWebSocket = useCallback(() => {
+    console.log('Attempting to connect WebSocket...');
     const socket = new WebSocket('ws://47.98.112.211:8080');
     socket.onopen = () => {
-      console.log('WebSocket connected');
+      console.log('WebSocket connected successfully');
+      setWs(socket);
     };
+
     socket.onmessage = (event) => {
       console.log('WebSocket message received in context:', event.data);
       // Handle incoming messages here
       handleMessages(event);
     };
-    socket.onclose = () => {
-      console.log('WebSocket disconnected');
+    socket.onclose = (event) => {
+      console.log('WebSocket disconnected', event.reason);
+      setTimeout(() => {
+        console.log('Attempting to reconnect...');
+        connectWebSocket();
+      }, 3000);
     };
-    setWs(socket);
+
+    socket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
 
     return () => {
       socket.close();
@@ -126,11 +168,24 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
 
   useEffect(() => {
     const cleanup = connectWebSocket();
-    return cleanup;
+
+    return () => {
+      if (cleanup) cleanup();
+    };
   }, [connectWebSocket]);
 
+  useEffect(() => {
+    if (ws && ws.readyState === WebSocket.OPEN && token) {
+      const timer = setTimeout(() => {
+        console.log('Attempting to send authentication after 10 seconds');
+        send({ type: 'authentication' });
+      }, 10000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [ws, token, send]);
   return (
-    <WebSocketContext.Provider value={{ send, loginState, registerMessageHandle, connectWebSocket }}>
+    <WebSocketContext.Provider value={{ send, userInfo, loginState, registerMessageHandle, connectWebSocket }}>
       {children}
     </WebSocketContext.Provider>
   );
