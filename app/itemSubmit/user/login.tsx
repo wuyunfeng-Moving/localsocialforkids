@@ -3,7 +3,7 @@ import { Modal, View, TextInput, TouchableOpacity, StyleSheet, Text, KeyboardAvo
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import RegisterScreen from './register';
-import { useWebSocket } from '../../context/WebSocketProvider';
+import { useWebSocket } from '../../(tabs)/context/WebSocketProvider';
 
 const LoginScreen = ({closeModal}) => {
   const [email, setEmail] = useState('');

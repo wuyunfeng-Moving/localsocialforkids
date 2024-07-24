@@ -5,9 +5,12 @@ export default function InitalRouting() {
   const rootNavigationState = useRootNavigationState();
 
 
-  if (!rootNavigationState?.key) return null;
+  if (!rootNavigationState?.key) 
+    {
+      console.log("rootNavigationState is null");
+      return null;
+    }
 
-
-  return <Redirect href={'/(tabs)/HomeScreen'} />
+  return <Redirect href={'/(tabs)/index'} />
 }
 

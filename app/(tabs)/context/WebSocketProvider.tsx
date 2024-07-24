@@ -1,27 +1,6 @@
 import { useSegments } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import * as Keychain from 'react-native-keychain';
-
-const storeToken = async (token) => {
-  try {
-    await Keychain.setGenericPassword('user', token);
-  } catch (e) {
-    // saving error
-    console.error('Error saving token:', e);
-    return null;
-  }
-};
-
-const getToken = async () => {
-  try {
-    const credentials = await Keychain.getGenericPassword();
-    return credentials ? credentials.password : null;
-  } catch (e) {
-    console.error('Error reading token:', e);
-    return null;
-  }
-};
-
+import * as SecureStore from 'expo-secure-store';
 
 const WebSocketContext = createContext(null);
 
@@ -44,14 +23,34 @@ export const WebSocketProvider = ({ children }) => {
   });
   const [userInfo, setUserInfo] = useState(null);
 
-  console.log("read the token from stroge:", token);
+  // console.log("read the token from stroge:", token);
 
+  const storeToken = async (token) => {
+    try {
+      await SecureStore.setItemAsync('userToken', token);
+      setToken(token); // Update state immediately after storing
+    } catch (e) {
+      console.error('Error saving token:', e);
+    }
+  };
+  
   useEffect(() => {
-    getToken().then(fetchedToken => {
+    const fetchToken = async () => {
+      const fetchedToken = await getToken();
       console.log("Read token from storage:", fetchedToken);
       setToken(fetchedToken);
-    });
+    };
+    fetchToken();
   }, []);
+  
+  const getToken = async () => {
+    try {
+      return await SecureStore.getItemAsync('userToken');
+    } catch (e) {
+      console.error('Error reading token:', e);
+      return null;
+    }
+  };
 
 
   function handleMessages(event) {
@@ -63,42 +62,30 @@ export const WebSocketProvider = ({ children }) => {
     });
 
     if (message.type === 'login') {
-      //clear loginState
-      setLoginState({'logined': false, 'error': '' });
-
       if (message.success) {
-        console.log("get the data", message.token);
+        console.log("Login successful, token:", message.token);
         storeToken(message.token);
-        // console.log("store token:",message.token);
-        setLoginState({'logined': true, 'error': '' });
-
-        //check if userinfo is exist and store it
-        if (message.userInfo) {
-          setUserInfo(message.userInfo);
-        }
+        setLoginState({ logined: true, error: '' });
+        setUserInfo(message.userinfo);
       } else {
-        console.log("get the error", message.message);
-        setLoginState({'logined': false, 'error': message.message });
+        console.log("Login failed:", message.message);
+        setLoginState({ logined: false, error: message.message });
       }
     }
     else if (message.type === 'authentication') {
+      // console.log('Authentication message received:', message);
       if (message.success) {
-        setLoginState({ 'logined': true, 'error': '' });
-        if (message.userInfo) {
-          setUserInfo(message.userInfo);
-        }
-      }
-      else {
-        setLoginState({'logined': false, 'error': message.message });
+        setLoginState({ logined: true, error: '' });
+        setUserInfo(message.userinfo);
+      } else {
+        setLoginState({ logined: false, error: message.message });
+        //clear the token
+        // storeToken(null);
+        setToken(null);
+        setUserInfo(null);
       }
     }
   }
-
-  useEffect(() => {
-    console.log('loginState in provider:', loginState);
-  }
-    , [loginState]);
-
 
   const registerMessageHandle = (on, handle) => {
     if (on === true) {
@@ -126,15 +113,10 @@ export const WebSocketProvider = ({ children }) => {
       console.log('WebSocket not connected or not ready, can\'t send the data');
       return;
     }
-
-    if (!((token)||(data.type === 'login'))) {
-      console.log('No token available, can\'t send the data');
-      return;
-    }
-
-    console.log("Sending data:", { ...data, token });
-    ws.send(JSON.stringify({ ...data, token }));
-  }, [ws, token]);
+  
+    console.log("Sending data:", data);
+    ws.send(JSON.stringify(data));
+  }, [ws, loginState]);
 
   const connectWebSocket = useCallback(() => {
     console.log('Attempting to connect WebSocket...');
@@ -178,12 +160,12 @@ export const WebSocketProvider = ({ children }) => {
     if (ws && ws.readyState === WebSocket.OPEN && token) {
       const timer = setTimeout(() => {
         console.log('Attempting to send authentication after 10 seconds');
-        send({ type: 'authentication' });
-      }, 10000);
+        send({ type: 'authentication', token: token });
+      }, 1000);
 
       return () => clearTimeout(timer);
     }
-  }, [ws, token, send]);
+  }, [ws, token]);
   return (
     <WebSocketContext.Provider value={{ send, userInfo, loginState, registerMessageHandle, connectWebSocket }}>
       {children}
