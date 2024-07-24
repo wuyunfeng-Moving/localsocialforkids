@@ -1,47 +1,108 @@
 import React, { useState, useEffect } from 'react';
-import { View, TextInput, Button, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Dimensions, ScrollView } from 'react-native';
 import { useWebSocket } from '../../(tabs)/context/WebSocketProvider';
 
 const UserInfoScreen = () => {
-  const { userInfo, isLoggedIn } = useWebSocket();
+  const { userInfo, loginState } = useWebSocket();
   const [name, setName] = useState('');
-  const [age, setAge] = useState(0);
-  const [gender, setGender] = useState('');
+  const [email, setEmail] = useState('');
+  const [kids, setKids] = useState([]);
 
   useEffect(() => {
-    if (isLoggedIn) {
-      setName(userInfo.name);
-      setAge(userInfo.age);
-      setGender(userInfo.gender);
+    try {
+      if (loginState.logined && userInfo) {
+        setName(userInfo.userinfo?.username || '');
+        setEmail(userInfo.userinfo?.email || '');
+        setKids(userInfo.kidinfo || []);
+      }
+    } catch (error) {
+      console.log('error:', error);
     }
-  }, [userInfo, isLoggedIn]);
+    // console.log('userInfo:', userInfo);
+  }, [userInfo, loginState.logined]);
 
   return (
-    <View style={styles.container}>
-      {isLoggedIn ? (
+    <ScrollView style={styles.container}>
+      {loginState.logined ? (
         <>
-          <Text style={styles.label}>Name: {name}</Text>
-          <Text style={styles.label}>Age: {age}</Text>
-          <Text style={styles.label}>Gender: {gender}</Text>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
+          <View style={styles.userInfo}>
+            <Text style={styles.title}>User Info</Text>
+            <Text style={styles.label}>Name: <Text style={styles.value}>{name}</Text></Text>
+            <Text style={styles.label}>Email: <Text style={styles.value}>{email}</Text></Text>
           </View>
+          <Text style={styles.kidsTitle}>Kids Info</Text>
+          {kids.length > 0 ? (
+            kids.map((kid, index) => (
+              <View key={index} style={styles.kidInfo}>
+                <Text style={styles.kidTitle}>Kid {index + 1}</Text>
+                {Object.entries(kid).map(([key, value]) => (
+                  <Text key={key} style={styles.label}>
+                    {key.charAt(0).toUpperCase() + key.slice(1)}: <Text style={styles.kidValue}>{value}</Text>
+                  </Text>
+                ))}
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noKidsText}>No kids information available</Text>
+          )}
         </>
       ) : (
         <Text style={styles.label}>Not logged in</Text>
       )}
-    </View>
+    </ScrollView>
   );
 };
+
+const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
     padding: 16,
   },
-  label: {
+  userInfo: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  kidsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  kidInfo: {
+    backgroundColor: '#e6f3ff',
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  kidTitle: {
     fontSize: 18,
-    marginBottom: 12,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  value: {
+    fontWeight: 'bold',
+    color: '#2c3e50',
+  },
+  kidValue: {
+    fontWeight: 'bold',
+    color: '#3498db',
+  },
+  noKidsText: {
+    fontSize: 16,
+    fontStyle: 'italic',
+    color: '#666',
   },
 });
 

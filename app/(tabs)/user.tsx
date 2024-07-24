@@ -7,6 +7,8 @@ import { useWebSocket } from './context/WebSocketProvider';
 
 export default function UserScreen() {
     const [isLoginning, setIsLoginning] = useState(false);
+    const [isAddingKid, setIsAddingKid] = useState(false);
+
     const { loginState } = useWebSocket();
 
     return (
@@ -20,12 +22,17 @@ export default function UserScreen() {
             </Modal>
             <Text style={styles.title}>用户信息</Text>
             {loginState.logined ?
-            <UserInfoScreen /> :
-            <Button
-                title="请先登录"
-                onPress={() => setIsLoginning(true)}
-            />
+                <UserInfoScreen /> :
+                <Button
+                    title="请先登录"
+                    onPress={() => setIsLoginning(true)}
+                />
             }
+            <Modal visible={isAddingKid}>
+                <UserForm onCloseModal={() => setIsAddingKid(false)} />
+            </Modal>
+            <Button title="添加小孩" onPress={() => setIsAddingKid(true)} />
+
         </View>
     );
 }
