@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, StyleSheet, Text } from 'react-native';
-import { useWebSocket } from '../../context/WebSocketProvider';
+import { useWebSocket } from '../context/WebSocketProvider';
 import { configureLayoutAnimationBatch } from 'react-native-reanimated/lib/typescript/reanimated2/core';
 
 const RegisterScreen = ({ closeModal }) => {

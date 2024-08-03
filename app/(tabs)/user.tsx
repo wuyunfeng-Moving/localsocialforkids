@@ -3,7 +3,7 @@ import { View, Text, Modal, Button, StyleSheet } from 'react-native';
 import UserForm from "../itemSubmit/user/adduserinfo";
 import UserInfoScreen from "../itemSubmit/user/userinfo";
 import LoginScreen from '../itemSubmit/user/login';
-import { useWebSocket } from './context/WebSocketProvider';
+import { useWebSocket } from '../context/WebSocketProvider';
 
 export default function UserScreen() {
     const [isLoginning, setIsLoginning] = useState(false);

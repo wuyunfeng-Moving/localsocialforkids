@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Modal } 
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useWebSocket } from '../../(tabs)/context/WebSocketProvider';
+import { useWebSocket } from '../../context/WebSocketProvider';
 
 const UserForm = ({ onCloseModal }) => {
   const [name, setName] = useState('');

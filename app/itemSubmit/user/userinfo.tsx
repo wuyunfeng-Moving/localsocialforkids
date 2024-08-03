@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Text, Dimensions, ScrollView } from 'react-native';
-import { useWebSocket } from '../../(tabs)/context/WebSocketProvider';
+import { useWebSocket } from '../../context/WebSocketProvider';
 
 const UserInfoScreen = () => {
   const { userInfo, loginState } = useWebSocket();

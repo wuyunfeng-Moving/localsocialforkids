@@ -6,7 +6,7 @@ import { Pressable, Text } from 'react-native';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-import { WebSocketProvider } from './context/WebSocketProvider'; // 引入WebSocketProvider
+import { WebSocketProvider } from '../context/WebSocketProvider'; // 引入WebSocketProvider
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
@@ -31,7 +31,7 @@ export default function TabLayout() {
          <Tabs.Screen
           name="index"
           options={{
-            title: '提交活动',
+            title: '活动列表',
             tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
             headerRight: () => (
               <Link href="/modal" asChild>
@@ -50,9 +50,9 @@ export default function TabLayout() {
           }}
         /> 
         <Tabs.Screen
-          name="eventmanager"
+          name="addEvent"
           options={{
-            title: '活动列表',
+            title: '提交活动',
             tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
           }}
         />
