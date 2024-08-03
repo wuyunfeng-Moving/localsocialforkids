@@ -28,14 +28,6 @@ export default function TabLayout() {
         // to prevent a hydration error in React Navigation v6.
         headerShown: useClientOnlyValue(false, true),
       }}>
-
-        <Tabs.Screen
-          name="login"
-          options={{
-            title: '登录',
-            tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
-          }}
-        />
          <Tabs.Screen
           name="index"
           options={{
@@ -64,13 +56,13 @@ export default function TabLayout() {
             tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
           }}
         />
-        {/* <Tabs.Screen
-          name="jslearn"
+        <Tabs.Screen
+          name="user"
           options={{
-            title: '页面学习',
+            title: '我的',
             tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
           }}
-        /> */}
+        />
         {/* <Tabs.Screen
           name="map"
           options={{
