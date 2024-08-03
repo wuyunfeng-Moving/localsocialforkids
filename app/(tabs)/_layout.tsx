@@ -37,7 +37,7 @@ export default function TabLayout() {
           }}
         />
          <Tabs.Screen
-          name="addEvent"
+          name="index"
           options={{
             title: '提交活动',
             tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
