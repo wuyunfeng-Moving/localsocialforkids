@@ -4,7 +4,7 @@ import { Text, View } from '@/components/Themed';
 import { Picker } from '@react-native-picker/picker';
 import EventDisplay from '../itemSubmit/eventdisplay';
 import { useCurrentLocation } from '../itemSubmit/LocationContext'; // 引入useLocation
-import {send,connectWebSocket} from '../context/WebSocketProvider';
+import {send,connectWebSocket} from './context/WebSocketProvider';
 
 export default function TabOneScreen() {
   const [index, setIndex] = useState(1);

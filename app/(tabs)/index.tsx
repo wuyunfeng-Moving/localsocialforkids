@@ -6,7 +6,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import LocationPickerModal from '../itemSubmit/setLocation';
 import { useCurrentLocation } from '../itemSubmit/LocationContext';
-import { useWebSocket } from '../context/WebSocketProvider';
+import { useWebSocket } from './context/WebSocketProvider';
 import LoginStatus from '../itemSubmit/user/loginStateDisplay';
 import { useNavigation } from '@react-navigation/native';
 import LoginScreen from '../itemSubmit/user/login';
