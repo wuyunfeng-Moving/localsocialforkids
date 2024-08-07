@@ -13,23 +13,18 @@ import LoginScreen from '../itemSubmit/user/login';
 import { FadeOutLeft } from 'react-native-reanimated';
 
 const INITIAL_INPUTS = [
-  { title: 'name', value: '小吴' },
-  { title: 'age', value: '3' },
-  { title: 'gender', value: '男' },
+  { title: 'childOrder', value: '' },
   { title: 'date', value: new Date().toISOString().split('T')[0] },
   { title: 'time', value: new Date().toTimeString().split(' ')[0].substring(0, 5) },
   { title: 'duration', value: '1' },
   { title: 'location', value: [] }
 ];
 
-const MemoizedLoginStatus = React.memo(LoginStatus);
-
 export default function TabOneScreen() {
   const [inputs, setInputs] = useState(INITIAL_INPUTS);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isDateTimeSelecting, setDateTimeSelecting] = useState(false);
-  const [isAgeSelecting, setAgeIsSelecting] = useState(false);
-  const [isGenderSelecting, setGenderIsSelecting] = useState(false);
+  const [isChildOrderSelecting, setChildOrderIsSelecting] = useState(false);
   const [isDurationSelecting, setDurationIsSelecting] = useState(false);
   const [date, setDate] = useState(new Date());
   const [isLocationModalVisible, setLocationModalVisible] = useState(false);
@@ -39,6 +34,13 @@ export default function TabOneScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   useCurrentLocation();
+
+  useEffect(() => {
+    if (userInfo && userInfo.kidinfo && userInfo.kidinfo.length > 0) {
+      const kidNames = userInfo.kidinfo.map(kid => kid.name);
+      handleInputChange(kidNames[0], 'childOrder', 'value');
+    }
+  }, [userInfo]);
 
   const handleSelectLocation = useCallback((location) => {
     setSelectedLocation(location);
@@ -126,10 +128,14 @@ export default function TabOneScreen() {
 
   const renderInputField = useMemo(() => (input) => {
     switch (input.title) {
-      case 'gender':
-        return renderSelector('gender', input.value, ['男', '女'], isGenderSelecting, setGenderIsSelecting);
-      case 'age':
-        return renderSelector('age', input.value, Array.from({ length: 100 }, (_, i) => i + 1), isAgeSelecting, setAgeIsSelecting);
+      case 'childOrder':
+        return renderSelector(
+          'childOrder', 
+          input.value, 
+          userInfo && userInfo.kidinfo ? userInfo.kidinfo.map(kid => kid.name) : [],
+          isChildOrderSelecting, 
+          setChildOrderIsSelecting
+        );
       case 'duration':
         return renderSelector('duration', input.value, Array.from({ length: 24 }, (_, i) => i + 1), isDurationSelecting, setDurationIsSelecting);
       case 'date':
@@ -165,7 +171,7 @@ export default function TabOneScreen() {
           />
         );
     }
-  }, [isGenderSelecting, isAgeSelecting, isDurationSelecting, selectedLocation, renderSelector, handleInputChange]);
+  }, [isChildOrderSelecting, isDurationSelecting, selectedLocation, renderSelector, handleInputChange, userInfo]);
 
   const renderedInputs = useMemo(() => inputs.map((input) => (
     <View key={input.title} style={styles.inputWrapper}>

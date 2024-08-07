@@ -85,6 +85,16 @@ export const WebSocketProvider = ({ children }) => {
         setUserInfo(null);
       }
     }
+    else if (message.type === 'addkidinfo') {
+      if (message.success) {
+        console.log("Kid info added successfully, kidId:", message.kidId);
+        setUserInfo(message.userinfo);
+        // You might want to trigger some UI update or notification here
+      } else {
+        console.log("Failed to add kid info");
+        // Handle the error case if needed
+      }
+    }
   }
 
   const registerMessageHandle = (on, handle) => {
