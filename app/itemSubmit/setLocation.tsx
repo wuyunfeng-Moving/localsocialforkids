@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import { useCurrentLocation } from './LocationContext'; // 引入useLocation
-import { LocationProvider } from './LocationContext';
+import { useCurrentLocation } from '../context/LocationContext'; // 引入useLocation
+import { LocationProvider } from '../context/LocationContext';
 
 const LocationPickerModal = ({ isVisible, onClose, onSelectLocation }) => {
   const {currentRegion,err} = useCurrentLocation(); // 使用useLocation获取当前位置

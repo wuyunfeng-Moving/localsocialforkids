@@ -7,6 +7,8 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 import { WebSocketProvider } from '../context/WebSocketProvider'; // 引入WebSocketProvider
+import { LocationProvider } from '../context/LocationContext';
+
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
@@ -20,6 +22,7 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
 
   return (
+    <LocationProvider>
     <WebSocketProvider>
       <Tabs
       screenOptions={{
@@ -72,5 +75,6 @@ export default function TabLayout() {
         /> */}
       </Tabs>
     </WebSocketProvider>
+    </LocationProvider>
   );
 }

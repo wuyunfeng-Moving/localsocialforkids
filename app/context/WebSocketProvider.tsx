@@ -22,6 +22,7 @@ export const WebSocketProvider = ({ children }) => {
     error: ''
   });
   const [userInfo, setUserInfo] = useState(null);
+  const [events, setEvents] = useState([]);
 
   // console.log("read the token from stroge:", token);
 
@@ -93,6 +94,26 @@ export const WebSocketProvider = ({ children }) => {
       } else {
         console.log("Failed to add kid info");
         // Handle the error case if needed
+      }
+    }
+    else if (message.type === 'logout') {
+      if (message.success) {
+        console.log("Logout successful:", message.message);
+        setLoginState({ logined: false, error: '' });
+        setUserInfo(null);
+        setToken(null);
+        SecureStore.deleteItemAsync('userToken');  // Clear the stored token
+      } else {
+        console.log("Logout failed:", message.message);
+        // Optionally handle failed logout
+      }
+    }
+    else if (message.type === 'filter') {
+      if (message.success) {
+        setEvents(message.events); // This will set events to an empty array if message.events is empty
+      } else {
+        console.error('Filter request failed:', message.message);
+        setEvents([]); // Clear events on failure as well
       }
     }
   }
@@ -177,7 +198,7 @@ export const WebSocketProvider = ({ children }) => {
     }
   }, [ws, token]);
   return (
-    <WebSocketContext.Provider value={{ send, userInfo, loginState, registerMessageHandle, connectWebSocket }}>
+    <WebSocketContext.Provider value={{ send, userInfo, loginState, registerMessageHandle, connectWebSocket, events }}>
       {children}
     </WebSocketContext.Provider>
   );

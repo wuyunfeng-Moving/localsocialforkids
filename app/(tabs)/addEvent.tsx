@@ -5,19 +5,20 @@ import AddItemModal from '../itemSubmit/addnewItem/addNewItem';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import LocationPickerModal from '../itemSubmit/setLocation';
-import { useCurrentLocation } from '../itemSubmit/LocationContext';
+import { useCurrentLocation } from '../context/LocationContext';
 import { useWebSocket } from '../context/WebSocketProvider';
 import LoginStatus from '../itemSubmit/user/loginStateDisplay';
 import { useNavigation } from '@react-navigation/native';
 import LoginScreen from '../itemSubmit/user/login';
 import { FadeOutLeft } from 'react-native-reanimated';
+import InputTopic from '../itemSubmit/addEvent/InputTopic';
 
 const INITIAL_INPUTS = [
   { title: 'childOrder', value: '' },
-  { title: 'date', value: new Date().toISOString().split('T')[0] },
-  { title: 'time', value: new Date().toTimeString().split(' ')[0].substring(0, 5) },
+  { title: 'dateTime', value: new Date() },
   { title: 'duration', value: '1' },
-  { title: 'location', value: [] }
+  { title: 'location', value: [] },
+  { title: 'topic', value: '' }
 ];
 
 export default function TabOneScreen() {
@@ -26,12 +27,12 @@ export default function TabOneScreen() {
   const [isDateTimeSelecting, setDateTimeSelecting] = useState(false);
   const [isChildOrderSelecting, setChildOrderIsSelecting] = useState(false);
   const [isDurationSelecting, setDurationIsSelecting] = useState(false);
-  const [date, setDate] = useState(new Date());
+  const [showDateTimePicker, setShowDateTimePicker] = useState(false);
   const [isLocationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const [dateTimeModalVisible, setDateTimeModalVisible] = useState(false);
   const { send, loginState,userInfo} = useWebSocket();
   const [isLoginning, setIsLoginning] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useCurrentLocation();
 
@@ -57,11 +58,8 @@ export default function TabOneScreen() {
 
   const handleDateTimeChange = useCallback((event, selectedDate) => {
     if (selectedDate) {
-      setDate(selectedDate);
-      handleInputChange(selectedDate.toISOString().split('T')[0], 'date', 'value');
-      handleInputChange(selectedDate.toTimeString().split(' ')[0].substring(0, 5), 'time', 'value');
+      handleInputChange(selectedDate, 'dateTime', 'value');
     }
-    setShowDatePicker(false);
   }, [handleInputChange]);
 
   const addInputField = useCallback((title_option) => {
@@ -75,23 +73,45 @@ export default function TabOneScreen() {
   const addItem = useCallback(() => {
     const newItems = inputs.reduce((acc, item) => {
       if (item.title === 'location') {
-        if (item.value.length === 0) return acc;
+        if (Array.isArray(item.value) && item.value.length > 0) {
+          acc[item.title] = item.value;
+        }
+      } else if (item.title === 'dateTime') {
+        if (item.value instanceof Date) {
+          acc[item.title] = item.value.toISOString();
+        }
+      } else if (item.title === 'childOrder') {
+        // Find the corresponding kidId for the selected child name
+        const selectedKid = userInfo.kidinfo.find(kid => kid.name === item.value);
+        if (selectedKid) {
+          acc['kidId'] = selectedKid.id;
+        } else {
+          console.error('Selected child not found in userInfo');
+        }
+      } else if (item.title === 'topic') {
         acc[item.title] = item.value;
-      } else if (item.title.trim() && item.value.trim()) {
-        acc[item.title] = item.value;
+      } else if (item.value != null && item.value !== '') {
+        if (typeof item.value === 'string') {
+          const trimmedValue = item.value.trim();
+          if (trimmedValue !== '') {
+            acc[item.title] = trimmedValue;
+          }
+        } else {
+          acc[item.title] = item.value;
+        }
       }
       return acc;
     }, {});
 
     if (Object.keys(newItems).length !== inputs.length) {
-      alert("Please fill all the fields");
+      alert("请填写所有字段");
       return;
     }
 
     newItems.type = 'addNewEvent';
     console.log('sending data:', JSON.stringify(newItems));
-    send(JSON.stringify(newItems));
-  }, [inputs, send]);
+    send(newItems);
+  }, [inputs, send, userInfo]);
 
   const renderSelector = useMemo(() => (title, value, options, isSelecting, setIsSelecting) => (
     <View style={styles.inputContainer}>
@@ -138,12 +158,13 @@ export default function TabOneScreen() {
         );
       case 'duration':
         return renderSelector('duration', input.value, Array.from({ length: 24 }, (_, i) => i + 1), isDurationSelecting, setDurationIsSelecting);
-      case 'date':
-      case 'time':
+      case 'dateTime':
         return (
           <View style={styles.inputContainer}>
-            <Text style={styles.inputText}>{input.value}</Text>
-            <TouchableOpacity style={styles.editButton} onPress={() => setShowDatePicker(true)}>
+            <Text style={styles.inputText}>
+              {input.value.toLocaleString()}
+            </Text>
+            <TouchableOpacity style={styles.editButton} onPress={() => setDateTimeModalVisible(true)}>
               <Text style={styles.editButtonText}>修改</Text>
             </TouchableOpacity>
           </View>
@@ -160,6 +181,13 @@ export default function TabOneScreen() {
               <Text style={styles.editButtonText}>选择位置</Text>
             </TouchableOpacity>
           </View>
+        );
+      case 'topic':
+        return(
+          <InputTopic
+             value={input.value}
+             onChange={(value)=>handleInputChange(value,'topic','value')}
+             />
         );
       default:
         return (
@@ -209,15 +237,27 @@ export default function TabOneScreen() {
           <AddItemModal onItemSelect={addInputField} onClose={() => setIsModalVisible(false)} />
         </View>
       </Modal>
-      <Modal visible={showDatePicker} transparent animationType="slide">
-        <View style={styles.datePickerContainer}>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={dateTimeModalVisible}
+        onRequestClose={() => setDateTimeModalVisible(false)}
+      >
+        <View style={styles.modalView}>
           <DateTimePicker
-            value={date}
-            mode="date"
-            display="default"
+            value={inputs.find(input => input.title === 'dateTime').value}
+            mode="datetime"
+            is24Hour={true}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={handleDateTimeChange}
+            style={styles.dateTimePicker}
           />
-          <Button title="Close" onPress={() => setShowDatePicker(false)} />
+          <TouchableOpacity 
+            style={styles.closeButton} 
+            onPress={() => setDateTimeModalVisible(false)}
+          >
+            <Text style={styles.closeButtonText}>确定</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
       <LocationPickerModal
@@ -353,7 +393,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#2196F3",
     borderRadius: 20,
     padding: 10,
-    elevation: 2
+    elevation: 2,
+    marginTop: 15,
   },
   closeButtonText: {
     color: "white",
@@ -361,6 +402,16 @@ const styles = StyleSheet.create({
     textAlign: "center"
   },
   modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  dateTimePicker: {
+    width: 320,
+    backgroundColor: 'white',
+  },
+  dateTimePickerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',

@@ -9,7 +9,19 @@ export default function UserScreen() {
     const [isLoginning, setIsLoginning] = useState(false);
     const [isAddingKid, setIsAddingKid] = useState(false);
 
-    const { loginState } = useWebSocket();
+    const { loginState, send } = useWebSocket();
+
+    useEffect(() => {
+        if (!loginState.logined) {
+            // User has logged out, you might want to do something here
+            // For example, show a message or redirect
+            console.log("User logged out");
+        }
+    }, [loginState]);
+
+    const handleLogout = () => {
+        send({ type: 'logout' });
+    };
 
     return (
         <View style={styles.container}>
@@ -21,18 +33,25 @@ export default function UserScreen() {
                 } />
             </Modal>
             <Text style={styles.title}>用户信息</Text>
-            {loginState.logined ?
-                <UserInfoScreen /> :
+            {loginState.logined ? (
+                <>
+                    <UserInfoScreen />
+                    <Button
+                        title="登出"
+                        onPress={handleLogout}
+                        style={styles.logoutButton}
+                    />
+                </>
+            ) : (
                 <Button
                     title="请先登录"
                     onPress={() => setIsLoginning(true)}
                 />
-            }
+            )}
             <Modal visible={isAddingKid}>
                 <UserForm onCloseModal={() => setIsAddingKid(false)} />
             </Modal>
             <Button title="添加小孩" onPress={() => setIsAddingKid(true)} />
-
         </View>
     );
 }
@@ -54,5 +73,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    logoutButton: {
+        marginTop: 10,
     },
 });
