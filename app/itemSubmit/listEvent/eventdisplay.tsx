@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import EventDetails from './EventDetails';
 
-const EventDisplay = ({ eventDetailsArray }) => {
+const EventDisplay = ({ eventDetailsArray}) => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 

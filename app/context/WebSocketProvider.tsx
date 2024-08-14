@@ -23,6 +23,8 @@ export const WebSocketProvider = ({ children }) => {
   });
   const [userInfo, setUserInfo] = useState(null);
   const [events, setEvents] = useState([]);
+  const [userEvents, setUserEvents] = useState([]);
+  const [kidEvents, setKidEvents] = useState([]);
 
   // console.log("read the token from stroge:", token);
 
@@ -78,12 +80,14 @@ export const WebSocketProvider = ({ children }) => {
       if (message.success) {
         setLoginState({ logined: true, error: '' });
         setUserInfo(message.userinfo);
+        setUserEvents(message.userEvents || []);
+        setKidEvents(message.kidEvents || []);
       } else {
         setLoginState({ logined: false, error: message.message });
-        //clear the token
-        // storeToken(null);
         setToken(null);
         setUserInfo(null);
+        setUserEvents([]);
+        setKidEvents([]);
       }
     }
     else if (message.type === 'addkidinfo') {
@@ -198,7 +202,16 @@ export const WebSocketProvider = ({ children }) => {
     }
   }, [ws, token]);
   return (
-    <WebSocketContext.Provider value={{ send, userInfo, loginState, registerMessageHandle, connectWebSocket, events }}>
+    <WebSocketContext.Provider value={{ 
+      send, 
+      userInfo, 
+      loginState, 
+      registerMessageHandle, 
+      connectWebSocket, 
+      events,
+      userEvents,
+      kidEvents
+    }}>
       {children}
     </WebSocketContext.Provider>
   );
