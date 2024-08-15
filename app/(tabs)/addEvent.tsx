@@ -14,11 +14,11 @@ import { FadeOutLeft } from 'react-native-reanimated';
 import InputTopic from '../itemSubmit/addEvent/InputTopic';
 
 const INITIAL_INPUTS = [
-  { title: 'childOrder', value: '' },
-  { title: 'dateTime', value: new Date() },
-  { title: 'duration', value: '1' },
-  { title: 'location', value: [] },
-  { title: 'topic', value: '' }
+  { title: 'childOrder',label:'孩子姓名', value: '' },
+  { title: 'dateTime', label:'活动时间',value: new Date() },
+  { title: 'duration', label:'活动长度（单位：小时）',value: '1' },
+  { title: 'location', label:'地点',value: [] },
+  { title: 'topic',label:'主题', value: '' }
 ];
 
 export default function TabOneScreen() {
@@ -203,7 +203,7 @@ export default function TabOneScreen() {
 
   const renderedInputs = useMemo(() => inputs.map((input) => (
     <View key={input.title} style={styles.inputWrapper}>
-      <Text style={styles.inputLabel}>{input.title}</Text>
+      <Text style={styles.inputLabel}>{input.label}</Text>
       {renderInputField(input)}
       {!INITIAL_INPUTS.some(item => item.title === input.title) && (
         <TouchableOpacity style={styles.removeButton} onPress={() => removeInputField(input.title)}>
