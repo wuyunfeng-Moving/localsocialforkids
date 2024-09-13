@@ -1,18 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, Button, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import { FontAwesome } from '@expo/vector-icons';
 import UserForm from "../itemSubmit/user/adduserinfo";
 import UserInfoScreen from "../itemSubmit/user/userinfo";
 import LoginScreen from '../itemSubmit/user/login';
 import { useWebSocket } from '../context/WebSocketProvider';
-import EventDisplay from '../itemSubmit/listEvent/eventdisplay';
-
-const EventList = ({ events, onClose }) => (
-    
-  <View style={styles.detailContainer}>
-    <EventDisplay eventDetailsArray ={events}/>
-    <Button title="返回" onPress={onClose} />
-  </View>
-);
 
 export default function UserScreen() {
     const [isLoginning, setIsLoginning] = useState(false);
@@ -35,9 +27,12 @@ export default function UserScreen() {
         send({ type: 'logout' });
     };
 
-    const renderSection = (title, onPress) => (
+    const renderSection = (title, onPress, icon) => (
         <TouchableOpacity style={styles.section} onPress={onPress}>
-            <Text style={styles.sectionTitle}>{title}</Text>
+            <View style={styles.sectionHeader}>
+                <FontAwesome name={icon} size={24} color="#007AFF" style={styles.sectionIcon} />
+                <Text style={styles.sectionTitle}>{title}</Text>
+            </View>
             <Text style={styles.sectionSubtitle}>点击查看详情</Text>
         </TouchableOpacity>
     );
@@ -51,12 +46,6 @@ export default function UserScreen() {
                         <Button title="返回" onPress={() => setActiveSection(null)} />
                     </View>
                 );
-            case "我创建的事件":
-                console.log("Rendering user events:", userEvents);
-                return <EventList events={userEvents} onClose={() => setActiveSection(null)} />;
-            case "我参与的事件":
-                console.log("Rendering kid events:", kidEvents);
-                return <EventList events={kidEvents} onClose={() => setActiveSection(null)} />;
             default:
                 return null;
         }
@@ -64,35 +53,38 @@ export default function UserScreen() {
 
     return (
         <View style={styles.container}>
-            <Modal visible={isLoginning}>
+            <View style={styles.header}>
+                <Text style={styles.title}>用户中心</Text>
+            </View>
+            {loginState.logined ? (
+                <View style={styles.content}>
+                    {renderSection("用户信息", () => setActiveSection("用户信息"), "user")}
+                    {/* {renderSection("我的活动", () => setActiveSection("我的活动"), "calendar")} */}
+                    {renderSection("添加小孩", () => setIsAddingKid(true), "child")}
+                    <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                        <Text style={styles.logoutButtonText}>登出</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <View style={styles.loginContainer}>
+                    <TouchableOpacity style={styles.loginButton} onPress={() => setIsLoginning(true)}>
+                        <Text style={styles.loginButtonText}>请先登录</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+            <Modal visible={isLoginning} animationType="slide">
                 <LoginScreen closeModal={() => {
                     console.log("onclose modal is called!!");
                     setIsLoginning(false)
-                }
-                } />
+                }} />
             </Modal>
-            <Text style={styles.title}>用户信息</Text>
-            {loginState.logined ? (
-                <>
-                    {renderSection("用户信息", () => setActiveSection("用户信息"))}
-                    {renderSection("我创建的事件", () => setActiveSection("我创建的事件"))}
-                    {renderSection("我参与的事件", () => setActiveSection("我参与的事件"))}
-                    <Button
-                        title="登出"
-                        onPress={handleLogout}
-                        style={styles.logoutButton}
-                    />
-                </>
-            ) : (
-                <Button
-                    title="请先登录"
-                    onPress={() => setIsLoginning(true)}
-                />
-            )}
-            <Modal visible={isAddingKid}>
-                <UserForm onCloseModal={() => setIsAddingKid(false)} />
+            <Modal visible={isAddingKid} animationType='slide' transparent={true}>
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <UserForm onCloseModal={() => setIsAddingKid(false)} />
+                    </View>
+                </View>
             </Modal>
-            <Button title="添加小孩" onPress={() => setIsAddingKid(true)} />
             <Modal visible={!!activeSection} animationType="slide">
                 {renderSectionContent()}
             </Modal>
@@ -101,27 +93,70 @@ export default function UserScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: {
+    modalContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderRadius: 10,
         padding: 20,
+        width: '80%',
+        maxHeight: '80%',
+    },
+    container: {
+        flex: 1,
+        backgroundColor: '#fff',
+    },
+    header: {
+        backgroundColor: '#007AFF',
+        paddingVertical: 20,
+        paddingHorizontal: 16,
+        alignItems: 'center',
     },
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        marginBottom: 20,
+        color: '#fff',
+    },
+    content: {
+        flex: 1,
+        padding: 16,
+    },
+    loginContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 16,
     },
     section: {
-        backgroundColor: '#f0f0f0',
-        padding: 15,
-        marginVertical: 10,
-        borderRadius: 5,
-        width: '100%',
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    sectionIcon: {
+        marginRight: 8,
     },
     sectionTitle: {
         fontSize: 18,
         fontWeight: 'bold',
+        color: '#333',
     },
     sectionSubtitle: {
         fontSize: 14,
@@ -131,19 +166,30 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        padding: 16,
     },
-    eventItem: {
-        backgroundColor: '#f9f9f9',
-        padding: 10,
-        marginVertical: 5,
-        borderRadius: 5,
+    loginButton: {
+        backgroundColor: '#007AFF',
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
     },
-    eventTitle: {
+    loginButtonText: {
+        color: '#fff',
         fontSize: 16,
         fontWeight: 'bold',
     },
     logoutButton: {
-        marginTop: 10,
+        backgroundColor: '#ff3b30',
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        marginTop: 16,
+        alignSelf: 'center',
+    },
+    logoutButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });

@@ -1,117 +1,114 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, ActivityIndicator, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { FilterCondition } from '../itemSubmit/listEvent/filterCondition';
-import EventDisplay from '../itemSubmit/listEvent/eventdisplay';
+import EventDisplay from '../itemSubmit/listEvent/EventListDisplay';
+import myEventDisplay from '../itemSubmit/listEvent/myEventDisplay';
 import { useWebSocket } from '../context/WebSocketProvider';
+import useIndex from '../context/userIndex';
+
+
+const getFormattedTime = () => {
+  const now = new Date();
+  return `${now.toLocaleDateString()} ${now.toLocaleTimeString()}.${now.getMilliseconds().toString().padStart(3, '0')}`;
+};
 
 const EventList = ({ events, userInfo }) => (
   <View style={styles.detailContainer}>
     {events.length > 0 ? (
-      <EventDisplay eventDetailsArray={events} userInfo={userInfo} />
+      <EventDisplay eventDetailsArray={events}  />
     ) : (
       <Text style={styles.noEventsText}>没有找到符合条件的活动</Text>
     )}
   </View>
 );
 
+
+
 const TABS = [
+  // { 
+  //   id: 'participated', 
+  //   title: '参与的活动',
+  //   render: myEventDisplay
+  // },
   { 
-    id: 'participated', 
-    title: '我参与的活动',
-    render: (props) => <EventList events={props.kidEvents} userInfo={props.userInfo} />
+    id: 'myEvent', 
+    title: '我的活动',
+     render: myEventDisplay
   },
   { 
-    id: 'initiated', 
-    title: '我发起的活动',
-    render: (props) => <EventList events={props.userEvents} userInfo={props.userInfo} />
+    id: 'recommended', 
+    title: '推荐活动',
+    render: (props) => <EventList events={props.recommendedEvents} userInfo={props.userInfo} />
   },
   { 
     id: 'search', 
     title: '搜索活动',
     render: (props) => <EventList events={props.filteredEvents} userInfo={props.userInfo} />
   },
-  { 
-    id: 'recommended', 
-    title: '推荐的活动',
-    render: (props) => <EventList events={props.recommendedEvents} userInfo={props.userInfo} />
-  },
+
 ];
 
+const parseMatchedEvents = (message) => {
+  if (message.success && Array.isArray(message.matches)) {
+    return message.matches.map(match => ({
+      score: match.score,
+      event: match.event
+    }));
+  }
+  return [];
+};
+
 export default function TabOneScreen() {
-  const [activeTab, setActiveTab] = useState('participated');
-  const [filterState, setFilterState] = useState({
-    selectedDistance: 3000,
-    startDate: new Date(),
-    endDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    isRefreshing: false,
-    eventList: [],
-  });
+  const { userInfo, kidEvents: nestedKidEvents, userEvents, matchedEvents} = useWebSocket();
 
-  const { send, userInfo, kidEvents, userEvents } = useWebSocket();
-  const isInitialMount = useRef(true);
+  const {activeTab,setActiveTab,
+    isRefreshing,onRefreshing,
+    hasMoreEvents,setLoadMoreEvents,isLoadingMore
+} = useIndex();
 
-  const handleFilterChange = useCallback((newFilterState) => {
-    setFilterState(prevState => ({ ...prevState, ...newFilterState }));
-  }, []);
-
-  const fetchEvents = useCallback(() => {
-    if (!userInfo || !userInfo.id) return;
-    setFilterState(prev => ({ ...prev, isRefreshing: true }));
-    const request = {
-      type: 'getEvents',
-      filter: {
-        tab: activeTab,
-        userId: userInfo.id,
-        distance: filterState.selectedDistance,
-        startDate: filterState.startDate,
-        endDate: filterState.endDate,
-      }
-    };
-    send(request);
-  }, [activeTab, userInfo, send, filterState]);
-
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-    } else if (activeTab === 'search' && userInfo?.id) {
-      fetchEvents();
-    }
-  }, [activeTab, fetchEvents, userInfo]);
+  const kidEvents = nestedKidEvents.flat();
 
   const renderTabContent = () => {
     const currentTab = TABS.find(tab => tab.id === activeTab);
-    
-    if (activeTab === 'search') {
-      return (
-        <>
-          <FilterCondition 
-            onFilterChange={handleFilterChange} 
-            // onSearch={fetchEvents}
-            initialValues={filterState}
-          />
-          
-          {filterState.isRefreshing ? (
-            <ActivityIndicator size="large" color="#0000ff" />
-          ) : (
-            <ScrollView contentContainerStyle={styles.scrollViewContent}>
-              {currentTab?.render({
-                filteredEvents: filterState.eventList,
-                userInfo: userInfo
-              })}
-            </ScrollView>
-          )}
-        </>
-      );
-    }
+    if (!currentTab) return null;
+
+    const props = {
+      kidEvents,
+      userEvents,
+      recommendedEvents: matchedEvents ? Object.values(matchedEvents)
+        .flat()
+        .filter(event => event && event.event)
+        .sort((a, b) => b.score - a.score)
+        .map(item => ({
+          ...item.event,
+          score: item.score
+        }))
+      : []
+    };
 
     return (
-      <ScrollView contentContainerStyle={styles.scrollViewContent}>
-        {currentTab?.render({
-          kidEvents,
-          userEvents,
-          recommendedEvents: [], // Add recommended events data when available
-          userInfo: userInfo
-        })}
+      <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefreshing} />
+        }
+      >
+        {currentTab.render(props)}
+        {activeTab === 'recommended' && hasMoreEvents && (
+          <TouchableOpacity
+            style={styles.loadMoreButton}
+            onPress={()=>setLoadMoreEvents(true)}
+            disabled={isLoadingMore}
+          >
+            {isLoadingMore ? (
+              <ActivityIndicator size="small" color="#007AFF" />
+            ) : (
+              <Text style={styles.loadMoreButtonText}>加载更多</Text>
+            )}
+          </TouchableOpacity>
+        )}
+        {activeTab === 'recommended' && !hasMoreEvents && (
+          <Text style={styles.noMoreEventsText}>所有活动已经加载完毕</Text>
+        )}
       </ScrollView>
     );
   };
@@ -132,7 +129,11 @@ export default function TabOneScreen() {
         ))}
       </View>
       
-      {renderTabContent()}
+      {userInfo ? (
+        renderTabContent()
+      ) : (
+        <Text style={styles.loadingText}>正在加载用户信息...</Text>
+      )}
     </View>
   );
 }
@@ -172,5 +173,28 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontSize: 16,
     color: '#666',
+  },
+  loadingText: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 16,
+    color: '#666',
+  },
+  loadMoreButton: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    margin: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  loadMoreButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+  },
+  noMoreEventsText: {
+    textAlign: 'center',
+    color: '#666',
+    padding: 10,
+    fontSize: 16,
   },
 });

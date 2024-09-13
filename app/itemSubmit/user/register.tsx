@@ -10,29 +10,27 @@ const RegisterScreen = ({ closeModal }) => {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-const {send,registerMessageHandle,connectWebSocket} = useWebSocket();
+  const { send, registerMessageHandle } = useWebSocket();
 
-const handleMessages = (message) => {
-  if(message.type === 'register'){
-
-  if (message.success) {
-    setSuccessMessage('注册成功');
-    setTimeout(() => {
-      setSuccessMessage('');
-      closeModal();
-    }, 2000);
-  } else {
-    setError(message.message);
-  }
-  registerMessageHandle(false,handleMessages);
-}
-  
-};
+  const handleMessages = (message) => {
+    console.log("get message from register:", message);
+    if (message.type === 'register') {
+      if (message.success) {
+        setSuccessMessage('注册成功');
+        setTimeout(() => {
+          setSuccessMessage('');
+          closeModal();
+        }, 2000);
+      } else {
+        setError(message.message);
+      }
+      registerMessageHandle(false, { name: 'registerHandler', handle: handleMessages });
+    }
+  };
 
   const handleRegister = async () => {
+    registerMessageHandle(true, { name: 'registerHandler', handle: handleMessages });
     send({ type: 'register', username, email, password });
-
-    registerMessageHandle(true,handleMessages);
   };
 
   return (
@@ -58,9 +56,9 @@ const handleMessages = (message) => {
       />
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {successMessage ? <Text style={styles.success}>{successMessage}</Text> : null}
-      <View style={{flexDirection:'row',justifyContent:'space-around'}}>
-      <Button title="Cancel" onPress={() =>closeModal()} />
-      <Button title="Register" onPress={handleRegister} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
+        <Button title="Cancel" onPress={() => closeModal()} />
+        <Button title="Register" onPress={handleRegister} />
       </View>
     </View>
   );

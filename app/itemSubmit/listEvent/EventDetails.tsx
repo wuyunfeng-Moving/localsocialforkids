@@ -1,91 +1,115 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Button, Alert, Switch } from 'react-native';
-import { useWebSocket } from '../../context/WebSocketProvider';
+import { View, Text, StyleSheet, Button, Alert, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
+import { useWebSocket } from '@/app/context/WebSocketProvider';
+import EventDisplay from './EventListDisplay';
+import FullScreenModal from '../commonItem/FullScreenModal';
+import 
 
+
+//单个事件的显示组件，根据当前的事件，现实相应的操作界面：
+//1.查看匹配，如果有匹配的事件；
+//2.删除事件，如果事件属于我；
+//3.加入事件，如果事件不属于我；
+//4.退出事件，如果我是事件的参与者；
+//5.显示事件更加详细的信息；
 const EventDetails = ({ event, onClose }) => {
-  console.log('Event:', event);
-  const [selectedKids, setSelectedKids] = useState({});
-  const { send, userInfo } = useWebSocket();
-  const { kidinfo, userinfo } = userInfo || {};
+  const [showMatchEvents, setShowMatchEvents] = useState(false);
+  const { getMatchEvents,isEventBelongToUser,isParticipateEvent } = useWebSocket();
+  const matchEvents = getMatchEvents(event.id).flat().map(item => ({
+    ...item.event,
+    score: item.score
+  }));
 
-  console.log('Current User:', userInfo);
+  console.log("matchEvents in EventDetails:",matchEvents);
 
   const handleJoinEvent = () => {
     if (!event || !event.id) {
       Alert.alert('错误', '事件信息不完整');
       return;
     }
-
-    if (event.userId === userinfo?.id) {
-      Alert.alert('提示', '您不能加入自己创建的事件');
-      return;
-    }
-
-    const selectedKidIds = Object.keys(selectedKids).filter(id => selectedKids[id]);
-    if (kidinfo && kidinfo.length > 0 && selectedKidIds.length === 0) {
-      Alert.alert('提示', '请选择至少一个孩子');
-      return;
-    }
-
-    if (!userinfo?.id) {
-      Alert.alert('错误', '用户ID未定义');
-      return;
-    }
-
-    send({
-      type: 'joinEvent',
-      data: {
-        eventId: event.id,
-        userId: userinfo.id,
-        kidIds: selectedKidIds,
-      }
-    });
     onClose();
   };
 
-  return (
-    <View style={styles.modalContent}>
-      <Text style={styles.title}>事件详情</Text>
-      <Text>用户ID: {event.userId}</Text>
-      <Text>孩子ID: {event.kidIds ? event.kidIds.join(', ') : '未知'}</Text>
-      <Text>位置: {Array.isArray(event.location) ? event.location.join(', ') : '未知'}</Text>
-      <Text>时间: {event.time ? new Date(event.time).toLocaleString() : '未知'}</Text>
-      <Text>持续时间: {event.duration || '未知'} 小时</Text>
-      <Text>主题: {event.topic || '未知'}</Text>
-      {kidinfo && kidinfo.length > 0 && (
-        <View>
-          <Text style={styles.subtitle}>选择参与的孩子：</Text>
-          {kidinfo.map(kid => (
-            <View key={kid.id} style={styles.kidItem}>
-              <Text>{kid.name}</Text>
-              <Switch
-                value={selectedKids[kid.id] || false}
-                onValueChange={(value) => {
-                  setSelectedKids(prev => ({...prev, [kid.id]: value}));
-                }}
-              />
-            </View>
-          ))}
-        </View>
-      )}
-      <View style={styles.buttonContainer}>
-        <Button title="加入事件" onPress={handleJoinEvent} />
-        <Button title="关闭" onPress={onClose} />
-      </View>
+  const handleDeleteEvent = () => {
+
+    onClose();
+  };
+
+  const handleLeaveEvent = () => {
+    onClose();
+  };
+
+  const renderMatchEvent = ({ item }) => (
+    <View style={styles.matchEventItem}>
+      <Text>用户ID: {item.userId}</Text>
+      <Text>时间: {item.time ? new Date(item.time).toLocaleString() : '未知'}</Text>
+      <Text>主题: {item.topic || '未知'}</Text>
     </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.modalContent}>
+          <Text>用户ID: {event.userId}</Text>
+          <Text>孩子ID: {event.kidIds ? event.kidIds.join(', ') : '未知'}</Text>
+          <Text>位置: {Array.isArray(event.location) ? event.location.join(', ') : '未知'}</Text>
+          <Text>时间: {event.time ? new Date(event.time).toLocaleString() : '未知'}</Text>
+          <Text>持续时间: {event.duration || '未知'} 小时</Text>
+          <Text>主题: {event.topic || '未知'}</Text>
+          <Text>描述：{event.description || ''}</Text>
+          
+          {matchEvents && matchEvents.length > 0 && (
+            <View style={styles.matchEventsContainer}>
+              <Button 
+                title={showMatchEvents ? "收起匹配" : "查看匹配"} 
+                onPress={() => setShowMatchEvents(!showMatchEvents)} 
+              />
+              <FullScreenModal
+                visible={showMatchEvents}
+                onClose={() => setShowMatchEvents(false)}
+                title="匹配事件列表"
+              >
+                <ScrollView>
+                  <EventDisplay eventDetailsArray={matchEvents} sourceEventId={event.id}/>
+                </ScrollView>
+              </FullScreenModal>
+            </View>
+          )}
+
+          <View style={styles.buttonContainer}>
+            {isEventBelongToUser(event) ? (
+              <Button title="删除事件" onPress={handleDeleteEvent} />
+            ) : isParticipateEvent(event) ? (
+              <Button title="退出事件" onPress={handleLeaveEvent} />
+            ) : (
+              <Button title="加入事件" onPress={handleJoinEvent} />
+            )}
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  modalContent: {
+  safeArea: {
+    flex: 1,
     backgroundColor: 'white',
-    padding: 22,
-    justifyContent: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    borderRadius: 4,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    marginTop: 50,
-    marginHorizontal: 20,
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  modalContent: {
+    padding: 22,
   },
   title: {
     fontSize: 20,
@@ -108,6 +132,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginTop: 20,
+  },
+  matchEventsContainer: {
+    marginTop: 20,
+    width: '100%',
+  },
+  matchEventsList: {
+    maxHeight: 200,
+  },
+  matchEventItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
   },
 });
 

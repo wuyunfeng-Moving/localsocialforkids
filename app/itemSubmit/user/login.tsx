@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, View, TextInput, TouchableOpacity, StyleSheet, Text, KeyboardAvoidingView, Platform, Button } from 'react-native';
+import { Modal, View, TextInput, TouchableOpacity, StyleSheet, Text, KeyboardAvoidingView, Platform, Button, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import RegisterScreen from './register';
@@ -20,7 +20,7 @@ const LoginScreen = ({closeModal}) => {
     if (loginState.logined) {
       closeModal();
     }
-  }, [loginState.logined]);
+  }, [loginState]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -35,51 +35,64 @@ const LoginScreen = ({closeModal}) => {
     }
   };
 
+  const handleCancel = () => {
+    closeModal();  // 调用传入的 closeModal 函数来关闭 modal
+  };
+
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   return (
     <KeyboardAvoidingView
-      // behavior={Platform.OS === "ios" ? "height": "padding"}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
     >
-      <Text style={styles.title}>Welcome Back</Text>
-      <View style={styles.inputContainer}>
-        <Ionicons name="mail-outline" size={24} color="#666" style={styles.icon} />
-        <TextInput
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          style={styles.input}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-      </View>
-      <View style={styles.inputContainer}>
-        <Ionicons name="lock-closed-outline" size={24} color="#666" style={styles.icon} />
-        <TextInput
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!showPassword}
-          style={styles.input}
-        />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-          <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={24} color="#666" />
-        </TouchableOpacity>
-      </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>登录</Text>
-      </TouchableOpacity>
-      
-       <Button title="注册" onPress={() => setModalVisible(true)} />
-       <Button title="取消" onPress={() => setModalVisible(false)} />
-      <Modal
-        animationType="slide"
-        transparent={false}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <RegisterScreen closeModal={() => setModalVisible(false)} /> 
-      </Modal>
+      <TouchableWithoutFeedback onPress={dismissKeyboard}>
+        <View style={styles.inner}>
+          <Text style={styles.title}>Welcome Back</Text>
+          <View style={styles.inputContainer}>
+            <Ionicons name="mail-outline" size={24} color="#666" style={styles.icon} />
+            <TextInput
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              style={styles.input}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+          <View style={styles.inputContainer}>
+            <Ionicons name="lock-closed-outline" size={24} color="#666" style={styles.icon} />
+            <TextInput
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              style={styles.input}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+              <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <TouchableOpacity style={styles.button} onPress={handleLogin}>
+            <Text style={styles.buttonText}>登录</Text>
+          </TouchableOpacity>
+          
+          <Button title="注册" onPress={() => setModalVisible(true)} />
+          <Button title="取消" onPress={handleCancel} />
+          <Modal
+            animationType="slide"
+            transparent={false}
+            visible={modalVisible}
+            onRequestClose={() => setModalVisible(false)}
+          >
+            <RegisterScreen closeModal={() => setModalVisible(false)} /> 
+          </Modal>
+        </View>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 };
@@ -137,6 +150,11 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  inner: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'stretch',
   },
 });
 
