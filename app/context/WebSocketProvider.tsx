@@ -1,7 +1,8 @@
 import { useSegments } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import * as SecureStore from 'expo-secure-store';
-
+import serverData from './serverData';
+import { MatchEvents,MatchEvent } from '../types/types';
+import {Event} from '../types/types';
 
 const WebSocketContext = createContext(null);
 
@@ -32,6 +33,8 @@ export const useWebSocket = () => {
   }
 };
 
+
+
 interface MessageHandler {
   name: string;
   handle: (message: any) => void;
@@ -39,295 +42,126 @@ interface MessageHandler {
 
 export const WebSocketProvider = ({ children }) => {
   const [ws, setWs] = useState(null);
-  const messageHandlersRef = useRef<MessageHandler[]>([]);
-  const providerIdRef = useRef(Date.now()); // 创建一个唯一的标识符
-  const [token, setToken] = useState(null);
-  const [messageFromserver,setMessageFromServer] = useState(null);
+
+  const [messageFromserver, setMessageFromServer] = useState(null);
   const [messageHandlers, setMessageHandlers] = useState<MessageHandler[]>([]);
-  const [loginState, setLoginState] = useState({
-    logined: false,
-    error: ''
-  });
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+
   const [events, setEvents] = useState([]);
-  const [userEvents, setUserEvents] = useState([]);
-  const [kidEvents, setKidEvents] = useState([]);
-  const [matchedEvents, setMatchedEvents] = useState({});
+  const { userEvents,
+    kidEvents,
+    matchedEvents,
+    loginState,
+    userInfo,
+    token,
+    messageHandle, } = serverData();
+
+  useEffect(() => {
+    messageHandlers.forEach((handler) => {
+      console.log(handler.name);
+      handler.handle(messageFromserver);
+    })
+  }, [messageFromserver]);
+
+  const send = useCallback((data) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.log('WebSocket not connected or not ready, can\'t send the data');
+      return;
+    }
+
+    console.log("Sending data:", data);
+    ws.send(JSON.stringify(data));
+  }, [ws, loginState]);
 
   // console.log("read the token from stroge:", token);
 
-  const storeToken = async (token) => {
-    try {
-      await SecureStore.setItemAsync('userToken', token);
-      setToken(token); // Update state immediately after storing
-    } catch (e) {
-      console.error('Error saving token:', e);
-    }
-  };
+  const setHandleForMessage = ((command, type, callbackAfterGetRes) => {
+    const messageHandler = {
+      name: command,
+      handle: (message) => {
+        if (message.type === type) {
+          registerMessageHandle(false, messageHandler);
 
-  const orderToServer = async (command, params = {}, callbackAfterGetRes) => {
-    try {
-      if (command === 'getMatch') {
-        const { start = 0, end = 10 } = params;
-        if (userEvents.length > 0) {
-          for (const event of userEvents) {
-            const messageHandler = {
-              name: `getMatch_${event.id}`,
-              handle: (message) => {
-                if (message.type === 'getMatch') {
-                  // Remove this handler after processing
-                  registerMessageHandle(false, messageHandler);
-                  // Call the callback with the response
-                  if (callbackAfterGetRes) {
-                    callbackAfterGetRes(message);
-                  }
-                }
-              }
-            };
-            // Register the message handler
-            registerMessageHandle(true, messageHandler);
-            // Send the request
-            send({ type: 'getMatch', eventId: event.id, start, end });
+          if (callbackAfterGetRes) {
+            callbackAfterGetRes(message);
           }
         }
       }
-    else if(command === 'getUserEvents')
-    {
-      const messageHandler ={
-        name:'getUserEvents',
-        handle:(message)=>{
-          if(message.type === 'filter')
-          {
-            registerMessageHandle(false,messageHandler);
+    }
+    registerMessageHandle(true, messageHandler);
+  });
 
-            if(callbackAfterGetRes)
-            {
-              callbackAfterGetRes(message);
+  type OrderCommand = 'getMatch' | 'getUserEvents' | 'deleteEvent' | 'addNewEvent' | 'signUpEvent' | 'notifications';
+  type ParaOfOrder = {
+    [key: string]: any;
+    signUpEvent?: {
+      sourceEventId: number;
+      targetEventId: number;
+      reason: string;
+    };
+  };
+  const orderToServer = async (command: OrderCommand, params: ParaOfOrder, callbackAfterGetRes?: (message: any) => void) => {
+    try {
+      switch (command) {
+        case 'getMatch': {
+          const { start = 0, end = 10 } = params;
+          if (userEvents.length > 0) {
+            for (const event of userEvents) {
+              setHandleForMessage(`getMatch_${event.id}`, 'getMatch', callbackAfterGetRes);
+              // Send the request
+              send({ type: 'getMatch', eventId: event.id, start, end });
             }
           }
+          break;
         }
+        case 'getUserEvents': {
+          setHandleForMessage(command, 'getUserEvents', callbackAfterGetRes);
+          send({ type: 'getUserEvents', userId: userInfo?.id });
+          break;
+        }
+        case 'deleteEvent': {
+          const { event = null } = params;
+          setHandleForMessage(command, 'deleteEvent', callbackAfterGetRes);
+          if (event) {
+            send({ type: 'deleteEvent', eventId: event.id });
+          }
+          break;
+        }
+        case 'addNewEvent': {
+          console.log("Adding new event");
+          const { event = null } = params;
+          setHandleForMessage(command, command, callbackAfterGetRes);
+          if (event) {
+            event.type = command;
+            send(event);
+          }
+          break;
+        }
+        case 'signUpEvent':
+          {
+            setHandleForMessage(command, command, callbackAfterGetRes);
+            const msg = {
+              type: 'signUpEvent',
+              targetEventId: params.signUpEvent?.targetEventId,
+              sourceEventId: params.signUpEvent?.sourceEventId,
+              reason: params.signUpEvent?.reason
+            }
+            send(msg);
+          }
       }
-      registerMessageHandle(true,messageHandler);
-      send({type:'filter',userId:userInfo?.id});
-    }
     } catch (e) {
       console.error('Error in orderToServer:', e);
     }
   };
 
-  useEffect(() => {
-    const fetchToken = async () => {
-      const fetchedToken = await getToken();
-      console.log("Read token from storage:", fetchedToken);
-      setToken(fetchedToken);
-    };
-    fetchToken();
-  }, []);
-  
-  const getToken = async () => {
-    try {
-      return await SecureStore.getItemAsync('userToken');
-    } catch (e) {
-      console.error('Error reading token:', e);
-      return null;
-    }
-  };
-
-  useEffect(() => {
-    console.log('userInfo changed:', userInfo);
-  }, [userInfo]);
-
-  interface AuthenticationMessage {
-    type: 'verifyToken';
-    success: boolean;
-    userId: number;
-    userinfo: UserInfo;  // Note: it's 'userinfo' not 'userInfo'
-    userEvents: any[];
-    kidEvents: any[];
-  }
-  const checkAuthenticationMessage = (message: any): AuthenticationMessage | null => {
-    if (message.type !== 'verifyToken') {
-      console.warn('Unexpected message type for authentication:', message.type);
-      return null;
-    }
-
-    if (typeof message.success !== 'boolean') {
-      console.warn('Authentication message missing success field or not boolean');
-      return null;
-    }
-
-    if (message.success === false) {
-      console.log('Token verification failed');
-      setLoginState({ logined: false, error: 'Token verification failed' });
-      setToken(null);
-      setUserInfo(null);
-      setUserEvents([]);
-      setKidEvents([]);
-      return null;
-    }
-
-    if (!Number.isInteger(message.userId)) {
-      console.warn('Authentication message missing userId or not an integer');
-      return null;
-    }
-
-    if (typeof message.userinfo !== 'object' || message.userinfo === null) {
-      console.warn('Authentication message missing userinfo or not an object');
-      return null;
-    }
-
-    const { email, username, id, kidinfo } = message.userinfo;
-
-    if (typeof email !== 'string' || typeof username !== 'string' || !Number.isInteger(id)) {
-      console.warn('Authentication userinfo has invalid or missing fields');
-      return null;
-    }
-
-    if (!Array.isArray(kidinfo)) {
-      console.warn('Authentication userinfo kidinfo is not an array');
-      return null;
-    }
-
-    if (!Array.isArray(message.userEvents) || !Array.isArray(message.kidEvents)) {
-      console.warn('Authentication message missing userEvents or kidEvents or they are not arrays');
-      return null;
-    }
-
-    return message as AuthenticationMessage;
-  };
-
-  useEffect(()=>{
-    messageHandlers.forEach((handler)=>{
-       console.log(handler.name);
-       handler.handle(messageFromserver);
-    })
-  },[messageFromserver]);
 
 
   function handleMessages(event) {
     const message = JSON.parse(event.data);
     setMessageFromServer(message);
+    messageHandle(message);
 
-    if (message.type === 'login') {
-      if (message.success) {
-        console.log("Login successful, token:", message.token);
-        storeToken(message.token);
-        setLoginState({ logined: true, error: '' });
-        setUserInfo(message.userinfo);
-      } else {
-        console.log("Login failed:", message.message);
-        setLoginState({ logined: false, error: message.message });
-      }
-    }
-    else if (message.type === 'verifyToken') {
-      console.log('Authentication message received:', message);
-      const data = checkAuthenticationMessage(message);
-      if (data && data.success) {
-        console.log("Token verified successfully, userId:", data.userId);
-        setLoginState({ logined: true, error: '' });
-        setUserInfo(data.userinfo);
-        setUserEvents(data.userEvents);
-
-        // 修改这里的处理逻辑
-        const kidEvents = (data.kidEvents || [])
-          .flat(2) // 展平嵌套数组，深度为2
-          .filter(event => event && event.userId !== data.userinfo.id);
-        console.log("Filtered kidEvents:", kidEvents);
-        setKidEvents(kidEvents);
-
-        // 在验证成功后，主动获取前10个匹配活动
-        if (data.userEvents && data.userEvents.length > 0) {
-          data.userEvents.forEach(event => {
-            send({ type: 'getMatch', eventId: event.id, start: 0, end: 10 });
-          });
-        }
-      } else {
-        console.log("Token verification failed");
-        setLoginState({ logined: false, error: 'Token verification failed' });
-        setToken(null);
-        setUserInfo(null);
-        setUserEvents([]);
-        setKidEvents([]);
-      }
-    }
-    else if (message.type === 'addkidinfo') {
-      if (message.success) {
-        console.log("Kid info added successfully, kidId:", message.kidId);
-        setUserInfo(message.userinfo);
-        // You might want to trigger some UI update or notification here
-      } else {
-        console.log("Failed to add kid info");
-        // Handle the error case if needed
-      }
-    }
-    else if (message.type === 'logout') {
-      if (message.success) {
-        console.log("Logout successful:", message.message);
-        setLoginState({ logined: false, error: '' });
-        setUserInfo(null);
-        setToken(null);
-        SecureStore.deleteItemAsync('userToken');  // Clear the stored token
-      } else {
-        console.log("Logout failed:", message.message);
-        // Optionally handle failed logout
-      }
-    }
-    else if (message.type === 'filter') {
-      if (message.success) {
-        setEvents(message.events); // This will set events to an empty array if message.events is empty
-      } else {
-        console.error('Filter request failed:', message.message);
-        setEvents([]); // Clear events on failure as well
-      }
-    }
-    else if (message.type === 'userEvents') {
-      console.log("Received userEvents message:", message);
-      setUserEvents(message.userEvents || []);
-      setKidEvents((message.kidEvents || []).filter(event => event.userId !== userInfo?.id));
-    }
-    else if (message.type === 'getMatch') {
-      console.log("Start to handle getMatch message");
-      if (message.success && Array.isArray(message.matches)) {
-        if (message.matches.length > 0) {
-          setMatchedEvents(prev => {
-            const updatedMatches = message.matches.map(match => ({
-              score: match.score,
-              event: match.event
-            }));
-            
-            const existingMatches = prev[message.eventId] || [];
-            
-            // 合并现有匹配和新匹配，优先使用新匹配的信息
-            const mergedMatches = [...existingMatches];
-            updatedMatches.forEach(newMatch => {
-              const existingIndex = mergedMatches.findIndex(m => m.event.id === newMatch.event.id);
-              if (existingIndex !== -1) {
-                // 更新现有匹配
-                mergedMatches[existingIndex] = newMatch;
-              } else {
-                // 添加新匹配
-                mergedMatches.push(newMatch);
-              }
-            });
-
-            const updatedMatchedEvents = {
-              ...prev,
-              [message.sourceEventId]: mergedMatches
-            };
-            
-            console.log(`Updated matchedEvents for eventId ${message.sourceEventId}:`, updatedMatchedEvents);
-            return updatedMatchedEvents;
-          });
-        } else {
-          console.log(`No matches found for eventId ${message.sourceEventId}`);
-        }
-      } else {
-        console.error('getMatch request failed or invalid data:', message);
-        console.log('message.eventId:', message.eventId);
-        console.log('message.matches:', message.matches);
-      }
-    }
   }
+
   const registerMessageHandle = (on: boolean, handler: MessageHandler) => {
     if (on) {
       setMessageHandlers(prevHandlers => {
@@ -347,24 +181,28 @@ export const WebSocketProvider = ({ children }) => {
     }
   };
 
-  const getMatchEvents = (eventId: number) => {
-    const result = matchedEvents[eventId] || [];
+  const getMatchEvents = (eventId: number): MatchEvent[] => {
+    // console.log("getMatchEvents::::",matchedEvents);
+    if (!matchedEvents) {
+      return [];
+    }
+    const result = matchedEvents[eventId]||[];
     // console.log("getMatchEvents",result);
     return result;
   };
 
-  const isEventBelongToUser=(event)=>{
-      return event.userId === userInfo?.id;
+  const isEventBelongToUser = (userId:number) => {
+    return userId === userInfo?.id;
   };
 
-  const isParticipateEvent = (event) => {
+  const isParticipateEvent = (event:Event) => {
     if (!userInfo || !userInfo.kidinfo || !Array.isArray(userInfo.kidinfo)) {
       return false;
     }
-    
+
     return userInfo.kidinfo.some(kid => event.kidIds.includes(kid.id));
   }
-  
+
 
   /*
   所有的与服务器的发送通信都是通过此接口。
@@ -373,15 +211,7 @@ export const WebSocketProvider = ({ children }) => {
   type:type
   
   */
-  const send = useCallback((data) => {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      console.log('WebSocket not connected or not ready, can\'t send the data');
-      return;
-    }
-  
-    console.log("Sending data:", data);
-    ws.send(JSON.stringify(data));
-  }, [ws, loginState]);
+
 
   const connectWebSocket = useCallback(() => {
     console.log('Attempting to connect WebSocket...');
@@ -430,16 +260,16 @@ export const WebSocketProvider = ({ children }) => {
 
       return () => clearTimeout(timer);
     }
-  }, [ws, token]);
+  }, [ws]);
   // console.log('Rendering WebSocketProvider, userInfo:', userInfo); // Added this line
   return (
-    <WebSocketContext.Provider value={{ 
+    <WebSocketContext.Provider value={{
       send, //send data derict to server,not recommand
-      userInfo, 
-      loginState, 
+      userInfo,
+      loginState,
       registerMessageHandle,
       orderToServer,//app page send task for communicate with server
-                    //getmetch:get all the metches of user created events.
+      //getmetch:get all the metches of user created events.
       events,
       userEvents,//user created events
       kidEvents,//kids involved events

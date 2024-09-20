@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, ActivityIndicator, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { FilterCondition } from '../itemSubmit/listEvent/filterCondition';
-import EventDisplay from '../itemSubmit/listEvent/EventListDisplay';
 import myEventDisplay from '../itemSubmit/listEvent/myEventDisplay';
 import { useWebSocket } from '../context/WebSocketProvider';
 import useIndex from '../context/userIndex';

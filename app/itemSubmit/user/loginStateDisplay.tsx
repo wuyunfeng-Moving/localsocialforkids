@@ -3,7 +3,7 @@ import { View, Text, Button } from 'react-native';
 import { useWebSocket } from '../../context/WebSocketProvider';
 
 const LoginStatus = ({ onLoginButtonPress }) => {
-  const { loginState, userInfo } = useWebSocket();
+  const { userInfo } = useWebSocket();
 
   return (
     <View>

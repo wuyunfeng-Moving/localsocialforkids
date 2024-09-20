@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { StyleSheet, TextInput, Button, ScrollView, TouchableOpacity, Modal, Platform, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, TextInput, Button, ScrollView, TouchableOpacity, Modal, Platform, KeyboardAvoidingView, ActivityIndicator } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import AddItemModal from '../itemSubmit/addnewItem/addNewItem';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import LoginScreen from '../itemSubmit/user/login';
 import { FadeOutLeft } from 'react-native-reanimated';
 import InputTopic from '../itemSubmit/addEvent/InputTopic';
+import comWithServer from '../context/comWithServer';
 
 const INITIAL_INPUTS = [
   { title: 'childOrder', label: '孩子姓名', value: '' },
@@ -23,7 +24,7 @@ const INITIAL_INPUTS = [
   { title: 'maxNumber', label: '最大参与人数', value: 10 },
 ];
 
-export default function TabOneScreen() {
+export default function TabTwoScreen() {
   const [inputs, setInputs] = useState(INITIAL_INPUTS);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isChildOrderSelecting, setChildOrderIsSelecting] = useState(false);
@@ -31,8 +32,10 @@ export default function TabOneScreen() {
   const [isLocationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [dateTimeModalVisible, setDateTimeModalVisible] = useState(false);
-  const { send, loginState, userInfo } = useWebSocket();
+  const { loginState, userInfo } = useWebSocket();
   const [isLoginning, setIsLoginning] = useState(false);
+  const {handleCreateEvent} = comWithServer();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useCurrentLocation();
 
@@ -70,7 +73,7 @@ export default function TabOneScreen() {
     setInputs(prevInputs => prevInputs.filter(input => input.title !== title));
   }, []);
 
-  const addItem = useCallback(() => {
+  const addItem = () => {
     const newItems = inputs.reduce((acc, item) => {
       switch (item.title) {
         case 'childOrder':
@@ -117,8 +120,12 @@ export default function TabOneScreen() {
     }
 
     console.log('sending data:', JSON.stringify(newItems));
-    send(newItems);
-  }, [inputs, send, userInfo]);
+    setIsSubmitting(true);
+    handleCreateEvent(newItems, () => {
+      setIsSubmitting(false);
+      // Handle success or error here
+    });
+  };
 
   const renderSelector = useMemo(() => (title, value, options, isSelecting, setIsSelecting) => (
     <View style={styles.inputContainer}>
@@ -213,7 +220,14 @@ export default function TabOneScreen() {
             style={styles.input}
             placeholder="最大参与人数"
             value={input.value.toString()}
-            onChangeText={(text) => handleInputChange(parseInt(text, 10), 'maxNumber', 'value')}
+            onChangeText={(text) => {
+              const number = parseInt(text, 10);
+              if (!isNaN(number) && number > 0) {
+                handleInputChange(number, 'maxNumber', 'value');
+              } else if (text === '') {
+                handleInputChange('', 'maxNumber', 'value');
+              }
+            }}
             keyboardType="numeric"
           />
         );
@@ -256,14 +270,20 @@ export default function TabOneScreen() {
           />
         </Modal>
         <LoginStatus
-          isLoggedIn={loginState.logined}
-          username={userInfo}
           onLoginButtonPress={() => setIsLoginning(true)}
         />
         {renderedInputs}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.submitButton} onPress={addItem}>
-            <Text style={styles.buttonText}>提交</Text>
+          <TouchableOpacity 
+            style={[styles.submitButton, isSubmitting && styles.disabledButton]}
+            onPress={addItem}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.buttonText}>提交</Text>
+            )}
           </TouchableOpacity>
           <TouchableOpacity style={styles.addButton} onPress={() => setIsModalVisible(true)}>
             <Text style={styles.buttonText}>添加更多</Text>
@@ -397,6 +417,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   addButton: {
     flex: 1,
@@ -444,5 +465,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     fontSize: 16,
+  },
+  disabledButton: {
+    backgroundColor: '#a5d6a7',
   },
 });
