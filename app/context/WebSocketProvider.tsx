@@ -6,6 +6,10 @@ import {Event} from '../types/types';
 
 const WebSocketContext = createContext(null);
 
+// const SERVERIP ="121.196.198.126"
+const SERVERIP ="localhost"
+const PORT = "8080"
+
 // 定义 KidInfo 接口
 interface KidInfo {
   birthdate: string;
@@ -33,7 +37,8 @@ export const useWebSocket = () => {
   }
 };
 
-
+// 定义一个类型别名
+type GetMatchEventsFunction = (eventId: number) => MatchEvent[];
 
 interface MessageHandler {
   name: string;
@@ -90,7 +95,7 @@ export const WebSocketProvider = ({ children }) => {
     registerMessageHandle(true, messageHandler);
   });
 
-  type OrderCommand = 'getMatch' | 'getUserEvents' | 'deleteEvent' | 'addNewEvent' | 'signUpEvent' | 'notifications';
+  type OrderCommand = 'getMatch' | 'getUserEvents' | 'deleteEvent' | 'addNewEvent' | 'signUpEvent' | 'notifications'|'approveSignUp';
   type ParaOfOrder = {
     [key: string]: any;
     signUpEvent?: {
@@ -98,6 +103,11 @@ export const WebSocketProvider = ({ children }) => {
       targetEventId: number;
       reason: string;
     };
+    approveSignUp?: {
+      eventId: number;
+      targetEventId: number;
+      approve: boolean;
+    }
   };
   const orderToServer = async (command: OrderCommand, params: ParaOfOrder, callbackAfterGetRes?: (message: any) => void) => {
     try {
@@ -126,13 +136,29 @@ export const WebSocketProvider = ({ children }) => {
           }
           break;
         }
+        //同名命令
         case 'addNewEvent': {
-          console.log("Adding new event");
+          // console.log("Adding new event");
           const { event = null } = params;
           setHandleForMessage(command, command, callbackAfterGetRes);
           if (event) {
             event.type = command;
             send(event);
+          }
+          break;
+        }
+        case 'approveSignUp': {
+          setHandleForMessage(command, command, callbackAfterGetRes);
+          const { approve, eventId, targetEventId } = params.approveSignUp || {};
+          if (approve !== undefined && eventId !== undefined && targetEventId !== undefined) {
+            send({
+              type: command,
+              approve,
+              eventId,
+              targetEventId
+            });
+          } else {
+            console.error('Missing required parameters for approveSignUp');
           }
           break;
         }
@@ -153,8 +179,6 @@ export const WebSocketProvider = ({ children }) => {
     }
   };
 
-
-
   function handleMessages(event) {
     const message = JSON.parse(event.data);
     setMessageFromServer(message);
@@ -167,7 +191,7 @@ export const WebSocketProvider = ({ children }) => {
       setMessageHandlers(prevHandlers => {
         if (!prevHandlers.some(h => h.name === handler.name)) {
           const newHandlers = [...prevHandlers, handler];
-          console.log('Updated message handlers:', newHandlers);
+          // console.log('Updated message handlers:', newHandlers);
           return newHandlers;
         }
         return prevHandlers;
@@ -181,12 +205,12 @@ export const WebSocketProvider = ({ children }) => {
     }
   };
 
-  const getMatchEvents = (eventId: number): MatchEvent[] => {
+  const getMatchEvents: GetMatchEventsFunction = (eventId) => {
     // console.log("getMatchEvents::::",matchedEvents);
     if (!matchedEvents) {
       return [];
     }
-    const result = matchedEvents[eventId]||[];
+    const result = matchedEvents[eventId] || [];
     // console.log("getMatchEvents",result);
     return result;
   };
@@ -215,14 +239,15 @@ export const WebSocketProvider = ({ children }) => {
 
   const connectWebSocket = useCallback(() => {
     console.log('Attempting to connect WebSocket...');
-    const socket = new WebSocket('ws://47.98.112.211:8080');
+    const wsaddress="ws://"+SERVERIP+":"+PORT;
+    const socket = new WebSocket(wsaddress);
     socket.onopen = () => {
-      console.log('WebSocket connected successfully');
+      // console.log('WebSocket connected successfully');
       setWs(socket);
     };
 
     socket.onmessage = (event) => {
-      console.log('WebSocket message received in context:', event.data);
+      // console.log('WebSocket message received in context:', event.data);
       // Handle incoming messages here
       handleMessages(event);
     };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import { Event, UserInfo, Events, AuthenticationMessage, MessageFromServer, MatchEvents } from '../types/types';
+import { Event, UserInfo, Events, AuthenticationMessage, MessageFromServer, MatchEvents,MatchEvent } from '../types/types';
 
 const serverData = (() => {
 
@@ -26,7 +26,6 @@ const serverData = (() => {
 
     const storeToken = async (token) => {
         try {
-            console.log(token)
             await SecureStore.setItemAsync('userToken', token);
             setToken(token); // Update state immediately after storing
         } catch (e) {
@@ -58,7 +57,7 @@ const serverData = (() => {
         }
 
         if (message.success === false) {
-            console.log('Token verification failed');
+            console.warn('Token verification failed');
             setLoginState({ logined: false, error: 'Token verification failed' });
             setToken(null);
             setUserInfo(null);
@@ -109,22 +108,32 @@ const serverData = (() => {
 
             case 'getUserEvents':
                 {
-                    console.log("Received userEvents message:", message);
-                    setUserEvents(message.userEvents || []);
-                    setKidEvents((message.kidEvents || []).filter(event => event.userId !== userInfo?.id));
+                    if (Array.isArray(message.userEvents)) {
+                        setUserEvents(message.userEvents);
+                    }
+                    
+                    if (Array.isArray(message.kidEvents) && message.kidEvents.length > 0) {
+                        // Flatten the nested array and filter out events from the current user
+                        const flattenedKidEvents = message.kidEvents.flat(2).filter(event => event && event.userId !== userInfo?.id);
+                        setKidEvents(flattenedKidEvents);
+                    } else {
+                        setKidEvents([]);
+                    }
                 }
                 break;
+
             case 'getMatch':
                 {
                     try {
-                        console.log("Start to handle getMatch message");
                         if (message.success && Array.isArray(message.matches)) {
                             const sourceEventId = message.sourceEventId;
-                            const newMatchEvents: MatchEvents = message.matches.map(match => ({
+                            const newMatchEvents: MatchEvent[] = message.matches.map(match => ({
                                 // sourceEventId,
                                 event: match.event as Event,
                                 score: match.score
                             }));
+
+                            console.log(newMatchEvents)
 
                             setMatchedEvents(prev => {
                                 const updatedMatchedEvents = { ...prev };
@@ -144,7 +153,6 @@ const serverData = (() => {
                                     // If sourceEventId doesn't exist, add the new matches
                                     updatedMatchedEvents[sourceEventId] = newMatchEvents;
                                 }
-                                console.log(`Updated matchedEvents for eventId ${sourceEventId}:`, updatedMatchedEvents);
                                 return updatedMatchedEvents;
                             });
                         } else {
@@ -162,7 +170,7 @@ const serverData = (() => {
                         setLoginState({ logined: true, error: '' });
                         setUserInfo(message.userInfo);
                     } else {
-                        console.log("Login failed:", message.message);
+                        console.warn("Login failed:", message.message);
                         setLoginState({ logined: false, error: message.message });
                     }
                 }
@@ -182,7 +190,7 @@ const serverData = (() => {
                         setKidEvents(kidEvents);
 
                     } else {
-                        console.log("Token verification failed");
+                        console.warn("Token verification failed");
                         setLoginState({ logined: false, error: 'Token verification failed' });
                         setToken(null);
                         setUserInfo(null);
@@ -194,11 +202,11 @@ const serverData = (() => {
             case 'addkidinfo':
                 {
                     if (message.success) {
-                        console.log("Kid info added successfully, kidId:", message.kidId);
+                        // console.log("Kid info added successfully, kidId:", message.kidId);
                         setUserInfo(message.userinfo);
                         // You might want to trigger some UI update or notification here
                     } else {
-                        console.log("Failed to add kid info");
+                        console.warn("Failed to add kid info");
                         // Handle the error case if needed
                     }
                 }
@@ -206,13 +214,13 @@ const serverData = (() => {
             case 'logout':
                 {
                     if (message.success) {
-                        console.log("Logout successful:", message.message);
+                        // console.log("Logout successful:", message.message);
                         setLoginState({ logined: false, error: '' });
                         setUserInfo(null);
                         setToken(null);
                         SecureStore.deleteItemAsync('userToken');  // Clear the stored token
                     } else {
-                        console.log("Logout failed:", message.message);
+                        console.warn("Logout failed:", message.message);
                         // Optionally handle failed logout
                     }
                 }

@@ -59,10 +59,39 @@ const comWithServer = () => {
 
     );
 
+    const acceptSignUp = (
+        eventId: number,
+        targetEventId: number,
+        approve: boolean,
+        callback: (success: boolean) => void
+    ) => {
+        if (!orderToServer) {
+            console.error('WebSocket not available');
+            callback(false);
+            return;
+        }
+
+        console.log("acceptSignUp is called!",eventId,targetEventId,approve);
+
+        orderToServer(
+            'approveSignUp',
+            {approveSignUp: { eventId, targetEventId, approve }},
+            (response: { success: boolean; message?: string }) => {
+                if (response.success) {
+                    callback(true);
+                } else {
+                    console.error('Failed to accept sign up:', response.message);
+                    callback(false);
+                }
+            }
+        );
+    };
+
     return ({
         handleDeleteEvent,
         handleCreateEvent,
-        handleSignupEvent
+        handleSignupEvent,
+        acceptSignUp // Add this new function to the returned object
     }
     );
 }

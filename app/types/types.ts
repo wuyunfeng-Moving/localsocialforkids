@@ -9,7 +9,6 @@ export type Event = {
     topic: string;
     description: string;
     kidIds: number[];
-    participants?: number[];
     userId: number;
     pendingSignUps?: Array<{ sourceEventId: number; reason: string }>;
 };
@@ -55,3 +54,4 @@ export interface AuthenticationMessage {
 export type MessageFromServer =
     | { type: 'notification'; notification: { type: string; message: string } }
     | { type: string; [key: string]: any };
+

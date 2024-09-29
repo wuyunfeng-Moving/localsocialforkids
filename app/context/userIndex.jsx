@@ -11,18 +11,6 @@ const useIndex = (() => {
     const [loadMoreEvents, setLoadMoreEvents] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-
-    //get matches at first get the userinfo
-    useEffect(() => {
-        orderToServer('getMatch', { start: 0, end: 10 }, (matchMessage) => {
-            // Handle the matched events here
-            // You might want to store these matched events in a state
-            console.log('Matched events:', matchMessage);
-        });
-    }
-        , [userEvents]);
-
-
     const onRefreshing = (() => {
         setIsRefreshing(true);
         switch (activeTab) {
