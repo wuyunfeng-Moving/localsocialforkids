@@ -4,11 +4,14 @@ import { Event, UserInfo, Events, AuthenticationMessage, MessageFromServer, Matc
 
 const serverData = (() => {
 
-    const [notification, setNotification] = useState<{ type: string; message: string } | null>(null);
+    const [notifications, setNotifications] = useState<Array<{ type: string; message: string } | null>>([]);
     const [userEvents, setUserEvents] = useState<Events>([]);
     const [kidEvents, setKidEvents] = useState<Events>([]);
     const [matchedEvents, setMatchedEvents] = useState<MatchEvents>([]);
-    const [loginState, setLoginState] = useState({
+    const [loginState, setLoginState] = useState<{
+        logined:boolean;
+        error:'No token' | 'Token expired' | string;
+    }>({
         logined: false,
         error: ''
     });
@@ -18,7 +21,13 @@ const serverData = (() => {
     useEffect(()=>{
         const fetchToken=async ()=>{
             const tempToken = await getToken();
-            setToken(tempToken);
+            if(!tempToken){
+                setLoginState({logined:false,error:'No token'});
+            }
+            else{
+                setToken(tempToken);
+            }
+
         }
         fetchToken();
     },[]);
@@ -58,7 +67,7 @@ const serverData = (() => {
 
         if (message.success === false) {
             console.warn('Token verification failed');
-            setLoginState({ logined: false, error: 'Token verification failed' });
+            setLoginState({ logined: false, error: 'Token expired' });
             setToken(null);
             setUserInfo(null);
             setUserEvents([]);
@@ -99,10 +108,28 @@ const serverData = (() => {
 
 
     const messageHandle = (message: MessageFromServer) => {
+        console.log('Received message:', message);
+        
         switch (message.type) {
             case 'notification':
                 {
-                    setNotification(message.notification);
+                    if (message.message && typeof message.message === 'object') {
+                        const newNotification = {
+                            type: message.message.type,
+                            message: message.message.message,
+                            id: message.message.id,
+                            eventId: message.message.eventId,
+                            createdAt: message.message.createdAt,
+                            read: message.message.read
+                        };
+                        setNotifications(prev => {
+                            const newData = [...prev, newNotification];
+                            console.log('New notifications:', newData);
+                            return newData;
+                        });
+                    } else {
+                        console.error('Invalid notification format:', message);
+                    }
                 }
                 break;
 
@@ -237,7 +264,7 @@ const serverData = (() => {
     };
 
     return {
-        notification,
+        notifications,
         userEvents,
         kidEvents,
         matchedEvents,

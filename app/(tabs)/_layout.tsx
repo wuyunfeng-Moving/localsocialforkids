@@ -52,6 +52,13 @@ export default function TabLayout() {
             // ),
           }}
         /> 
+        { <Tabs.Screen
+          name="notification"
+          options={{
+            title: '通知',
+            tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          }}
+        /> }
         <Tabs.Screen
           name="addEvent"
           options={{
@@ -66,13 +73,6 @@ export default function TabLayout() {
             tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
           }}
         />
-        {/* <Tabs.Screen
-          name="map"
-          options={{
-            title: 'Tab map',
-            tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
-          }}
-        /> */}
       </Tabs>
     </WebSocketProvider>
     </LocationProvider>

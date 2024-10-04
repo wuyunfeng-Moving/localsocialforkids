@@ -11,6 +11,7 @@ export type Event = {
     kidIds: number[];
     userId: number;
     pendingSignUps?: Array<{ sourceEventId: number; reason: string }>;
+    status:'preparing'|'started'|'ended'|'merged';
 };
 
 export type MatchEvent ={
@@ -54,4 +55,9 @@ export interface AuthenticationMessage {
 export type MessageFromServer =
     | { type: 'notification'; notification: { type: string; message: string } }
     | { type: string; [key: string]: any };
+
+
+export type Notification ={
+    
+}
 

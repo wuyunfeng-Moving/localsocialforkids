@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, View, TextInput, TouchableOpacity, StyleSheet, Text, KeyboardAvoidingView, Platform, Button, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import RegisterScreen from './register';
 import { useWebSocket } from '../../context/WebSocketProvider';
 
@@ -13,7 +12,6 @@ const LoginScreen = ({closeModal}) => {
   const [modalVisible, setModalVisible] = useState(false);  // 添加模态窗口的状态
 
   const { send, loginState } = useWebSocket();
-  const navigation = useNavigation();
 
   useEffect(() => {
     console.log('loginState:', loginState);

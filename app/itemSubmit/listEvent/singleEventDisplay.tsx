@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Button, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useWebSocket } from '@/app/context/WebSocketProvider';
@@ -25,6 +25,48 @@ export const SingleEventDisplay = ({
     const [isDeleting, setIsDeleting] = useState(false);
     const matchEvents: MatchEvent[] = getMatchEvents(currentEvent.id);
     const { acceptSignUp } = comWithServer();
+    const [timeRemaining, setTimeRemaining] = useState('');
+
+    useEffect(() => {
+        const updateTimeRemaining = () => {
+            const now = new Date();
+            const eventDate = new Date(currentEvent.dateTime);
+            const endDate = new Date(eventDate.getTime() + currentEvent.duration * 60 * 60 * 1000);
+            let timeDiff;
+
+            if (currentEvent.status === 'preparing') {
+                timeDiff = eventDate.getTime() - now.getTime();
+            } else if (currentEvent.status === 'started') {
+                timeDiff = endDate.getTime() - now.getTime();
+            }
+
+            if (timeDiff !== undefined) {
+                const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+                const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+                setTimeRemaining(`${hours}小时${minutes}分钟`);
+            } else {
+                setTimeRemaining('');
+            }
+        };
+
+        updateTimeRemaining();
+        const timer = setInterval(updateTimeRemaining, 60000); // Update every minute
+
+        return () => clearInterval(timer);
+    }, [currentEvent]);
+
+    const formatDateTime = (dateTimeString: string) => {
+        const date = new Date(dateTimeString);
+        return new Intl.DateTimeFormat('zh-CN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        }).format(date);
+    };
 
     const handleEventPress = () => {
         if (list === 1) {
@@ -46,13 +88,30 @@ export const SingleEventDisplay = ({
 
     const getContainerStyle = () => {
         const state = getEventState(currentEvent);
+        const statusStyle = getStatusStyle(currentEvent.status);
         return [
             styles.container,
             state === 'owned' ? styles.ownedContainer :
                 state === 'signup' ? styles.signupContainer :
                     state === 'joined' ? styles.joinedContainer :
-                        styles.availableContainer
+                        styles.availableContainer,
+            statusStyle
         ];
+    };
+
+    const getStatusStyle = (status: Event['status']) => {
+        switch (status) {
+            case 'preparing':
+                return styles.preparingContainer;
+            case 'started':
+                return styles.startedContainer;
+            case 'ended':
+                return styles.endedContainer;
+            case 'merged':
+                return styles.mergedContainer;
+            default:
+                return {};
+        }
     };
 
     const handleWithdrawApplication = () => {
@@ -102,8 +161,21 @@ export const SingleEventDisplay = ({
             </View>
 
             <View style={styles.infoRow}>
+                <Ionicons name="flag-outline" size={20} color="#666" />
+                <Text style={styles.infoText}>状态: {currentEvent.status}</Text>
+                {timeRemaining && (
+                    <Text style={styles.timeRemainingText}>
+                        {currentEvent.status === 'preparing' ? '距离开始还有: ' : '距离结束还有: '}
+                        {timeRemaining}
+                    </Text>
+                )}
+            </View>
+
+            <View style={styles.infoRow}>
                 <Ionicons name="time-outline" size={20} color="#666" />
-                <Text style={styles.infoText}>{currentEvent.dateTime} (持续 {currentEvent.duration} 小时)</Text>
+                <Text style={styles.infoText}>
+                    {formatDateTime(currentEvent.dateTime)} (持续 {currentEvent.duration} 小时)
+                </Text>
             </View>
 
             <View style={styles.infoRow}>
@@ -183,7 +255,6 @@ export const SingleEventDisplay = ({
                     ))}
                 </View>
             )}
-
 
         </View>
     );
@@ -293,6 +364,22 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#666',
     },
+    preparingContainer: {
+        backgroundColor: '#FFF9C4', // Light yellow
+    },
+    startedContainer: {
+        backgroundColor: '#C8E6C9', // Light green
+    },
+    endedContainer: {
+        backgroundColor: '#FFCDD2', // Light red
+    },
+    mergedContainer: {
+        backgroundColor: '#E1BEE7', // Light purple
+    },
+    timeRemainingText: {
+        marginLeft: 8,
+        fontSize: 14,
+        color: '#007AFF',
+        fontWeight: 'bold',
+    },
 });
-
-

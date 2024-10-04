@@ -6,8 +6,8 @@ import {Event} from '../types/types';
 
 const WebSocketContext = createContext(null);
 
-// const SERVERIP ="121.196.198.126"
-const SERVERIP ="localhost"
+const SERVERIP ="121.196.198.126"
+// const SERVERIP ="localhost"
 const PORT = "8080"
 
 // 定义 KidInfo 接口
@@ -52,7 +52,9 @@ export const WebSocketProvider = ({ children }) => {
   const [messageHandlers, setMessageHandlers] = useState<MessageHandler[]>([]);
 
   const [events, setEvents] = useState([]);
-  const { userEvents,
+  const { 
+    notifications,
+    userEvents,
     kidEvents,
     matchedEvents,
     loginState,
@@ -67,6 +69,8 @@ export const WebSocketProvider = ({ children }) => {
     })
   }, [messageFromserver]);
 
+  
+
   const send = useCallback((data) => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       console.log('WebSocket not connected or not ready, can\'t send the data');
@@ -76,8 +80,6 @@ export const WebSocketProvider = ({ children }) => {
     console.log("Sending data:", data);
     ws.send(JSON.stringify(data));
   }, [ws, loginState]);
-
-  // console.log("read the token from stroge:", token);
 
   const setHandleForMessage = ((command, type, callbackAfterGetRes) => {
     const messageHandler = {
@@ -247,7 +249,7 @@ export const WebSocketProvider = ({ children }) => {
     };
 
     socket.onmessage = (event) => {
-      // console.log('WebSocket message received in context:', event.data);
+      console.log('WebSocket message received in context:', event.data);
       // Handle incoming messages here
       handleMessages(event);
     };
@@ -286,7 +288,7 @@ export const WebSocketProvider = ({ children }) => {
       return () => clearTimeout(timer);
     }
   }, [ws]);
-  // console.log('Rendering WebSocketProvider, userInfo:', userInfo); // Added this line
+
   return (
     <WebSocketContext.Provider value={{
       send, //send data derict to server,not recommand
@@ -301,6 +303,7 @@ export const WebSocketProvider = ({ children }) => {
       getMatchEvents,
       isEventBelongToUser,//check if the event belong to user
       isParticipateEvent,//check 用户是否参与事件
+      notifications,
     }}>
       {children}
     </WebSocketContext.Provider>

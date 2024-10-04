@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, ActivityIndicator, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { StyleSheet, View, Text, ActivityIndicator, ScrollView, TouchableOpacity, RefreshControl, Button } from 'react-native';
 import { FilterCondition } from '../itemSubmit/listEvent/filterCondition';
 import myEventDisplay from '../itemSubmit/listEvent/myEventDisplay';
 import { useWebSocket } from '../context/WebSocketProvider';
 import useIndex from '../context/userIndex';
-
+import { useRouter } from 'expo-router';
 
 const getFormattedTime = () => {
   const now = new Date();
@@ -20,7 +20,6 @@ const EventList = ({ events, userInfo }) => (
     )}
   </View>
 );
-
 
 
 const TABS = [
@@ -58,7 +57,8 @@ const parseMatchedEvents = (message) => {
 };
 
 export default function TabOneScreen() {
-  const { userInfo, kidEvents: nestedKidEvents, userEvents, matchedEvents} = useWebSocket();
+  const { userInfo, kidEvents: nestedKidEvents, userEvents, matchedEvents,loginState } = useWebSocket();
+  const router = useRouter();
 
   const {activeTab,setActiveTab,
     isRefreshing,onRefreshing,
@@ -111,6 +111,20 @@ export default function TabOneScreen() {
       </ScrollView>
     );
   };
+
+  if (loginState.error) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.expiredText}>{loginState.error}</Text>
+        <TouchableOpacity
+          style={styles.loginButton}
+          onPress={() => router.push('/user')}
+        >
+          <Text style={styles.loginButtonText}>前往登录</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -195,5 +209,22 @@ const styles = StyleSheet.create({
     color: '#666',
     padding: 10,
     fontSize: 16,
+  },
+  expiredText: {
+    fontSize: 18,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  loginButton: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
