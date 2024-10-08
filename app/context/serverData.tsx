@@ -324,40 +324,42 @@ const serverData = (() => {
     };
 
     const setAndStoreNotifications = async (newNotifications) => {
-        console.log("test");
-        console.log(notifications);
-        console.log(newNotifications);
+        console.log("Starting to update notifications");
     
-        setNotifications(prev => {
-            // Create a Map of existing notifications, using id as the key
-            const existingNotificationsMap = new Map(
-                prev.map(notification => [notification.id, notification])
-            );
+        const updatedNotifications = await new Promise(resolve => {
+            setNotifications(prev => {
+                // Create a Map of existing notifications, using id as the key
+                const existingNotificationsMap = new Map(
+                    prev.map(notification => [notification.id, notification])
+                );
     
-            // Process new notifications
-            newNotifications.forEach(newNotification => {
-                if (existingNotificationsMap.has(newNotification.id)) {
-                    // If the notification already exists, update it
-                    existingNotificationsMap.set(newNotification.id, {
-                        ...existingNotificationsMap.get(newNotification.id),
-                        ...newNotification
-                    });
-                } else {
-                    // If it's a new notification, add it
-                    existingNotificationsMap.set(newNotification.id, newNotification);
-                }
+                // Process new notifications
+                newNotifications.forEach(newNotification => {
+                    if (existingNotificationsMap.has(newNotification.id)) {
+                        // If the notification already exists, update it
+                        existingNotificationsMap.set(newNotification.id, {
+                            ...existingNotificationsMap.get(newNotification.id),
+                            ...newNotification
+                        });
+                    } else {
+                        // If it's a new notification, add it
+                        existingNotificationsMap.set(newNotification.id, newNotification);
+                    }
+                });
+    
+                // Convert the Map back to an array
+                const newData = Array.from(existingNotificationsMap.values());
+    
+                // Store the updated notifications
+                // storeLocalNotifications(newData);
+                console.log('New notifications:', newData);
+                resolve(newData);
+                return newData;
             });
-    
-            // Convert the Map back to an array
-            const newData = Array.from(existingNotificationsMap.values());
-    
-            // Store the updated notifications
-            storeLocalNotifications(newData);
-            console.log('New notifications:', newData);
-            return newData;
         });
 
-        console.log("setover");
+        await storeLocalNotifications(updatedNotifications);
+        console.log("Notifications update completed");
     };
 
     const storeLocalNotifications = async (notifications) => {

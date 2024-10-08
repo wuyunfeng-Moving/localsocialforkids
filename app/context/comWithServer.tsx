@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useWebSocket } from './WebSocketProvider';
-import serverData from './serverData';
 
-const comWithServer = () => {
-    const { orderToServer,userEvents } = useWebSocket() ?? {};
-    const {setting,notifications} = serverData();
+const comWithServer = (orderToServer,userEvents,notifications,setAndStoreNotifications) => {
 
     //get matches at first get the userinfo
     useEffect(() => {
@@ -64,7 +60,7 @@ const comWithServer = () => {
                   : notification
               );
               console.log("newNoti", newNoti);
-              setting.setAndStoreNotifications(newNoti);
+              setAndStoreNotifications(newNoti);
             } else {
               console.error('Failed to mark notification as read:', message.error);
             }

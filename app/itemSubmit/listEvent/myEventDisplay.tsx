@@ -15,7 +15,6 @@ const MyEventDisplay: React.FC<MyEventDisplayProps> = ({ kidEvents, userEvents }
   return (
     <View style={styles.container}>
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>参与的活动</Text>
         <EventsDisplay 
           eventType="participated" 
           targetEvents={kidEvents.filter(event => isParticipateEvent(event))}
@@ -23,7 +22,6 @@ const MyEventDisplay: React.FC<MyEventDisplayProps> = ({ kidEvents, userEvents }
       </View>
       
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>我创建的活动</Text>
         <EventsDisplay 
           eventType="owned" 
           targetEvents={userEvents.filter(event => isEventBelongToUser(event.userId))}

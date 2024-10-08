@@ -1,26 +1,20 @@
 import React, { useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import serverData from '../context/serverData';
-import comWithServer from '../context/comWithServer';
+import { useWebSocket } from '../context/WebSocketProvider';
 
 const NotificationList = () => {
-  const { notifications, setting } = serverData();
+  const { notifications, comWithServer } = useWebSocket();
 
-  const {markNotificationAsRead} = comWithServer();
+  const {markNotificationAsRead} = comWithServer;
 
   const handleNotificationPress = (notification) => {
-    // if (notification.read) {
+     if (!notification.read) {
       markNotificationAsRead(notification.id);
-    // }
+     }
   };
-
-  useEffect(()=>{
-    console.log("notifications in page",notifications);
-  },[notifications])
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Notifications</Text>
       <ScrollView style={styles.listContainer}>
         {notifications.length > 0 ? (
           notifications.map((item, index) => (

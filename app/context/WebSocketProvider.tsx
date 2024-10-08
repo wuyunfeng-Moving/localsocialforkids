@@ -1,6 +1,7 @@
 import { useSegments } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import serverData from './serverData';
+import comWithServer from './comWithServer';
 import { MatchEvents,MatchEvent } from '../types/types';
 import {Event, Notification} from '../types/types';
 
@@ -60,8 +61,8 @@ export const WebSocketProvider = ({ children }) => {
     loginState,
     userInfo,
     token,
-    messageHandle
-    
+    messageHandle,
+    setting,
   } = serverData();
 
     useEffect(() => {
@@ -331,6 +332,15 @@ export const WebSocketProvider = ({ children }) => {
     }
   }, [ws, messageQueue, send]);
 
+
+  const {
+    handleDeleteEvent,
+        handleCreateEvent,
+        handleSignupEvent,
+        markNotificationAsRead,
+        acceptSignUp // Add this new function to the returned object
+  } = comWithServer(orderToServer,kidEvents,notifications,setting.setAndStoreNotifications);
+
   return (
     <WebSocketContext.Provider value={{
       send, //send data derict to server,not recommand
@@ -346,6 +356,13 @@ export const WebSocketProvider = ({ children }) => {
       isEventBelongToUser,//check if the event belong to user
       isParticipateEvent,//check 用户是否参与事件
       notifications,
+      comWithServer:{
+        handleDeleteEvent,
+        handleCreateEvent,
+        handleSignupEvent,
+        markNotificationAsRead,
+        acceptSignUp
+      }
     }}>
       {children}
     </WebSocketContext.Provider>

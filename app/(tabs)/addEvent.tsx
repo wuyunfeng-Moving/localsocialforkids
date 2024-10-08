@@ -12,7 +12,6 @@ import { useNavigation } from '@react-navigation/native';
 import LoginScreen from '../itemSubmit/user/login';
 import { FadeOutLeft } from 'react-native-reanimated';
 import InputTopic from '../itemSubmit/addEvent/InputTopic';
-import comWithServer from '../context/comWithServer';
 
 const INITIAL_INPUTS = [
   { title: 'childOrder', label: '孩子姓名', value: '' },
@@ -32,9 +31,9 @@ export default function TabTwoScreen() {
   const [isLocationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [dateTimeModalVisible, setDateTimeModalVisible] = useState(false);
-  const { loginState, userInfo } = useWebSocket();
+  const { loginState, userInfo, comWithServer } = useWebSocket()??{};
+  const { handleCreateEvent } = comWithServer??{};
   const [isLoginning, setIsLoginning] = useState(false);
-  const {handleCreateEvent} = comWithServer();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useCurrentLocation();
