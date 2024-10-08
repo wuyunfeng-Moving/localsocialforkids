@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, ActivityIndicator, ScrollView, TouchableOpacity, RefreshControl, Button } from 'react-native';
 import { FilterCondition } from '../itemSubmit/listEvent/filterCondition';
-import myEventDisplay from '../itemSubmit/listEvent/myEventDisplay';
+import MyEventDisplay from '../itemSubmit/listEvent/myEventDisplay';
 import { useWebSocket } from '../context/WebSocketProvider';
 import useIndex from '../context/userIndex';
 import { useRouter } from 'expo-router';
@@ -23,15 +23,10 @@ const EventList = ({ events, userInfo }) => (
 
 
 const TABS = [
-  // { 
-  //   id: 'participated', 
-  //   title: '参与的活动',
-  //   render: myEventDisplay
-  // },
   { 
     id: 'myEvent', 
     title: '我的活动',
-     render: myEventDisplay
+    render: (props) => <MyEventDisplay kidEvents={props.kidEvents} userEvents={props.userEvents} />
   },
   { 
     id: 'recommended', 
@@ -60,10 +55,15 @@ export default function TabOneScreen() {
   const { userInfo, kidEvents: nestedKidEvents, userEvents, matchedEvents,loginState } = useWebSocket();
   const router = useRouter();
 
-  const {activeTab,setActiveTab,
-    isRefreshing,onRefreshing,
-    hasMoreEvents,setLoadMoreEvents,isLoadingMore
-} = useIndex();
+  const {
+    activeTab,
+    setActiveTab,
+    isRefreshing,
+    onRefreshing,
+    hasMoreEvents,
+    setLoadMoreEvents,
+    isLoadingMore
+  } = useIndex();
 
   const kidEvents = nestedKidEvents.flat();
 
@@ -142,9 +142,7 @@ export default function TabOneScreen() {
         ))}
       </View>
       
-      {userInfo ? (
-        renderTabContent()
-      ) : (
+      {userInfo ? renderTabContent() : (
         <Text style={styles.loadingText}>正在加载用户信息...</Text>
       )}
     </View>

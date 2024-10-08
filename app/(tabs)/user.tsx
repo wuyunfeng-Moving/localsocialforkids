@@ -21,7 +21,7 @@ export default function UserScreen() {
             console.log("User events:", userEvents);
             console.log("Kid events:", kidEvents);
         }
-    }, [loginState, userEvents, kidEvents]);
+    }, [loginState]);
 
     const handleLogout = () => {
         send({ type: 'logout' });

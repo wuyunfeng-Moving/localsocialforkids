@@ -2,7 +2,7 @@ import { useSegments } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import serverData from './serverData';
 import { MatchEvents,MatchEvent } from '../types/types';
-import {Event} from '../types/types';
+import {Event, Notification} from '../types/types';
 
 const WebSocketContext = createContext(null);
 
@@ -60,7 +60,16 @@ export const WebSocketProvider = ({ children }) => {
     loginState,
     userInfo,
     token,
-    messageHandle, } = serverData();
+    messageHandle
+    
+  } = serverData();
+
+    useEffect(() => {
+      console.log("Notifications in context:", notifications);
+    }, [notifications]);
+    
+
+  const [messageQueue, setMessageQueue] = useState([]);
 
   useEffect(() => {
     messageHandlers.forEach((handler) => {
@@ -69,16 +78,24 @@ export const WebSocketProvider = ({ children }) => {
     })
   }, [messageFromserver]);
 
-  
-
   const send = useCallback((data) => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      console.log('WebSocket not connected or not ready, can\'t send the data');
+      console.log('WebSocket not connected or not ready, queuing message');
+      setMessageQueue(prevQueue => [...prevQueue, data]);
       return;
     }
 
-    console.log("Sending data:", data);
-    ws.send(JSON.stringify(data));
+    console.log("Sending data:", JSON.stringify(data, null, 2));
+    console.log("WebSocket readyState:", ws.readyState);
+    console.log("Login state:", loginState);
+    
+    try {
+      ws.send(JSON.stringify(data));
+      console.log("Data sent successfully");
+    } catch (error) {
+      console.error("Error sending data:", error);
+      setMessageQueue(prevQueue => [...prevQueue, data]);
+    }
   }, [ws, loginState]);
 
   const setHandleForMessage = ((command, type, callbackAfterGetRes) => {
@@ -109,6 +126,9 @@ export const WebSocketProvider = ({ children }) => {
       eventId: number;
       targetEventId: number;
       approve: boolean;
+    }
+    setNotificationReaded?:{
+      id:number;
     }
   };
   const orderToServer = async (command: OrderCommand, params: ParaOfOrder, callbackAfterGetRes?: (message: any) => void) => {
@@ -174,6 +194,17 @@ export const WebSocketProvider = ({ children }) => {
               reason: params.signUpEvent?.reason
             }
             send(msg);
+            break;
+          }
+        case 'setNotificationReaded':
+          {
+            setHandleForMessage(command,command,callbackAfterGetRes);
+            const msg={
+              type:command,
+              notificationId:params.setNotificationReaded?.id,
+            }
+            send(msg);
+            break;
           }
       }
     } catch (e) {
@@ -184,8 +215,11 @@ export const WebSocketProvider = ({ children }) => {
   function handleMessages(event) {
     const message = JSON.parse(event.data);
     setMessageFromServer(message);
-    messageHandle(message);
-
+    messageHandle(message).then(res => {
+        if(res) {
+          setMessageQueue(prevQueue => [...prevQueue, res]);
+        }
+    });
   }
 
   const registerMessageHandle = (on: boolean, handler: MessageHandler) => {
@@ -287,7 +321,15 @@ export const WebSocketProvider = ({ children }) => {
 
       return () => clearTimeout(timer);
     }
-  }, [ws]);
+  }, [ws,token]);
+
+  useEffect(() => {
+    if (ws && ws.readyState === WebSocket.OPEN && messageQueue.length > 0) {
+      console.log('Attempting to send queued messages');
+      messageQueue.forEach(message => send(message));
+      setMessageQueue([]);
+    }
+  }, [ws, messageQueue, send]);
 
   return (
     <WebSocketContext.Provider value={{

@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Modal, ScrollView } from "react-native";
-import { useWebSocket } from '../../context/WebSocketProvider';
 import { SingleEventDisplay } from "./singleEventDisplay";
-import { Event } from "@/app/types/types";
+import { Event,Events } from "@/app/types/types";
 import OwnedEventDisplay from './ownedEventDisplay';
 import BackButton from '@/components/back';
 import ParticipateEventDisplay from './participateEvent';
 
 // 修改组件名称和属性类型
-const EventsDisplay: React.FC<{eventType: 'owned' | 'participated'}> = ({ eventType }) => {
-	const { userEvents, kidEvents } = useWebSocket() || {};
+const EventsDisplay: React.FC<{eventType: 'owned' | 'participated',targetEvents:Events}> = ({ eventType,targetEvents }) => {
 	const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 	const [modalVisible, setModalVisible] = useState(false);
 
@@ -22,9 +20,6 @@ const EventsDisplay: React.FC<{eventType: 'owned' | 'participated'}> = ({ eventT
 		setModalVisible(false);
 		setSelectedEvent(null);
 	};
-
-	// 根据 eventType 选择要显示的事件列表
-	const targetEvents = eventType === 'owned' ? userEvents : kidEvents;
 
 	// 根据 eventType 设置标题
 	const title = eventType === 'owned' ? '我创建的活动' : '我参与的活动';

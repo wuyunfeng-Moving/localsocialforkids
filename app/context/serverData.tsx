@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Event, UserInfo, Events, AuthenticationMessage, MessageFromServer, MatchEvents,MatchEvent } from '../types/types';
+import * as SecureStore from 'expo-secure-store';
 
 const serverData = (() => {
 
-    const [notifications, setNotifications] = useState<Array<{ type: string; message: string } | null>>([]);
+    const [notifications, setNotifications] = useState<Array<{ type: string; message: string,read:boolean } | null>>([]);
     const [userEvents, setUserEvents] = useState<Events>([]);
     const [kidEvents, setKidEvents] = useState<Events>([]);
     const [matchedEvents, setMatchedEvents] = useState<MatchEvents>([]);
@@ -18,20 +19,26 @@ const serverData = (() => {
     const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
     const [token, setToken] = useState(null);
 
-    useEffect(()=>{
-        const fetchToken=async ()=>{
+    useEffect(() => {
+        const fetchTokenAndNotifications = async () => {
             const tempToken = await getToken();
-            if(!tempToken){
-                setLoginState({logined:false,error:'No token'});
-            }
-            else{
+            if (!tempToken) {
+                setLoginState({ logined: false, error: 'No token' });
+                clearLocalNotifications();
+            } else {
                 setToken(tempToken);
+                const storedNotifications = await getLocalNotifications();
+                console.log("storedNotifications",storedNotifications);
+                setNotifications(storedNotifications);
             }
-
         }
-        fetchToken();
-    },[]);
+        fetchTokenAndNotifications();
+    }, []); // Add notifications as a dependency
     
+    useEffect(()=>{
+        console.log("current notifications:",notifications);
+
+    },[notifications]);
 
     const storeToken = async (token) => {
         try {
@@ -107,12 +114,14 @@ const serverData = (() => {
 
 
 
-    const messageHandle = (message: MessageFromServer) => {
+    const messageHandle = async (message: MessageFromServer) => {
         console.log('Received message:', message);
+        let syncData = null;
         
         switch (message.type) {
             case 'notification':
                 {
+                    console.log('Received notification message:', message);
                     if (message.message && typeof message.message === 'object') {
                         const newNotification = {
                             type: message.message.type,
@@ -124,6 +133,7 @@ const serverData = (() => {
                         };
                         setNotifications(prev => {
                             const newData = [...prev, newNotification];
+                            storeLocalNotifications(newData);
                             console.log('New notifications:', newData);
                             return newData;
                         });
@@ -212,10 +222,20 @@ const serverData = (() => {
                         setUserEvents(data.userEvents);
 
                         const kidEvents = (data.kidEvents || [])
-                            .flat(2) // 展平嵌套数组，深度为2
+                            .flat(2)
                             .filter(event => event && event.userId !== data.userinfo.id);
                         setKidEvents(kidEvents);
+                        
+                        const storedNotifications = await getLocalNotifications();
+                        // Prepare sync data after successful verification
+                        syncData = {
+                            type: 'appDataSyncToServer',
+                            notification: {
+                                id: storedNotifications.length > 0 ? storedNotifications[storedNotifications.length - 1].id : 0
+                            }
+                        };
 
+                        console.log('syncData:', JSON.stringify(syncData, null, 2));
                     } else {
                         console.warn("Token verification failed");
                         setLoginState({ logined: false, error: 'Token verification failed' });
@@ -223,6 +243,7 @@ const serverData = (() => {
                         setUserInfo(null);
                         setUserEvents([]);
                         setKidEvents([]);
+                        await clearLocalNotifications();
                     }
                 }
                 break;
@@ -245,12 +266,14 @@ const serverData = (() => {
                         setLoginState({ logined: false, error: '' });
                         setUserInfo(null);
                         setToken(null);
-                        SecureStore.deleteItemAsync('userToken');  // Clear the stored token
+                        SecureStore.deleteItemAsync('userToken');
+                        clearLocalNotifications();
                     } else {
                         console.warn("Logout failed:", message.message);
                         // Optionally handle failed logout
                     }
                 }
+                break;
             case 'filter':
                 {
                     if (message.success) {
@@ -260,10 +283,113 @@ const serverData = (() => {
                         // setEvents([]); // Clear events on failure as well
                     }
                 }
+                break;
+            case 'appDataSyncToClient':
+                {
+                    if (message.success && message.data) {
+                        const { notifications: newNotifications, userInfo, userEvents, kidEvents } = message.data;
+
+                        // Update notifications
+                        if (Array.isArray(newNotifications)) {
+                            const flattenedNotifications = newNotifications.flat();
+                            setAndStoreNotifications(flattenedNotifications);
+                        }
+
+                        // Update user info
+                        if (userInfo) {
+                            setUserInfo(userInfo);
+                        }
+
+                        // Update user events
+                        if (Array.isArray(userEvents)) {
+                            setUserEvents(userEvents);
+                        }
+
+                        // Update kid events
+                        if (Array.isArray(kidEvents)) {
+                            const flattenedKidEvents = kidEvents.flat(2).filter(event => event && event.userId !== userInfo?.id);
+                            setKidEvents(flattenedKidEvents);
+                        }
+
+                        console.log('App data synced successfully');
+                    } else {
+                        console.error('App data sync failed or invalid data:', message);
+                    }
+                }
+                break;
+        }
+
+        // Return syncData if it's set
+        return syncData;
+    };
+
+    const setAndStoreNotifications = async (newNotifications) => {
+        console.log("test");
+        console.log(notifications);
+        console.log(newNotifications);
+    
+        setNotifications(prev => {
+            // Create a Map of existing notifications, using id as the key
+            const existingNotificationsMap = new Map(
+                prev.map(notification => [notification.id, notification])
+            );
+    
+            // Process new notifications
+            newNotifications.forEach(newNotification => {
+                if (existingNotificationsMap.has(newNotification.id)) {
+                    // If the notification already exists, update it
+                    existingNotificationsMap.set(newNotification.id, {
+                        ...existingNotificationsMap.get(newNotification.id),
+                        ...newNotification
+                    });
+                } else {
+                    // If it's a new notification, add it
+                    existingNotificationsMap.set(newNotification.id, newNotification);
+                }
+            });
+    
+            // Convert the Map back to an array
+            const newData = Array.from(existingNotificationsMap.values());
+    
+            // Store the updated notifications
+            storeLocalNotifications(newData);
+            console.log('New notifications:', newData);
+            return newData;
+        });
+
+        console.log("setover");
+    };
+
+    const storeLocalNotifications = async (notifications) => {
+        console.log('Storing notifications:', notifications);
+        try {
+            await AsyncStorage.setItem('localNotifications', JSON.stringify(notifications));
+        } catch (e) {
+            console.error('Error saving notifications:', e);
         }
     };
 
-    return {
+    const getLocalNotifications = async () => {
+        try {
+            const storedNotifications = await AsyncStorage.getItem('localNotifications');
+            console.log("Raw stored notifications:", storedNotifications);
+            return storedNotifications ? JSON.parse(storedNotifications) : [];
+        } catch (e) {
+            console.error('Error reading notifications:', e);
+            return [];
+        }
+    };
+
+    const clearLocalNotifications = async () => {
+        try {
+            await AsyncStorage.removeItem('localNotifications');
+            setNotifications([]);
+        } catch (e) {
+            console.error('Error clearing notifications:', e);
+        }
+    };
+
+    return ({
         notifications,
         userEvents,
         kidEvents,
@@ -271,8 +397,15 @@ const serverData = (() => {
         loginState,
         userInfo,
         token,
+        setting:{
+            setAndStoreNotifications,
+
+        },
         messageHandle,
-    };
+    });
 });
 
 export default serverData;
+
+
+

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useWebSocket } from './WebSocketProvider';
+import serverData from './serverData';
 
 const comWithServer = () => {
     const { orderToServer,userEvents } = useWebSocket() ?? {};
+    const {setting,notifications} = serverData();
 
     //get matches at first get the userinfo
     useEffect(() => {
@@ -49,6 +51,27 @@ const comWithServer = () => {
         })
     });
 
+    const markNotificationAsRead = (notificationId: number) => {
+        orderToServer(
+          'setNotificationReaded',
+          { setNotificationReaded: { id: notificationId } },
+          (message) => {
+            if (message.success) {
+              console.log("setNotificationReaded:", message);
+              const newNoti = notifications.map(notification =>
+                notification.id === notificationId
+                  ? { ...notification, read: !notification.read }
+                  : notification
+              );
+              console.log("newNoti", newNoti);
+              setting.setAndStoreNotifications(newNoti);
+            } else {
+              console.error('Failed to mark notification as read:', message.error);
+            }
+          }
+        );
+      };
+
     const handleSignupEvent = ((sourceEventId: number, targetEventId: number, reason: string,callback) => {
         if (!orderToServer) {
             console.error('WebSocket not available');
@@ -91,6 +114,7 @@ const comWithServer = () => {
         handleDeleteEvent,
         handleCreateEvent,
         handleSignupEvent,
+        markNotificationAsRead,
         acceptSignUp // Add this new function to the returned object
     }
     );

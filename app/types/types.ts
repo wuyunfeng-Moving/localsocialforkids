@@ -53,11 +53,21 @@ export interface AuthenticationMessage {
 }
 
 export type MessageFromServer =
-    | { type: 'notification'; notification: { type: string; message: string } }
+    | { type: 'notification'; notification: { type: string; message: string } } 
+    | { type: 'appDataSyncToClient'; success: boolean; data: AppDataSyncPayload } 
     | { type: string; [key: string]: any };
 
+export type AppDataSyncPayload = {
+    notifications: Notification[];
+    userInfo: UserInfo;
+    userEvents: Event[];
+    kidEvents: Event[];
+};
 
-export type Notification ={
-    
-}
-
+export type Notification = {
+    // Add properties for Notification type here
+    type: string;
+    message: string;
+    createdAt:string;
+    // Add any other relevant properties
+};

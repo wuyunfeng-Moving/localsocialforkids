@@ -1,9 +1,22 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
-import { useWebSocket } from '../context/WebSocketProvider';
+import React, { useEffect } from 'react';
+import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import serverData from '../context/serverData';
+import comWithServer from '../context/comWithServer';
 
 const NotificationList = () => {
-  const { notifications } = useWebSocket();
+  const { notifications, setting } = serverData();
+
+  const {markNotificationAsRead} = comWithServer();
+
+  const handleNotificationPress = (notification) => {
+    // if (notification.read) {
+      markNotificationAsRead(notification.id);
+    // }
+  };
+
+  useEffect(()=>{
+    console.log("notifications in page",notifications);
+  },[notifications])
 
   return (
     <View style={styles.container}>
@@ -12,10 +25,17 @@ const NotificationList = () => {
         {notifications.length > 0 ? (
           notifications.map((item, index) => (
             item && (
-              <View key={`notification-${index}`} style={styles.notificationItem}>
-                <Text style={styles.notificationType}>{item.type || 'Unknown Type'}</Text>
+              <TouchableOpacity
+                key={`notification-${index}`}
+                style={[
+                  styles.notificationItem,
+                  !item.read && styles.unreadNotification
+                ]}
+                onPress={() => handleNotificationPress(item)}
+              >
+                <Text style={styles.notificationType}>{item.type + '   ' + item.createdAt || 'Unknown Type'}</Text>
                 <Text style={styles.notificationMessage}>{item.message || 'No message'}</Text>
-              </View>
+              </TouchableOpacity>
             )
           ))
         ) : (
@@ -50,6 +70,9 @@ const styles = StyleSheet.create({
   },
   notificationMessage: {
     marginTop: 5,
+  },
+  unreadNotification: {
+    backgroundColor: '#d0d0d0',
   },
 });
 
