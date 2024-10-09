@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Event, UserInfo, Events, AuthenticationMessage, MessageFromServer, MatchEvents,MatchEvent } from '../types/types';
 import * as SecureStore from 'expo-secure-store';
+import { Notification } from '../types/notification_types';
 
 const serverData = (() => {
 
-    const [notifications, setNotifications] = useState<Array<{ type: string; message: string,read:boolean } | null>>([]);
+    const [notifications, setNotifications] = useState<Array<Notification | null>>([]);
     const [userEvents, setUserEvents] = useState<Events>([]);
     const [kidEvents, setKidEvents] = useState<Events>([]);
     const [matchedEvents, setMatchedEvents] = useState<MatchEvents>([]);
@@ -36,9 +37,9 @@ const serverData = (() => {
     }, []); // Add notifications as a dependency
     
     useEffect(()=>{
-        console.log("current notifications:",notifications);
+        console.log("current kidEvents:",kidEvents);
 
-    },[notifications]);
+    },[kidEvents]);
 
     const storeToken = async (token) => {
         try {
@@ -122,24 +123,7 @@ const serverData = (() => {
             case 'notification':
                 {
                     console.log('Received notification message:', message);
-                    if (message.message && typeof message.message === 'object') {
-                        const newNotification = {
-                            type: message.message.type,
-                            message: message.message.message,
-                            id: message.message.id,
-                            eventId: message.message.eventId,
-                            createdAt: message.message.createdAt,
-                            read: message.message.read
-                        };
-                        setNotifications(prev => {
-                            const newData = [...prev, newNotification];
-                            storeLocalNotifications(newData);
-                            console.log('New notifications:', newData);
-                            return newData;
-                        });
-                    } else {
-                        console.error('Invalid notification format:', message);
-                    }
+                    setAndStoreNotifications(message.notification);
                 }
                 break;
 
@@ -219,12 +203,6 @@ const serverData = (() => {
                     if (data && data.success) {
                         setLoginState({ logined: true, error: '' });
                         setUserInfo(data.userinfo);
-                        setUserEvents(data.userEvents);
-
-                        const kidEvents = (data.kidEvents || [])
-                            .flat(2)
-                            .filter(event => event && event.userId !== data.userinfo.id);
-                        setKidEvents(kidEvents);
                         
                         const storedNotifications = await getLocalNotifications();
                         // Prepare sync data after successful verification
@@ -304,12 +282,11 @@ const serverData = (() => {
                         if (Array.isArray(userEvents)) {
                             setUserEvents(userEvents);
                         }
-
-                        // Update kid events
-                        if (Array.isArray(kidEvents)) {
-                            const flattenedKidEvents = kidEvents.flat(2).filter(event => event && event.userId !== userInfo?.id);
-                            setKidEvents(flattenedKidEvents);
-                        }
+                               // Update kid events
+            if (Array.isArray(kidEvents)) {
+                const flattenedKidEvents = kidEvents.flat(Infinity);
+                setKidEvents(flattenedKidEvents);
+            }
 
                         console.log('App data synced successfully');
                     } else {
@@ -323,7 +300,7 @@ const serverData = (() => {
         return syncData;
     };
 
-    const setAndStoreNotifications = async (newNotifications) => {
+    const setAndStoreNotifications = async (newNotifications:Notification[]) => {
         console.log("Starting to update notifications");
     
         const updatedNotifications = await new Promise(resolve => {

@@ -4,14 +4,14 @@ import { useWebSocket } from '../../context/WebSocketProvider';
 import { SingleEventDisplay } from "./singleEventDisplay";
 import MatchedEventDisplay from './matchedEventDisplay';
 import { Event, MatchEvent } from "@/app/types/types";
-import comWithServer from '@/app/context/comWithServer';
 import BackButton from '@/components/back';
 
 const ParticipateEventDisplay: React.FC<Event> = (currentEvent) => {
 	const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 	const [modalVisible, setModalVisible] = useState(false);
+	const {comWithServer,getMatchEvents} = useWebSocket();
     const matchEvents:MatchEvent[] = getMatchEvents(currentEvent.id);
-    const { handleDeleteEvent, handleSignupEvent } = comWithServer();
+    const { handleDeleteEvent, handleSignupEvent } = comWithServer;
 	const [isDeleting, setIsDeleting] = useState(false);
 
 	const handleEventPress = () => {

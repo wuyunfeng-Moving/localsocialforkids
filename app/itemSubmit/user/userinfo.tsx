@@ -10,7 +10,7 @@ const UserInfoScreen = () => {
 
   useEffect(() => {
     try {
-      console.log("userinfo.tsx:", userInfo);
+      console.log("userinfo.tsx:", userInfo,loginState);
       if (loginState.logined && userInfo) {
         setName(userInfo?.username || '');
         setEmail(userInfo?.email || '');
@@ -26,29 +26,28 @@ const UserInfoScreen = () => {
       {loginState.logined ? (
         <>
           <View style={styles.userInfoContainer}>
-            <Text style={styles.title}>User Info</Text>
             <View style={styles.userInfoItem}>
-              <Text style={styles.label}>Name:</Text>
+              <Text style={styles.label}>姓名：</Text>
               <Text style={styles.value}>{name}</Text>
             </View>
             <View style={styles.userInfoItem}>
-              <Text style={styles.label}>Email:</Text>
+              <Text style={styles.label}>邮箱：</Text>
               <Text style={styles.value}>{email}</Text>
             </View>
           </View>
-          <Text style={styles.kidsTitle}>Kids Info</Text>
+          <Text style={styles.kidsTitle}>孩子信息</Text>
           {kids.length > 0 ? (
             kids.map((kid, index) => (
               <View key={index} style={styles.kidInfoContainer}>
-                <Text style={styles.kidTitle}>Kid {index + 1}</Text>
+                <Text style={styles.kidTitle}>孩子 {index + 1}</Text>
                 {Object.entries(kid).map(([key, value]) => {
                   if (key === 'guardians') {
                     return (
                       <View key={key} style={styles.guardiansContainer}>
-                        <Text style={styles.label}>Guardians:</Text>
+                        <Text style={styles.label}>监护人：</Text>
                         {value.map((guardian, gIndex) => (
                           <View key={gIndex} style={styles.guardianItem}>
-                            <Text style={styles.guardianLabel}>{guardian.relationship}:</Text>
+                            <Text style={styles.guardianLabel}>{guardian.relationship}：</Text>
                             <Text style={styles.guardianValue}>{guardian.userId}</Text>
                           </View>
                         ))}
@@ -57,7 +56,7 @@ const UserInfoScreen = () => {
                   }
                   return (
                     <View key={key} style={styles.kidInfoItem}>
-                      <Text style={styles.label}>{key.charAt(0).toUpperCase() + key.slice(1)}:</Text>
+                      <Text style={styles.label}>{key.charAt(0).toUpperCase() + key.slice(1)}：</Text>
                       <Text style={styles.kidValue}>
                         {typeof value === 'object' ? JSON.stringify(value) : value}
                       </Text>
@@ -67,11 +66,11 @@ const UserInfoScreen = () => {
               </View>
             ))
           ) : (
-            <Text style={styles.noKidsText}>No kids information available</Text>
+            <Text style={styles.noKidsText}>暂无孩子信息</Text>
           )}
         </>
       ) : (
-        <Text style={styles.notLoggedInText}>Not logged in</Text>
+        <Text style={styles.notLoggedInText}>未登录</Text>
       )}
     </ScrollView>
   );

@@ -3,7 +3,6 @@ import { StyleSheet, View, Text, TouchableOpacity, Modal, ScrollView } from "rea
 import { useWebSocket } from '../../context/WebSocketProvider';
 import { SingleEventDisplay } from "./singleEventDisplay";
 import { Event, Events } from "@/app/types/types";
-import comWithServer from '@/app/context/comWithServer';
 import BackButton from '@/components/back';
 
 type matchEventElementType = {
@@ -19,11 +18,11 @@ interface MatchedEventDisplayProps {
 }
 
 const MatchedEventsDisplay: React.FC<MatchedEventDisplayProps> = ({ currentEvent, list, match }) => {
-    const { userEvents, getMatchEvents } = useWebSocket() || {};
+    const { userEvents, getMatchEvents,comWithServer } = useWebSocket() || {};
     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [isApplying, setIsApplying] = useState(false);
-    const { handleDeleteEvent, handleSignupEvent, handleCancelSignupEvent } = comWithServer();
+    const { handleDeleteEvent, handleSignupEvent, handleCancelSignupEvent } = comWithServer;
    
 
     const eventWithoutPendingSignUps =(event:Event)=>{

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, Button, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, Modal, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import UserForm from "../itemSubmit/user/adduserinfo";
 import UserInfoScreen from "../itemSubmit/user/userinfo";
@@ -9,7 +9,6 @@ import { useWebSocket } from '../context/WebSocketProvider';
 export default function UserScreen() {
     const [isLoginning, setIsLoginning] = useState(false);
     const [isAddingKid, setIsAddingKid] = useState(false);
-    const [activeSection, setActiveSection] = useState(null);
 
     const { loginState, send, userEvents, kidEvents } = useWebSocket();
 
@@ -27,29 +26,27 @@ export default function UserScreen() {
         send({ type: 'logout' });
     };
 
-    const renderSection = (title, onPress, icon) => (
-        <TouchableOpacity style={styles.section} onPress={onPress}>
+    const renderUserInfo = () => (
+        <View style={styles.section}>
             <View style={styles.sectionHeader}>
-                <FontAwesome name={icon} size={24} color="#007AFF" style={styles.sectionIcon} />
-                <Text style={styles.sectionTitle}>{title}</Text>
+                <FontAwesome name="user" size={24} color="#007AFF" style={styles.sectionIcon} />
+                <Text style={styles.sectionTitle}>用户信息</Text>
             </View>
-            <Text style={styles.sectionSubtitle}>点击查看详情</Text>
-        </TouchableOpacity>
+            <View style={styles.userInfoContainer}>
+                <UserInfoScreen />
+            </View>
+        </View>
     );
 
-    const renderSectionContent = () => {
-        switch (activeSection) {
-            case "用户信息":
-                return (
-                    <View style={styles.detailContainer}>
-                        <UserInfoScreen />
-                        <Button title="返回" onPress={() => setActiveSection(null)} />
-                    </View>
-                );
-            default:
-                return null;
-        }
-    };
+    const renderAddChildSection = () => (
+        <TouchableOpacity style={styles.section} onPress={() => setIsAddingKid(true)}>
+            <View style={styles.sectionHeader}>
+                <FontAwesome name="child" size={24} color="#007AFF" style={styles.sectionIcon} />
+                <Text style={styles.sectionTitle}>添加小孩</Text>
+            </View>
+            <Text style={styles.sectionSubtitle}>点击这里添加新的小孩信息</Text>
+        </TouchableOpacity>
+    );
 
     return (
         <View style={styles.container}>
@@ -57,14 +54,13 @@ export default function UserScreen() {
                 <Text style={styles.title}>用户中心</Text>
             </View>
             {loginState.logined ? (
-                <View style={styles.content}>
-                    {renderSection("用户信息", () => setActiveSection("用户信息"), "user")}
-                    {/* {renderSection("我的活动", () => setActiveSection("我的活动"), "calendar")} */}
-                    {renderSection("添加小孩", () => setIsAddingKid(true), "child")}
+                <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+                    {renderUserInfo()}
+                    {renderAddChildSection()}
                     <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                         <Text style={styles.logoutButtonText}>登出</Text>
                     </TouchableOpacity>
-                </View>
+                </ScrollView>
             ) : (
                 <View style={styles.loginContainer}>
                     <TouchableOpacity style={styles.loginButton} onPress={() => setIsLoginning(true)}>
@@ -84,9 +80,6 @@ export default function UserScreen() {
                         <UserForm onCloseModal={() => setIsAddingKid(false)} />
                     </View>
                 </View>
-            </Modal>
-            <Modal visible={!!activeSection} animationType="slide">
-                {renderSectionContent()}
             </Modal>
         </View>
     );
@@ -123,6 +116,8 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
+    },
+    contentContainer: {
         padding: 16,
     },
     loginContainer: {
@@ -144,6 +139,11 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 2,
+        width: '100%', // 确保section占满整个宽度
+    },
+    userInfoContainer: {
+        width: '100%', // 确保UserInfoScreen占满整个section宽度
+        // Remove fixed height to allow content to determine the height
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -161,6 +161,7 @@ const styles = StyleSheet.create({
     sectionSubtitle: {
         fontSize: 14,
         color: '#666',
+        marginTop: 4,
     },
     detailContainer: {
         flex: 1,

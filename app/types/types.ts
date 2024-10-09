@@ -1,3 +1,5 @@
+import {Notification} from "./notification_types"
+
 export type Event = {
     id: number;
     place: {
@@ -53,7 +55,7 @@ export interface AuthenticationMessage {
 }
 
 export type MessageFromServer =
-    | { type: 'notification'; notification: { type: string; message: string } } 
+    | { type: 'notification'; notification: Notification } 
     | { type: 'appDataSyncToClient'; success: boolean; data: AppDataSyncPayload } 
     | { type: string; [key: string]: any };
 
@@ -64,10 +66,3 @@ export type AppDataSyncPayload = {
     kidEvents: Event[];
 };
 
-export type Notification = {
-    // Add properties for Notification type here
-    type: string;
-    message: string;
-    createdAt:string;
-    // Add any other relevant properties
-};

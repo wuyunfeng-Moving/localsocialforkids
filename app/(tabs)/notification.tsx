@@ -1,16 +1,30 @@
-import React, { useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { Modal, View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import OwnedEventDisplay from '../itemSubmit/listEvent/ownedEventDisplay';
+import { Event, Notification } from '@/app/types/types';
 import { useWebSocket } from '../context/WebSocketProvider';
+import BackButton from '@/components/back';
 
-const NotificationList = () => {
-  const { notifications, comWithServer } = useWebSocket();
-
+const NotificationScreen = () => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const { userEvents,notifications,comWithServer } = useWebSocket();
   const {markNotificationAsRead} = comWithServer;
-
-  const handleNotificationPress = (notification) => {
-     if (!notification.read) {
+  const handleNotificationPress = async (notification: Notification) => {
+    if (!notification.read) {
       markNotificationAsRead(notification.id);
-     }
+    }
+
+    if (notification.type === 'signUpRequest') {
+      console.log("userEvents:::",userEvents)
+      console.log(notification.targetEventId)
+      const event = userEvents.find(event => event.id === notification.targetEventId);
+      console.log("get event",event)
+      if (event) {
+        setSelectedEvent(event);
+        setModalVisible(true);
+      }
+    }
   };
 
   return (
@@ -36,6 +50,22 @@ const NotificationList = () => {
           <Text>No notifications</Text>
         )}
       </ScrollView>
+
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <BackButton onPress={() => setModalVisible(false)}/>
+          {selectedEvent && (
+            <OwnedEventDisplay
+              {...selectedEvent}
+            />
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -68,6 +98,12 @@ const styles = StyleSheet.create({
   unreadNotification: {
     backgroundColor: '#d0d0d0',
   },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'white',
+  },
 });
 
-export default NotificationList;
+export default NotificationScreen;

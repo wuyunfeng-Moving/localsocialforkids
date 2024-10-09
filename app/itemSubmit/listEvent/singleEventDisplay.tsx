@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useWebSocket } from '@/app/context/WebSocketProvider';
 import FullScreenModal from '../commonItem/FullScreenModal';
 import { Event, Events, MatchEvent, MatchEvents, UserInfo } from '@/app/types/types';
-import comWithServer from '@/app/context/comWithServer';
 
 export type SingleEventDisplayElementType = {
     currentEvent: Event,
@@ -21,10 +20,10 @@ export const SingleEventDisplay = ({
 }: SingleEventDisplayElementType) => {
     const [showMatchEvents, setShowMatchEvents] = useState(false);
     const [showEventDetails, setShowEventDetails] = useState(false);
-    const { getMatchEvents, isEventBelongToUser, isParticipateEvent, userInfo } = useWebSocket();
+    const { getMatchEvents, isEventBelongToUser, isParticipateEvent, userInfo,comWithServer } = useWebSocket();
     const [isDeleting, setIsDeleting] = useState(false);
     const matchEvents: MatchEvent[] = getMatchEvents(currentEvent.id);
-    const { acceptSignUp } = comWithServer();
+    const { acceptSignUp } = comWithServer;
     const [timeRemaining, setTimeRemaining] = useState('');
 
     useEffect(() => {
