@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Modal, Button, ScrollView } from "react-native";
 import { useWebSocket } from '../../context/WebSocketProvider';
 import { SingleEventDisplay } from "./singleEventDisplay";
-import MatchedEventDisplay from './matchedEventDisplay';
 import { Event, MatchEvent } from "@/app/types/types";
-import BackButton from '@/components/back';
+import { useLocalSearchParams } from 'expo-router';
 
-const ParticipateEventDisplay: React.FC<Event> = (currentEvent) => {
-	const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-	const [modalVisible, setModalVisible] = useState(false);
+const ParticipateEventDisplay: React.FC<Event> = () => {
+	const params = useLocalSearchParams<{ event: string }>();
 	const {comWithServer,getMatchEvents} = useWebSocket();
-    const matchEvents:MatchEvent[] = getMatchEvents(currentEvent.id);
     const { handleDeleteEvent, handleSignupEvent } = comWithServer;
 	const [isDeleting, setIsDeleting] = useState(false);
+
+	const currentEvent:Event = JSON.parse(params.event);
+
+	console.log("para",currentEvent,params);
 
 	const handleEventPress = () => {
 		setModalVisible(true);
@@ -41,11 +42,8 @@ const ParticipateEventDisplay: React.FC<Event> = (currentEvent) => {
 		<View style={styles.container}>
 			<SingleEventDisplay currentEvent={currentEvent} list={0} depth={0}/>
             <View style={styles.buttonContainer}>
-                {matchEvents && matchEvents.length > 0 && (
-                    <Button title="获取匹配" onPress={handleEventPress} />
-                )}
                 <Button 
-                    title={isDeleting ? "删除中..." : "删除事件"} 
+                    title={isDeleting ? "退出中..." : "退出活动"} 
                     onPress={DeleteEvent} 
                     disabled={isDeleting}
                     color="red"

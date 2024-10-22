@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Modal, ScrollView, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import UserForm from "../itemSubmit/user/adduserinfo";
-import UserInfoScreen from "../itemSubmit/user/userinfo";
-import LoginScreen from '../itemSubmit/user/login';
-import { useWebSocket } from '../context/WebSocketProvider';
+import UserForm from "@/app/itemSubmit/user/adduserinfo";
+import UserInfoScreen from "@/app/itemSubmit/user/userinfo";
+import { useWebSocket } from '@/app/context/WebSocketProvider';
+import { router } from 'expo-router';
 
 export default function UserScreen() {
-    const [isLoginning, setIsLoginning] = useState(false);
     const [isAddingKid, setIsAddingKid] = useState(false);
 
     const { loginState, send, userEvents, kidEvents } = useWebSocket();
@@ -26,54 +25,59 @@ export default function UserScreen() {
         send({ type: 'logout' });
     };
 
-    const renderUserInfo = () => (
+    const renderUserInfoWithPhoto = () => (
         <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-                <FontAwesome name="user" size={24} color="#007AFF" style={styles.sectionIcon} />
-                <Text style={styles.sectionTitle}>用户信息</Text>
-            </View>
-            <View style={styles.userInfoContainer}>
-                <UserInfoScreen />
+            <View style={styles.userInfoPhotoContainer}>
+                <View style={styles.userInfoContainer}>
+                    <UserInfoScreen />
+                </View>
             </View>
         </View>
     );
 
-    const renderAddChildSection = () => (
-        <TouchableOpacity style={styles.section} onPress={() => setIsAddingKid(true)}>
+    const renderMyChildrenSection = () => (
+        <TouchableOpacity style={styles.section} onPress={() => {router.push('../user/kids')}}>
             <View style={styles.sectionHeader}>
                 <FontAwesome name="child" size={24} color="#007AFF" style={styles.sectionIcon} />
-                <Text style={styles.sectionTitle}>添加小孩</Text>
+                <Text style={styles.sectionTitle}>我的孩子</Text>
             </View>
-            <Text style={styles.sectionSubtitle}>点击这里添加新的小孩信息</Text>
+            <Text style={styles.sectionSubtitle}>查看和管理您的孩子信息</Text>
+        </TouchableOpacity>
+    );
+
+    const renderFollowingSection = () => (
+        <TouchableOpacity 
+            style={styles.section} 
+            onPress={() => router.push("../user/following")}
+        >
+            <View style={styles.sectionHeader}>
+                <FontAwesome name="users" size={24} color="#007AFF" style={styles.sectionIcon} />
+                <Text style={styles.sectionTitle}>我的关注</Text>
+            </View>
+            <Text style={styles.sectionSubtitle}>查看您关注的用户</Text>
         </TouchableOpacity>
     );
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>用户中心</Text>
-            </View>
             {loginState.logined ? (
                 <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-                    {renderUserInfo()}
-                    {renderAddChildSection()}
+                    {renderUserInfoWithPhoto()}
+                    {renderMyChildrenSection()}
+                    {renderFollowingSection()}
                     <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                         <Text style={styles.logoutButtonText}>登出</Text>
                     </TouchableOpacity>
                 </ScrollView>
             ) : (
                 <View style={styles.loginContainer}>
-                    <TouchableOpacity style={styles.loginButton} onPress={() => setIsLoginning(true)}>
+                    <TouchableOpacity style={styles.loginButton} onPress={() => {
+                        router.push("../itemSubmit/user/login")
+                    }}>
                         <Text style={styles.loginButtonText}>请先登录</Text>
                     </TouchableOpacity>
                 </View>
             )}
-            <Modal visible={isLoginning} animationType="slide">
-                <LoginScreen closeModal={() => {
-                    console.log("onclose modal is called!!");
-                    setIsLoginning(false)
-                }} />
-            </Modal>
             <Modal visible={isAddingKid} animationType='slide' transparent={true}>
                 <View style={styles.modalContainer}>
                     <View style={styles.modalContent}>
@@ -102,17 +106,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#fff',
-    },
-    header: {
-        backgroundColor: '#007AFF',
-        paddingVertical: 20,
-        paddingHorizontal: 16,
-        alignItems: 'center',
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#fff',
     },
     content: {
         flex: 1,
@@ -192,5 +185,31 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    photoContainer: {
+        alignItems: 'center',
+        marginTop: 16,
+    },
+    userPhoto: {
+        width: 150,
+        height: 150,
+        borderRadius: 75,
+    },
+    userInfoPhotoContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    userInfoContainer: {
+        flex: 1,
+        marginRight: 16,
+    },
+    photoContainer: {
+        alignItems: 'center',
+    },
+    userPhoto: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
     },
 });

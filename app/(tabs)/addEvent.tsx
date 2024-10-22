@@ -8,18 +8,17 @@ import LocationPickerModal from '../itemSubmit/setLocation';
 import { useCurrentLocation } from '../context/LocationContext';
 import { useWebSocket } from '../context/WebSocketProvider';
 import LoginStatus from '../itemSubmit/user/loginStateDisplay';
-import { useNavigation } from '@react-navigation/native';
 import LoginScreen from '../itemSubmit/user/login';
-import { FadeOutLeft } from 'react-native-reanimated';
 import InputTopic from '../itemSubmit/addEvent/InputTopic';
+import { router } from 'expo-router';
 
 const INITIAL_INPUTS = [
   { title: 'childOrder', label: '孩子姓名', value: '' },
   { title: 'dateTime', label: '活动时间', value: new Date() },
   { title: 'duration', label: '活动长度（单位：小时）', value: 1 },
   { title: 'location', label: '地点', value: [] },
-  { title: 'topic', label: '主题', value: '' },
-  { title: 'description', label: '活动描述', value: '' },
+  { title: 'topic', label: '主题', value: '户外活动' },
+  { title: 'description', label: '活动描述', value: '一起玩' },
   { title: 'maxNumber', label: '最大参与人数', value: 10 },
 ];
 
@@ -33,10 +32,8 @@ export default function TabTwoScreen() {
   const [dateTimeModalVisible, setDateTimeModalVisible] = useState(false);
   const { loginState, userInfo, comWithServer } = useWebSocket()??{};
   const { handleCreateEvent } = comWithServer??{};
-  const [isLoginning, setIsLoginning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useCurrentLocation();
+  const { currentRegion } = useCurrentLocation();
 
   useEffect(() => {
     if (userInfo && userInfo.kidinfo && userInfo.kidinfo.length > 0) {
@@ -44,6 +41,19 @@ export default function TabTwoScreen() {
       handleInputChange(kidNames[0], 'childOrder', 'value');
     }
   }, [userInfo]);
+
+  useEffect(() => {
+    console.log('currentLocation:', currentRegion);
+    // Set default location when currentLocation is available
+    if (currentRegion) {
+      const defaultLocation = [currentRegion.longitude, currentRegion.latitude];
+      handleInputChange(defaultLocation, 'location', 'value');
+      setSelectedLocation({
+        longitude: currentRegion.longitude,
+        latitude: currentRegion.latitude,
+      });
+    }
+  }, [currentRegion]);
 
   const handleSelectLocation = useCallback((location) => {
     setSelectedLocation(location);
@@ -188,7 +198,7 @@ export default function TabTwoScreen() {
             <Text style={styles.inputText}>
               {selectedLocation
                 ? `${selectedLocation.latitude.toFixed(4)}, ${selectedLocation.longitude.toFixed(4)}`
-                : '未选择'}
+                : '当前位置'}
             </Text>
             <TouchableOpacity style={styles.editButton} onPress={() => setLocationModalVisible(true)}>
               <Text style={styles.editButtonText}>选择位置</Text>
@@ -260,16 +270,10 @@ export default function TabTwoScreen() {
       style={{ flex: 1 }}
     >
       <ScrollView contentContainerStyle={styles.container}>
-        <Modal visible={isLoginning}>
-          <LoginScreen
-            closeModal={() => {
-              console.log("onclose modal is called!!");
-              setIsLoginning(false);
-            }}
-          />
-        </Modal>
         <LoginStatus
-          onLoginButtonPress={() => setIsLoginning(true)}
+          onLoginButtonPress={() => {
+            router.push("../itemSubmit/user/login");
+          }}
         />
         {renderedInputs}
         <View style={styles.buttonContainer}>

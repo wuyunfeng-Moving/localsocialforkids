@@ -5,22 +5,13 @@ import MyEventDisplay from '../itemSubmit/listEvent/myEventDisplay';
 import { useWebSocket } from '../context/WebSocketProvider';
 import useIndex from '../context/userIndex';
 import { useRouter } from 'expo-router';
+import RecommandEvent from '../itemSubmit/listEvent/recommandEvent';
+import SearchEventsDisplay from '../itemSubmit/listEvent/searchEventDisplay';
 
 const getFormattedTime = () => {
   const now = new Date();
   return `${now.toLocaleDateString()} ${now.toLocaleTimeString()}.${now.getMilliseconds().toString().padStart(3, '0')}`;
 };
-
-const EventList = ({ events, userInfo }) => (
-  <View style={styles.detailContainer}>
-    {events.length > 0 ? (
-      <EventDisplay eventDetailsArray={events}  />
-    ) : (
-      <Text style={styles.noEventsText}>没有找到符合条件的活动</Text>
-    )}
-  </View>
-);
-
 
 const TABS = [
   { 
@@ -31,12 +22,12 @@ const TABS = [
   { 
     id: 'recommended', 
     title: '推荐活动',
-    render: (props) => <EventList events={props.recommendedEvents} userInfo={props.userInfo} />
+    render: (props) => <RecommandEvent />
   },
   { 
     id: 'search', 
     title: '搜索活动',
-    render: (props) => <EventList events={props.filteredEvents} userInfo={props.userInfo} />
+    render: (props) => <SearchEventsDisplay />
   },
 
 ];
@@ -52,7 +43,9 @@ const parseMatchedEvents = (message) => {
 };
 
 export default function TabOneScreen() {
-  const { userInfo, kidEvents: nestedKidEvents, userEvents, matchedEvents,loginState } = useWebSocket();
+  const { userInfo, kidEvents: nestedKidEvents, 
+    userEvents,loginState
+  } = useWebSocket();
   const router = useRouter();
 
   const {
@@ -73,16 +66,7 @@ export default function TabOneScreen() {
 
     const props = {
       kidEvents,
-      userEvents,
-      recommendedEvents: matchedEvents ? Object.values(matchedEvents)
-        .flat()
-        .filter(event => event && event.event)
-        .sort((a, b) => b.score - a.score)
-        .map(item => ({
-          ...item.event,
-          score: item.score
-        }))
-      : []
+      userEvents
     };
 
     return (

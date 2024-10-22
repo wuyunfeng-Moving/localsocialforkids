@@ -1,14 +1,95 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Event, UserInfo, Events, AuthenticationMessage, MessageFromServer, MatchEvents,MatchEvent } from '../types/types';
+import { Event, UserInfo, Events, AuthenticationMessage, MessageFromServer, MatchEvents,MatchEvent,RecommendEvents} from '../types/types';
 import * as SecureStore from 'expo-secure-store';
 import { Notification } from '../types/notification_types';
+
+/*
+核心数据：
+1.userInfo
+2.kidInfo
+3.
+
+*/
+
 
 const serverData = (() => {
 
     const [notifications, setNotifications] = useState<Array<Notification | null>>([]);
     const [userEvents, setUserEvents] = useState<Events>([]);
     const [kidEvents, setKidEvents] = useState<Events>([]);
+    const [following,setFollowing] = useState<UserInfo[]>([
+        {
+            id: 1,
+            username: 'Alice',
+            email: '',
+            introduction: '测试一下',
+            kidinfo: [
+                {
+                    id: 1,
+                    name: 'Alice\'s kid 1',
+                    birthDate: '2021-01-01',
+                    gender: 'male',
+                    photoPath: '',
+                    description: '',
+                    personalSpaceUrl: '',
+                    guardians: []
+                }]
+            }
+    ]);
+    const [recommendEvents, setRecommendEvents] = useState<RecommendEvents>([
+        {
+            event: {
+                id: 1,
+                place: {
+                    location: [0, 0],
+                    maxNumber: 10
+                },
+                dateTime: '2021-01-01T12:00:00Z',
+                duration: 60,
+                topic: 'Event 1',
+                description: 'Description 1',
+                kidIds: [1],
+                userId: 1,
+                status: 'preparing'
+            },
+            reason: 'Reason 1'
+        },
+        {
+            event: {
+                id: 2,
+                place: {
+                    location: [0, 0],
+                    maxNumber: 15
+                },
+                dateTime: '2021-01-02T13:00:00Z',
+                duration: 90,
+                topic: 'Event 2',
+                description: 'Description 2',
+                kidIds: [2],
+                userId: 2,
+                status: 'preparing'
+            },
+            reason: 'Reason 2'
+        },
+        {
+            event: {
+                id: 3,
+                place: {
+                    location: [0, 0],
+                    maxNumber: 20
+                },
+                dateTime: '2021-01-03T14:00:00Z',
+                duration: 120,
+                topic: 'Event 3',
+                description: 'Description 3',
+                kidIds: [3],
+                userId: 3,
+                status: 'preparing'
+            },
+            reason: 'Reason 3'
+        }
+    ]);
     const [matchedEvents, setMatchedEvents] = useState<MatchEvents>([]);
     const [loginState, setLoginState] = useState<{
         logined:boolean;
@@ -102,11 +183,6 @@ const serverData = (() => {
 
         if (!Array.isArray(kidinfo)) {
             console.warn('Authentication userinfo kidinfo is not an array');
-            return null;
-        }
-
-        if (!Array.isArray(message.userEvents) || !Array.isArray(message.kidEvents)) {
-            console.warn('Authentication message missing userEvents or kidEvents or they are not arrays');
             return null;
         }
 
@@ -219,8 +295,6 @@ const serverData = (() => {
                         setLoginState({ logined: false, error: 'Token verification failed' });
                         setToken(null);
                         setUserInfo(null);
-                        setUserEvents([]);
-                        setKidEvents([]);
                         await clearLocalNotifications();
                     }
                 }
@@ -372,6 +446,8 @@ const serverData = (() => {
         notifications,
         userEvents,
         kidEvents,
+        following,
+        recommendEvents,
         matchedEvents,
         loginState,
         userInfo,
@@ -385,6 +461,7 @@ const serverData = (() => {
 });
 
 export default serverData;
+
 
 
 

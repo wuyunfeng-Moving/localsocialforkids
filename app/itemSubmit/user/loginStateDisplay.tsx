@@ -8,7 +8,7 @@ const LoginStatus = ({ onLoginButtonPress }) => {
   return (
     <View>
       {userInfo ?
-        <Text>当前用户：{userInfo.username}</Text> :
+        <View></View> :
         <View>
           <Text>Not Logged In</Text>
           <Button title="Login" onPress={onLoginButtonPress} />

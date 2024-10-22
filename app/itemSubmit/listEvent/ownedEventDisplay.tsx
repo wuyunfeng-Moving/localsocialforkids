@@ -1,47 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Modal, Button, ScrollView } from "react-native";
 import { useWebSocket } from '../../context/WebSocketProvider';
 import { SingleEventDisplay } from "./singleEventDisplay";
 import MatchedEventDisplay from './matchedEventDisplay';
 import { Event, MatchEvent } from "@/app/types/types";
 import BackButton from '@/components/back';
+import { useLocalSearchParams } from 'expo-router';
 
-const OwnedEventDisplay: React.FC<Event> = (currentEvent) => {
-    const {getMatchEvents,comWithServer} = useWebSocket();
-	const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-	const [modalVisible, setModalVisible] = useState(false);
-    const matchEvents:MatchEvent[] = getMatchEvents(currentEvent.id);
-    const { handleDeleteEvent, handleSignupEvent } = comWithServer;
-	const [isDeleting, setIsDeleting] = useState(false);
+const OwnedEventDisplay: React.FC = () => {
+    const params = useLocalSearchParams<{ event: string }>();
+    const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
+    const { getMatchEvents, comWithServer } = useWebSocket();
+    const [modalVisible, setModalVisible] = useState(false);
+    const [matchEvents, setMatchEvents] = useState<MatchEvent[]>([]);
+    const { handleDeleteEvent } = comWithServer;
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-	const handleEventPress = () => {
-		setModalVisible(true);
-	};
+    useEffect(() => {
+        if (typeof params.event === 'string') {
+            try {
+                const eventData: Event = JSON.parse(params.event);
+                setCurrentEvent(eventData);
+                if (eventData.id) {
+                    setMatchEvents(getMatchEvents(eventData.id));
+                }
+                console.log('Processed event data:', JSON.stringify(eventData, null, 2));
+            } catch (e) {
+                console.error('Error parsing event string:', e);
+                setError('Invalid event data (parsing failed)');
+            }
+        } else {
+            setError('Invalid event data (not a string)');
+        }
+    }, [params.event, getMatchEvents]);
 
-	const closeModal = () => {
-		setModalVisible(false);
-		setSelectedEvent(null);
-	};
+    const handleEventPress = () => {
+        setModalVisible(true);
+    };
+
+    const closeModal = () => {
+        setModalVisible(false);
+    };
 
     const DeleteEvent = () => {
+        if (!currentEvent) return;
         setIsDeleting(true);
         handleDeleteEvent(currentEvent, (message) => {
             setIsDeleting(false);
             if (message.success === true) {
-                // You might want to handle successful deletion here
-                // For example, you could close the modal or update the parent component
-                closeModal();
+                // Handle successful deletion
+                alert('事件已成功删除');
+                // You might want to navigate back to the previous screen here
             } else {
-                alert('删除失败', message.message);
+                alert('删除失败: ' + message.message);
             }
         });
     };
 
-	return (
-		<View style={styles.container}>
-			<SingleEventDisplay currentEvent={currentEvent} list={0} depth={0}/>
+    if (error) {
+        return <Text style={styles.errorText}>{error}</Text>;
+    }
+
+    if (!currentEvent) {
+        return <Text style={styles.emptyText}>No event data available</Text>;
+    }
+
+    return (
+        <View style={styles.container}>
+            <SingleEventDisplay currentEvent={currentEvent} list={0} depth={0} />
             <View style={styles.buttonContainer}>
-                {matchEvents && matchEvents.length > 0 && (
+                {matchEvents.length > 0 && (
                     <Button title="获取匹配" onPress={handleEventPress} />
                 )}
                 <Button 
@@ -52,20 +81,16 @@ const OwnedEventDisplay: React.FC<Event> = (currentEvent) => {
                 />
             </View>
 
-
-            {/* 
-            匹配事件的进入界面，在用户点击获取匹配后，并且查询到存在匹配事件后，进入该界面。
-            */}
-			<Modal
-				animationType="slide"
-				transparent={false}
-				visible={modalVisible}
-				onRequestClose={closeModal}
-			>
-				<View style={styles.modalContainer}>
-					<BackButton onPress={closeModal}/>
-					<ScrollView>
-						{matchEvents.map((matchEvent) => (
+            <Modal
+                animationType="slide"
+                transparent={false}
+                visible={modalVisible}
+                onRequestClose={closeModal}
+            >
+                <View style={styles.modalContainer}>
+                    <BackButton onPress={closeModal} />
+                    <ScrollView>
+                        {matchEvents.map((matchEvent) => (
                             <MatchedEventDisplay 
                                 key={matchEvent.event.id}
                                 currentEvent={matchEvent.event} 
@@ -77,11 +102,11 @@ const OwnedEventDisplay: React.FC<Event> = (currentEvent) => {
                                 }}
                             />
                         ))}
-					</ScrollView>
-				</View>
-			</Modal>
-		</View>
-	);
+                    </ScrollView>
+                </View>
+            </Modal>
+        </View>
+    );
 };
 
 const styles = StyleSheet.create({
@@ -116,6 +141,12 @@ const styles = StyleSheet.create({
 	closeButtonText: {
 		fontSize: 16,
 		color: 'blue', // Added color for better visibility
+	},
+	errorText: {
+		color: 'red',
+		fontStyle: 'italic',
+		textAlign: 'center',
+		marginTop: 20,
 	},
 });
 

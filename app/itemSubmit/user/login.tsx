@@ -3,20 +3,22 @@ import { Modal, View, TextInput, TouchableOpacity, StyleSheet, Text, KeyboardAvo
 import { Ionicons } from '@expo/vector-icons';
 import RegisterScreen from './register';
 import { useWebSocket } from '../../context/WebSocketProvider';
+import { useNavigation } from '@react-navigation/native';
 
-const LoginScreen = ({closeModal}) => {
+const LoginScreen = ({ closeModal, isModal = false }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);  // 添加模态窗口的状态
 
+  const navigation = useNavigation();
   const { send, loginState } = useWebSocket();
 
   useEffect(() => {
     console.log('loginState:', loginState);
     if (loginState.logined) {
-      closeModal();
+      handleClose();
     }
   }, [loginState]);
 
@@ -33,8 +35,12 @@ const LoginScreen = ({closeModal}) => {
     }
   };
 
-  const handleCancel = () => {
-    closeModal();  // 调用传入的 closeModal 函数来关闭 modal
+  const handleClose = () => {
+    if (isModal) {
+      closeModal();
+    } else {
+      navigation.goBack();
+    }
   };
 
   const dismissKeyboard = () => {
@@ -80,14 +86,14 @@ const LoginScreen = ({closeModal}) => {
           </TouchableOpacity>
           
           <Button title="注册" onPress={() => setModalVisible(true)} />
-          <Button title="取消" onPress={handleCancel} />
+          <Button title="取消" onPress={handleClose} />
           <Modal
             animationType="slide"
             transparent={false}
             visible={modalVisible}
             onRequestClose={() => setModalVisible(false)}
           >
-            <RegisterScreen closeModal={() => setModalVisible(false)} /> 
+            <RegisterScreen closeModal={() => setModalVisible(false)} isModal={true} />
           </Modal>
         </View>
       </TouchableWithoutFeedback>

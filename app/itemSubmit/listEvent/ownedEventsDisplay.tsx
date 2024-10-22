@@ -2,18 +2,30 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Modal, ScrollView } from "react-native";
 import { SingleEventDisplay } from "./singleEventDisplay";
 import { Event,Events } from "@/app/types/types";
-import OwnedEventDisplay from './ownedEventDisplay';
 import BackButton from '@/components/back';
-import ParticipateEventDisplay from './participateEvent';
+import ParticipateEventDisplay from './participateEventDisplay';
+import { useRouter } from 'expo-router';
 
 // 修改组件名称和属性类型
 const EventsDisplay: React.FC<{eventType: 'owned' | 'participated',targetEvents:Events}> = ({ eventType,targetEvents }) => {
 	const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-	const [modalVisible, setModalVisible] = useState(false);
+	// const [modalVisible, setModalVisible] = useState(false);
+	const router = useRouter();
 
 	const handleEventPress = (event: Event) => {
-		setSelectedEvent({ ...event });
-		setModalVisible(true);
+		console.log("handleEventPress", event);
+		if (eventType === 'owned') {
+			router.push({
+				pathname: '../itemSubmit/listEvent/ownedEventDisplay',
+				params: { event: JSON.stringify(event) }  // 序列化事件对象
+			});
+		} else {
+			router.push({
+				pathname: '../itemSubmit/listEvent/participateEventDisplay',
+				// pathname: '../itemSubmit/listEvent/test',
+				params: { event: JSON.stringify(event) }
+			});
+		}
 	};
 
 	const closeModal = () => {
@@ -40,7 +52,7 @@ const EventsDisplay: React.FC<{eventType: 'owned' | 'participated',targetEvents:
 				<Text style={styles.emptyText}>{emptyText}</Text>
 			)}
 
-			<Modal
+			{/* <Modal
 				animationType="slide"
 				transparent={false}
 				visible={modalVisible}
@@ -58,7 +70,7 @@ const EventsDisplay: React.FC<{eventType: 'owned' | 'participated',targetEvents:
 						)}
 					</ScrollView>
 				</View>
-			</Modal>
+			</Modal> */}
 		</View>
 	);
 };

@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
+import serverData from './serverData';
 
-const comWithServer = (orderToServer,userEvents,notifications,setAndStoreNotifications) => {
+const SERVERIP = "121.196.198.126";
+const PORT = 3000; // 更新为服务器实际使用的端口
+const BASE_URL = `http://${SERVERIP}:${PORT}`;
 
+const comWithServer = (orderToServer, userEvents, notifications, setAndStoreNotifications) => {
     //get matches at first get the userinfo
     useEffect(() => {
         orderToServer('getMatch', { start: 0, end: 10 }, (matchMessage) => {
@@ -9,7 +13,7 @@ const comWithServer = (orderToServer,userEvents,notifications,setAndStoreNotific
             // You might want to store these matched events in a state
             console.log('Matched events:', matchMessage);
         });
-        orderToServer('notifications')
+        orderToServer('notifications');
     }
         , [userEvents]);
 
@@ -75,7 +79,6 @@ const comWithServer = (orderToServer,userEvents,notifications,setAndStoreNotific
         }
         orderToServer('signUpEvent', { signUpEvent: { sourceEventId: sourceEventId, targetEventId: targetEventId, reason: reason } }, callback)
     }
-
     );
 
     const acceptSignUp = (
@@ -106,14 +109,41 @@ const comWithServer = (orderToServer,userEvents,notifications,setAndStoreNotific
         );
     };
 
+    const ajaxRequest = async (endpoint: string, method: string = 'GET', data: any = null) => {
+        const url = `${BASE_URL}${endpoint}`;
+        const options: RequestInit = {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        };
+
+        if (data && (method === 'POST' || method === 'PUT')) {
+            options.body = JSON.stringify(data);
+        }
+
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return await response.text(); // 改为 text()，因为服务器返回纯文本
+        } catch (error) {
+            console.error("AJAX request failed:", error);
+            throw error;
+        }
+    };
+
+
+
+
     return ({
         handleDeleteEvent,
         handleCreateEvent,
         handleSignupEvent,
         markNotificationAsRead,
-        acceptSignUp // Add this new function to the returned object
-    }
-    );
+        acceptSignUp
+    });
 }
 
 export default comWithServer;

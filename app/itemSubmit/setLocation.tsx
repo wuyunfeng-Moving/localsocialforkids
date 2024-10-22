@@ -5,7 +5,7 @@ import { useCurrentLocation } from '../context/LocationContext'; // 引入useLoc
 import { LocationProvider } from '../context/LocationContext';
 
 const LocationPickerModal = ({ isVisible, onClose, onSelectLocation }) => {
-  const {currentRegion,err} = useCurrentLocation(); // 使用useLocation获取当前位置
+  const {currentRegion} = useCurrentLocation(); // 使用useLocation获取当前位置
   const [selectedLocation, setSelectedLocation] = useState(null);
 
   const handleMapPress = (event) => {

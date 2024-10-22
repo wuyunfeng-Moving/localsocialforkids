@@ -57,6 +57,8 @@ export const WebSocketProvider = ({ children }) => {
     notifications,
     userEvents,
     kidEvents,
+    following,
+    recommendEvents,
     matchedEvents,
     loginState,
     userInfo,
@@ -67,6 +69,7 @@ export const WebSocketProvider = ({ children }) => {
 
     useEffect(() => {
       console.log("Notifications in context:", notifications);
+      console.log("recommendEvents",recommendEvents);
     }, [notifications]);
     
 
@@ -356,6 +359,11 @@ export const WebSocketProvider = ({ children }) => {
       isEventBelongToUser,//check if the event belong to user
       isParticipateEvent,//check 用户是否参与事件
       notifications,
+      data:{
+        recommendEvents,
+        following,
+        matchedEvents
+      },
       comWithServer:{
         handleDeleteEvent,
         handleCreateEvent,
