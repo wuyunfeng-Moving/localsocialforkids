@@ -3,7 +3,7 @@ import { Modal, View, TextInput, TouchableOpacity, StyleSheet, Text, KeyboardAvo
 import { Ionicons } from '@expo/vector-icons';
 import RegisterScreen from './register';
 import { useWebSocket } from '../../context/WebSocketProvider';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 
 const LoginScreen = ({ closeModal, isModal = false }) => {
   const [email, setEmail] = useState('');
@@ -12,15 +12,16 @@ const LoginScreen = ({ closeModal, isModal = false }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);  // 添加模态窗口的状态
 
-  const navigation = useNavigation();
-  const { send, loginState } = useWebSocket();
+  const { login, loginState,userInfo } = useWebSocket();
+  const router = useRouter();
 
   useEffect(() => {
-    console.log('loginState:', loginState);
-    if (loginState.logined) {
-      handleClose();
+    console.log('loginState:', loginState,userInfo);
+
+    if (loginState.logined&&userInfo&&userInfo.email) {
+       handleClose();
     }
-  }, [loginState]);
+  }, [loginState,userInfo]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -29,17 +30,20 @@ const LoginScreen = ({ closeModal, isModal = false }) => {
     }
 
     try {
-      await send({ type: 'login', email, password });
+      console.log("start")
+      await login({ email, password });
+      console.log("end")
     } catch (error) {
       setError('An error occurred. Please try again.');
     }
   };
 
   const handleClose = () => {
+    console.log("handleClose",isModal);
     if (isModal) {
-      closeModal();
+       closeModal();
     } else {
-      navigation.goBack();
+      router.back();  // 使用 router.back() 替代 navigation.goBack()
     }
   };
 

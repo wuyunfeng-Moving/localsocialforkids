@@ -5,7 +5,11 @@ import { MaterialIcons } from '@expo/vector-icons';
 
 const UserInfoScreen = () => {
   const { userInfo, loginState, update } = useWebSocket();
-  const [newEmail, setNewEmail] = useState(userInfo.email);
+  const [newEmail, setNewEmail] = useState(userInfo.email||'');
+
+  useEffect(() => {
+    console.log('Current userInfo:', userInfo);
+  }, [userInfo]);
 
   const handleUpdateEmail = () => {
     // 这里应该调用 update 函数来更新邮箱

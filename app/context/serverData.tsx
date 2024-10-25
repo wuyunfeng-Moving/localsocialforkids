@@ -138,20 +138,36 @@ const serverData = (() => {
     const [token, setToken] = useState(null);
 
     useEffect(() => {
-        const fetchTokenAndNotifications = async () => {
+        const fetchTokenAndVerify = async () => {
             const tempToken = await getToken();
-            if (!tempToken) {
+            if (tempToken) {
+                // 验证 token
+                try {
+                    const response = await axios.post(`${BASE_URL}/verifyToken`, {}, {
+                        headers: { Authorization: `Bearer ${tempToken}` }
+                    });
+                    if (response.data.success) {
+                        setLoginState({ logined: true, error: '' });
+                        queryClient.setQueryData(['userData'], response.data.userInfo);
+                    } else {
+                        throw new Error('Token verification failed');
+                    }
+                } catch (error) {
+                    console.error('Token verification error:', error);
+                    setLoginState({ logined: false, error: 'Token verification failed' });
+                    setToken(null);
+                    await SecureStore.deleteItemAsync('userToken');
+                    queryClient.invalidateQueries(['userData']);
+                    await clearLocalNotifications();
+                }
+            } else {
                 setLoginState({ logined: false, error: 'No token' });
                 clearLocalNotifications();
-            } else {
-                setToken(tempToken);
-                const storedNotifications = await getLocalNotifications();
-                console.log("storedNotifications",storedNotifications);
-                setNotifications(storedNotifications);
             }
-        }
-        fetchTokenAndNotifications();
-    }, []); // Add notifications as a dependency
+        };
+
+        fetchTokenAndVerify();
+    }, []); // 仅在组件挂载时运行
     
     useEffect(()=>{
         console.log("current kidEvents:",kidEvents);
@@ -493,7 +509,7 @@ const serverData = (() => {
             return response.data;
         },
         onSuccess: (data) => {
-            console.log("get response.data",data);
+            console.log("get response.data userInfo",data);
             queryClient.setQueryData(['userData'], data);
         },
         onError: (error) => {
@@ -501,6 +517,63 @@ const serverData = (() => {
             if (axios.isAxiosError(error)) {
                 console.error('Error details:', error.response?.data);
             }
+        }
+    });
+
+    const logoutMutation = useMutation({
+        mutationFn: async () => {
+            const token = await getToken();
+            const response = await axios.post(`${BASE_URL}/logout`,{
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            console.log("response.data out",response.data);
+            return response.data;
+        },
+        onSuccess: (data) => {
+            if (data.success) {
+                // Clear all data
+                setLoginState({ logined: false, error: '' });
+                setToken(null);
+                SecureStore.deleteItemAsync('userToken');
+                clearLocalNotifications();
+                
+                // Clear React Query cache
+                queryClient.clear();
+                
+                // Reset other state variables
+                setFollowing([]);
+                setRecommendEvents([]);
+                setMatchedEvents([]);
+                
+                console.log('Logged out successfully and cleared all data');
+            } else {
+                console.warn('Logout was not successful:', data.message);
+            }
+        },
+        onError: (error) => {
+            console.error('Logout error:', error);
+        }
+    });
+
+    const loginMutation = useMutation({
+        mutationFn: async (credentials: { email: string; password: string }) => {
+            const response = await axios.post(`${BASE_URL}/login`, credentials);
+            console.log(response.data);
+            return response.data;
+        },
+        onSuccess: (data) => {
+            if (data.success) {
+                storeToken(data.token);
+                setLoginState({ logined: true, error: '' });
+                queryClient.setQueryData(['userData'], data.userData);
+            } else {
+                console.warn("Login failed:", data.message);
+                setLoginState({ logined: false, error: data.message });
+            }
+        },
+        onError: (error) => {
+            console.error('Login error:', error);
+            setLoginState({ logined: false, error: 'An error occurred during login' });
         }
     });
 
@@ -523,10 +596,19 @@ const serverData = (() => {
         },
         messageHandle,
         updateUserInfo,
+        login: loginMutation.mutate,
+        logout: logoutMutation.mutate,
+        isLoggingIn: loginMutation.isPending,
+        loginError: loginMutation.error,
     });
 });
 
 export default serverData;
+
+
+
+
+
 
 
 

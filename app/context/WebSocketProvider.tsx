@@ -1,14 +1,12 @@
-import { useSegments } from 'expo-router';
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import serverData from './serverData';
 import comWithServer from './comWithServer';
-import { MatchEvents,MatchEvent } from '../types/types';
-import {Event, Notification} from '../types/types';
+import { MatchEvents, MatchEvent } from '../types/types';
+import { Event, Notification } from '../types/types';
 
 const WebSocketContext = createContext(null);
 
-const SERVERIP ="121.196.198.126"
-// const SERVERIP ="localhost"
+const SERVERIP = "121.196.198.126"
 const PORT = "8080"
 
 // 定义 KidInfo 接口
@@ -48,11 +46,10 @@ interface MessageHandler {
 
 export const WebSocketProvider = ({ children }) => {
   const [ws, setWs] = useState(null);
-
   const [messageFromserver, setMessageFromServer] = useState(null);
   const [messageHandlers, setMessageHandlers] = useState<MessageHandler[]>([]);
+  const [messageQueue, setMessageQueue] = useState([]);
 
-  const [events, setEvents] = useState([]);
   const { 
     notifications,
     userEvents,
@@ -66,15 +63,15 @@ export const WebSocketProvider = ({ children }) => {
     messageHandle,
     setting,
     updateUserInfo,
+    login,
+    logout,
   } = serverData();
 
-    useEffect(() => {
-      console.log("userEvents in context:", userEvents);
-      // console.log("recommendEvents",recommendEvents);
-    }, [userEvents]);
+  useEffect(() => {
+    console.log("userEvents in context:", userEvents);
+    // console.log("recommendEvents",recommendEvents);
+  }, [userEvents]);
     
-
-  const [messageQueue, setMessageQueue] = useState([]);
 
   useEffect(() => {
     messageHandlers.forEach((handler) => {
@@ -280,8 +277,9 @@ export const WebSocketProvider = ({ children }) => {
 
   const connectWebSocket = useCallback(() => {
     console.log('Attempting to connect WebSocket...');
-    const wsaddress="ws://"+SERVERIP+":"+PORT;
+    const wsaddress = "ws://" + SERVERIP + ":" + PORT;
     const socket = new WebSocket(wsaddress);
+    
     socket.onopen = () => {
       // console.log('WebSocket connected successfully');
       setWs(socket);
@@ -318,17 +316,6 @@ export const WebSocketProvider = ({ children }) => {
   }, [connectWebSocket]);
 
   useEffect(() => {
-    if (ws && ws.readyState === WebSocket.OPEN && token) {
-      const timer = setTimeout(() => {
-        console.log('Attempting to send authentication after 10 seconds');
-        send({ type: 'verifyToken', token: token });
-      }, 1000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [ws,token]);
-
-  useEffect(() => {
     if (ws && ws.readyState === WebSocket.OPEN && messageQueue.length > 0) {
       console.log('Attempting to send queued messages');
       messageQueue.forEach(message => send(message));
@@ -336,41 +323,39 @@ export const WebSocketProvider = ({ children }) => {
     }
   }, [ws, messageQueue, send]);
 
-
   const {
     handleDeleteEvent,
-      // handleCreateEvent,
-        handleSignupEvent,
-        markNotificationAsRead,
-        acceptSignUp // Add this new function to the returned object
-  } = comWithServer(orderToServer,kidEvents,notifications,setting.setAndStoreNotifications);
+    handleSignupEvent,
+    markNotificationAsRead,
+    acceptSignUp
+  } = comWithServer(orderToServer, kidEvents, notifications, setting.setAndStoreNotifications);
 
   return (
     <WebSocketContext.Provider value={{
-      send, //send data derict to server,not recommand
+      send,
       userInfo,
       loginState,
       registerMessageHandle,
-      orderToServer,//app page send task for communicate with server
-      //getmetch:get all the metches of user created events.
-      events,
-      userEvents,//user created events
-      kidEvents,//kids involved events
+      orderToServer,
+      // events,
+      userEvents,
+      kidEvents,
       getMatchEvents,
-      isEventBelongToUser,//check if the event belong to user
-      isParticipateEvent,//check 用户是否参与事件
+      isEventBelongToUser,
+      isParticipateEvent,
+      login,
+      logout,
       notifications,
-      data:{
+      data: {
         recommendEvents,
         following,
         matchedEvents
       },
-      update:{
+      update: {
         updateUserInfo
       },
-      comWithServer:{
+      comWithServer: {
         handleDeleteEvent,
-        // handleCreateEvent,
         handleSignupEvent,
         markNotificationAsRead,
         acceptSignUp
