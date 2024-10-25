@@ -1,26 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, Dimensions, ScrollView, Image } from 'react-native';
+import { View, StyleSheet, Text, Dimensions, ScrollView, Image, TextInput, TouchableOpacity } from 'react-native';
 import { useWebSocket } from '../../context/WebSocketProvider';
 import { MaterialIcons } from '@expo/vector-icons';
 
 const UserInfoScreen = () => {
-  const { userInfo, loginState } = useWebSocket();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [kids, setKids] = useState([]);
+  const { userInfo, loginState, update } = useWebSocket();
+  const [newEmail, setNewEmail] = useState(userInfo.email);
 
-  useEffect(() => {
-    try {
-      console.log("userinfo.tsx:", userInfo, loginState);
-      if (loginState.logined && userInfo) {
-        setName(userInfo?.username || '');
-        setEmail(userInfo?.email || '');
-        setKids(userInfo.kidinfo || []);
-      }
-    } catch (error) {
-      console.log('error:', error);
-    }
-  }, [userInfo, loginState.logined]);
+  const handleUpdateEmail = () => {
+    // 这里应该调用 update 函数来更新邮箱
+    update.updateUserInfo({ ...userInfo, email: newEmail ,type:'updateUserInfo'});
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -33,18 +23,26 @@ const UserInfoScreen = () => {
                 style={styles.userPhoto}
               />
             </View>
-            <Text style={styles.title}>{name}</Text>
+            <Text style={styles.title}>{userInfo.name}</Text>
           </View>
           <View style={styles.userInfoContainer}>
             <View style={styles.userInfoItem}>
               <MaterialIcons name="email" size={24} color="#666" />
               <Text style={styles.label}>邮箱：</Text>
-              <Text style={styles.value}>{email}</Text>
+              <TextInput
+                style={styles.input}
+                value={newEmail}
+                onChangeText={setNewEmail}
+                placeholder="输入新的邮箱地址"
+              />
             </View>
+            <TouchableOpacity style={styles.updateButton} onPress={handleUpdateEmail}>
+              <Text style={styles.updateButtonText}>更新邮箱</Text>
+            </TouchableOpacity>
             <View style={styles.userInfoItem}>
               <MaterialIcons name="child-care" size={24} color="#666" />
               <Text style={styles.label}>孩子：</Text>
-              <Text style={styles.value}>{kids.length > 0 ? kids.join(', ') : '无'}</Text>
+              <Text style={styles.value}>{userInfo.kidinfo.length > 0 ? userInfo.kidinfo.join(', ') : '无'}</Text>
             </View>
           </View>
         </>
@@ -128,6 +126,26 @@ const styles = StyleSheet.create({
   userPhoto: {
     width: '100%',
     height: '100%',
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    paddingVertical: 4,
+  },
+  updateButton: {
+    backgroundColor: '#007AFF',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  updateButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

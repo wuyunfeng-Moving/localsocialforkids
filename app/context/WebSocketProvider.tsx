@@ -65,12 +65,13 @@ export const WebSocketProvider = ({ children }) => {
     token,
     messageHandle,
     setting,
+    updateUserInfo,
   } = serverData();
 
     useEffect(() => {
-      console.log("Notifications in context:", notifications);
-      console.log("recommendEvents",recommendEvents);
-    }, [notifications]);
+      console.log("userEvents in context:", userEvents);
+      // console.log("recommendEvents",recommendEvents);
+    }, [userEvents]);
     
 
   const [messageQueue, setMessageQueue] = useState([]);
@@ -338,7 +339,7 @@ export const WebSocketProvider = ({ children }) => {
 
   const {
     handleDeleteEvent,
-        handleCreateEvent,
+      // handleCreateEvent,
         handleSignupEvent,
         markNotificationAsRead,
         acceptSignUp // Add this new function to the returned object
@@ -364,9 +365,12 @@ export const WebSocketProvider = ({ children }) => {
         following,
         matchedEvents
       },
+      update:{
+        updateUserInfo
+      },
       comWithServer:{
         handleDeleteEvent,
-        handleCreateEvent,
+        // handleCreateEvent,
         handleSignupEvent,
         markNotificationAsRead,
         acceptSignUp

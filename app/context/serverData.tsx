@@ -3,6 +3,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Event, UserInfo, Events, AuthenticationMessage, MessageFromServer, MatchEvents,MatchEvent,RecommendEvents} from '../types/types';
 import * as SecureStore from 'expo-secure-store';
 import { Notification } from '../types/notification_types';
+import {useQuery,useMutation,useQueryClient} from "@tanstack/react-query";
+import axios from 'axios';
+
+
+const SERVERIP = "121.196.198.126";
+const PORT = 3000; // 更新为服务器实际使用的端口
+const BASE_URL = `http://${SERVERIP}:${PORT}`;
 
 /*
 核心数据：
@@ -15,8 +22,38 @@ import { Notification } from '../types/notification_types';
 
 const serverData = (() => {
 
+    const queryClient = useQueryClient();
+
+    const userDataQuery = useQuery({
+        queryKey: ['userData'],
+        queryFn: async () => {
+            const token = await getToken();
+            if (!token) throw new Error('no token');
+            
+            // console.log("Fetching user data")
+            const response = await axios.get(`${BASE_URL}/userInfo`, {
+                headers: {Authorization: `Bearer ${token}`}
+            });
+            if (response.data.success) {
+                console.log("Fetching user data",response.data);
+                return response.data;
+            }
+            throw new Error('Failed to fetch user data');
+        }
+    });
+
+    useEffect(() => {
+        if (userDataQuery.isSuccess) {
+            setLoginState({ logined: true, error: '' });
+        }
+        if (userDataQuery.isError) {
+            setLoginState({ logined: false, error: userDataQuery.error.message });
+            setToken(null);
+        }
+    }, [userDataQuery.isSuccess, userDataQuery.isError, userDataQuery.error]);
+
     const [notifications, setNotifications] = useState<Array<Notification | null>>([]);
-    const [userEvents, setUserEvents] = useState<Events>([]);
+    // const userEvents = userInfoQuery.data.userEvents;
     const [kidEvents, setKidEvents] = useState<Events>([]);
     const [following,setFollowing] = useState<UserInfo[]>([
         {
@@ -98,7 +135,6 @@ const serverData = (() => {
         logined: false,
         error: ''
     });
-    const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
     const [token, setToken] = useState(null);
 
     useEffect(() => {
@@ -265,7 +301,8 @@ const serverData = (() => {
                     if (message.success) {
                         storeToken(message.token);
                         setLoginState({ logined: true, error: '' });
-                        setUserInfo(message.userInfo);
+                        // Update the userInfo query data instead of setting state
+                        queryClient.setQueryData(['userInfo'], message.userInfo);
                     } else {
                         console.warn("Login failed:", message.message);
                         setLoginState({ logined: false, error: message.message });
@@ -278,7 +315,8 @@ const serverData = (() => {
                     const data = checkAuthenticationMessage(message);
                     if (data && data.success) {
                         setLoginState({ logined: true, error: '' });
-                        setUserInfo(data.userinfo);
+                        // Update the userInfo query data instead of setting state
+                        queryClient.setQueryData(['userInfo'], data.userinfo);
                         
                         const storedNotifications = await getLocalNotifications();
                         // Prepare sync data after successful verification
@@ -294,7 +332,8 @@ const serverData = (() => {
                         console.warn("Token verification failed");
                         setLoginState({ logined: false, error: 'Token verification failed' });
                         setToken(null);
-                        setUserInfo(null);
+                        // Invalidate the userInfo query
+                        queryClient.invalidateQueries(['userInfo']);
                         await clearLocalNotifications();
                     }
                 }
@@ -442,25 +481,57 @@ const serverData = (() => {
         }
     };
 
+    const updateUserInfo = useMutation({
+        mutationFn: async (newUserInfo: Partial<UserInfo>) => {
+            const token = await getToken();
+            if (!token) throw new Error('No token');
+
+            const response = await axios.post(`${BASE_URL}/userInfo`, newUserInfo, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            return response.data;
+        },
+        onSuccess: (data) => {
+            console.log("get response.data",data);
+            queryClient.setQueryData(['userData'], data);
+        },
+        onError: (error) => {
+            console.error('Failed to update user info:', error);
+            if (axios.isAxiosError(error)) {
+                console.error('Error details:', error.response?.data);
+            }
+        }
+    });
+
     return ({
         notifications,
-        userEvents,
-        kidEvents,
+        userEvents: userDataQuery.data?.userEvents || [],
+        kidEvents: userDataQuery.data?.kidEvents || [],
         following,
         recommendEvents,
         matchedEvents,
         loginState,
-        userInfo,
+        userInfo: userDataQuery.data?.userInfo,
         token,
+        isLoading: userDataQuery.isLoading,
+        isError: userDataQuery.isError,
+        error: userDataQuery.error,
         setting:{
             setAndStoreNotifications,
 
         },
         messageHandle,
+        updateUserInfo,
     });
 });
 
 export default serverData;
+
+
+
+
+
 
 
 

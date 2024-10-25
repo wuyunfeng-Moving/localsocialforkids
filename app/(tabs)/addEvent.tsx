@@ -30,8 +30,7 @@ export default function TabTwoScreen() {
   const [isLocationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [dateTimeModalVisible, setDateTimeModalVisible] = useState(false);
-  const { loginState, userInfo, comWithServer } = useWebSocket()??{};
-  const { handleCreateEvent } = comWithServer??{};
+  const { loginState, userInfo, update } = useWebSocket()??{};
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { currentRegion } = useCurrentLocation();
 
@@ -130,9 +129,16 @@ export default function TabTwoScreen() {
 
     console.log('sending data:', JSON.stringify(newItems));
     setIsSubmitting(true);
-    handleCreateEvent(newItems, () => {
-      setIsSubmitting(false);
-      // Handle success or error here
+    update.updateUserInfo.mutate(newItems, {
+      onSuccess: () => {
+        setIsSubmitting(false);
+        alert('提交成功');
+        // 可以在这里添加其他成功后的操作，比如重置表单
+      },
+      onError: (error) => {
+        setIsSubmitting(false);
+        alert('提交失败: ' + error.message);
+      }
     });
   };
 

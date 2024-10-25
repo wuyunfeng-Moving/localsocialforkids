@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react';
 import serverData from './serverData';
 
-const SERVERIP = "121.196.198.126";
-const PORT = 3000; // 更新为服务器实际使用的端口
-const BASE_URL = `http://${SERVERIP}:${PORT}`;
-
 const comWithServer = (orderToServer, userEvents, notifications, setAndStoreNotifications) => {
     //get matches at first get the userinfo
     useEffect(() => {
