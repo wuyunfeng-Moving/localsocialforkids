@@ -52,7 +52,6 @@ const serverData = (() => {
         }
     }, [userDataQuery.isSuccess, userDataQuery.isError, userDataQuery.error]);
 
-    const [notifications, setNotifications] = useState<Array<Notification | null>>([]);
     // const userEvents = userInfoQuery.data.userEvents;
     const [kidEvents, setKidEvents] = useState<Events>([]);
     const [following,setFollowing] = useState<UserInfo[]>([
@@ -141,7 +140,6 @@ const serverData = (() => {
         const fetchTokenAndVerify = async () => {
             const tempToken = await getToken();
             if (tempToken) {
-                // 验证 token
                 try {
                     const response = await axios.post(`${BASE_URL}/verifyToken`, {}, {
                         headers: { Authorization: `Bearer ${tempToken}` }
@@ -154,15 +152,10 @@ const serverData = (() => {
                     }
                 } catch (error) {
                     console.error('Token verification error:', error);
-                    setLoginState({ logined: false, error: 'Token verification failed' });
-                    setToken(null);
-                    await SecureStore.deleteItemAsync('userToken');
-                    queryClient.invalidateQueries(['userData']);
-                    await clearLocalNotifications();
+                    await clearAllData();
                 }
             } else {
-                setLoginState({ logined: false, error: 'No token' });
-                clearLocalNotifications();
+                await clearAllData();
             }
         };
 
@@ -331,11 +324,9 @@ const serverData = (() => {
                     const data = checkAuthenticationMessage(message);
                     if (data && data.success) {
                         setLoginState({ logined: true, error: '' });
-                        // Update the userInfo query data instead of setting state
                         queryClient.setQueryData(['userInfo'], data.userinfo);
                         
                         const storedNotifications = await getLocalNotifications();
-                        // Prepare sync data after successful verification
                         syncData = {
                             type: 'appDataSyncToServer',
                             notification: {
@@ -346,11 +337,7 @@ const serverData = (() => {
                         console.log('syncData:', JSON.stringify(syncData, null, 2));
                     } else {
                         console.warn("Token verification failed");
-                        setLoginState({ logined: false, error: 'Token verification failed' });
-                        setToken(null);
-                        // Invalidate the userInfo query
-                        queryClient.invalidateQueries(['userInfo']);
-                        await clearLocalNotifications();
+                        await clearAllData();
                     }
                 }
                 break;
@@ -371,10 +358,8 @@ const serverData = (() => {
                     if (message.success) {
                         // console.log("Logout successful:", message.message);
                         setLoginState({ logined: false, error: '' });
-                        setUserInfo(null);
                         setToken(null);
                         SecureStore.deleteItemAsync('userToken');
-                        clearLocalNotifications();
                     } else {
                         console.warn("Logout failed:", message.message);
                         // Optionally handle failed logout
@@ -391,111 +376,12 @@ const serverData = (() => {
                     }
                 }
                 break;
-            case 'appDataSyncToClient':
-                {
-                    if (message.success && message.data) {
-                        const { notifications: newNotifications, userInfo, userEvents, kidEvents } = message.data;
-
-                        // Update notifications
-                        if (Array.isArray(newNotifications)) {
-                            const flattenedNotifications = newNotifications.flat();
-                            setAndStoreNotifications(flattenedNotifications);
-                        }
-
-                        // Update user info
-                        if (userInfo) {
-                            setUserInfo(userInfo);
-                        }
-
-                        // Update user events
-                        if (Array.isArray(userEvents)) {
-                            setUserEvents(userEvents);
-                        }
-                               // Update kid events
-            if (Array.isArray(kidEvents)) {
-                const flattenedKidEvents = kidEvents.flat(Infinity);
-                setKidEvents(flattenedKidEvents);
-            }
-
-                        console.log('App data synced successfully');
-                    } else {
-                        console.error('App data sync failed or invalid data:', message);
-                    }
-                }
-                break;
         }
 
         // Return syncData if it's set
         return syncData;
     };
 
-    const setAndStoreNotifications = async (newNotifications:Notification[]) => {
-        console.log("Starting to update notifications");
-    
-        const updatedNotifications = await new Promise(resolve => {
-            setNotifications(prev => {
-                // Create a Map of existing notifications, using id as the key
-                const existingNotificationsMap = new Map(
-                    prev.map(notification => [notification.id, notification])
-                );
-    
-                // Process new notifications
-                newNotifications.forEach(newNotification => {
-                    if (existingNotificationsMap.has(newNotification.id)) {
-                        // If the notification already exists, update it
-                        existingNotificationsMap.set(newNotification.id, {
-                            ...existingNotificationsMap.get(newNotification.id),
-                            ...newNotification
-                        });
-                    } else {
-                        // If it's a new notification, add it
-                        existingNotificationsMap.set(newNotification.id, newNotification);
-                    }
-                });
-    
-                // Convert the Map back to an array
-                const newData = Array.from(existingNotificationsMap.values());
-    
-                // Store the updated notifications
-                // storeLocalNotifications(newData);
-                console.log('New notifications:', newData);
-                resolve(newData);
-                return newData;
-            });
-        });
-
-        await storeLocalNotifications(updatedNotifications);
-        console.log("Notifications update completed");
-    };
-
-    const storeLocalNotifications = async (notifications) => {
-        console.log('Storing notifications:', notifications);
-        try {
-            await AsyncStorage.setItem('localNotifications', JSON.stringify(notifications));
-        } catch (e) {
-            console.error('Error saving notifications:', e);
-        }
-    };
-
-    const getLocalNotifications = async () => {
-        try {
-            const storedNotifications = await AsyncStorage.getItem('localNotifications');
-            console.log("Raw stored notifications:", storedNotifications);
-            return storedNotifications ? JSON.parse(storedNotifications) : [];
-        } catch (e) {
-            console.error('Error reading notifications:', e);
-            return [];
-        }
-    };
-
-    const clearLocalNotifications = async () => {
-        try {
-            await AsyncStorage.removeItem('localNotifications');
-            setNotifications([]);
-        } catch (e) {
-            console.error('Error clearing notifications:', e);
-        }
-    };
 
     const updateUserInfo = useMutation({
         mutationFn: async (newUserInfo: Partial<UserInfo>) => {
@@ -535,7 +421,6 @@ const serverData = (() => {
                 setLoginState({ logined: false, error: '' });
                 setToken(null);
                 SecureStore.deleteItemAsync('userToken');
-                clearLocalNotifications();
                 
                 // Clear React Query cache
                 queryClient.clear();
@@ -577,8 +462,19 @@ const serverData = (() => {
         }
     });
 
+    const clearAllData = async () => {
+        setLoginState({ logined: false, error: 'Token verification failed' });
+        setToken(null);
+        await SecureStore.deleteItemAsync('userToken');
+        queryClient.clear();
+        setFollowing([]);
+        setRecommendEvents([]);
+        setMatchedEvents([]);
+        console.log('Cleared all data due to token verification failure');
+    };
+
     return ({
-        notifications,
+        notifications: userDataQuery.data?.notifications||[],
         userEvents: userDataQuery.data?.userEvents || [],
         kidEvents: userDataQuery.data?.kidEvents || [],
         following,
@@ -590,10 +486,6 @@ const serverData = (() => {
         isLoading: userDataQuery.isLoading,
         isError: userDataQuery.isError,
         error: userDataQuery.error,
-        setting:{
-            setAndStoreNotifications,
-
-        },
         messageHandle,
         updateUserInfo,
         login: loginMutation.mutate,
@@ -604,6 +496,7 @@ const serverData = (() => {
 });
 
 export default serverData;
+
 
 
 

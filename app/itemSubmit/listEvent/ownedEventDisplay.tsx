@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Modal, Button, ScrollView } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, Modal, Button, ScrollView,Alert } from "react-native";
 import { useWebSocket } from '../../context/WebSocketProvider';
 import { SingleEventDisplay } from "./singleEventDisplay";
 import MatchedEventDisplay from './matchedEventDisplay';
 import { Event, MatchEvent } from "@/app/types/types";
 import BackButton from '@/components/back';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 const OwnedEventDisplay: React.FC = () => {
     const params = useLocalSearchParams<{ event: string }>();
@@ -16,6 +16,7 @@ const OwnedEventDisplay: React.FC = () => {
     const { handleDeleteEvent } = comWithServer;
     const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const router = useRouter();
 
     useEffect(() => {
         if (typeof params.event === 'string') {
@@ -46,13 +47,29 @@ const OwnedEventDisplay: React.FC = () => {
     const DeleteEvent = () => {
         if (!currentEvent) return;
         setIsDeleting(true);
-        update.updateUserInfo.mutate({currentEvent,type:'deleteEvent'},{
-            onSuccess: ()=>
+        update.updateUserInfo.mutate(
+            { currentEvent, type: 'deleteEvent' },
             {
-                alert("delete successed!");
+                onSuccess: () => {
+                    setIsDeleting(false);
+                    Alert.alert(
+                        "删除成功",
+                        "事件已成功删除",
+                        [
+                            {
+                                text: "确定",
+                                onPress: () => router.back()
+                            }
+                        ]
+                    );
+                },
+                onError: (error) => {
+                    setIsDeleting(false);
+                    Alert.alert("删除失败", "删除事件时出现错误");
+                    console.error("Error deleting event:", error);
+                }
             }
-        }
-        )
+        );
     };
 
     if (error) {

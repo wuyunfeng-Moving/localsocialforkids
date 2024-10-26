@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import serverData from './serverData';
 
-const comWithServer = (orderToServer, userEvents, notifications, setAndStoreNotifications) => {
+const comWithServer = (orderToServer, userEvents, notifications) => {
     //get matches at first get the userinfo
     useEffect(() => {
         orderToServer('getMatch', { start: 0, end: 10 }, (matchMessage) => {
@@ -59,8 +59,6 @@ const comWithServer = (orderToServer, userEvents, notifications, setAndStoreNoti
                   ? { ...notification, read: !notification.read }
                   : notification
               );
-              console.log("newNoti", newNoti);
-              setAndStoreNotifications(newNoti);
             } else {
               console.error('Failed to mark notification as read:', message.error);
             }

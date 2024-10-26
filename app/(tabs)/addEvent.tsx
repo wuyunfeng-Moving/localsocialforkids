@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { StyleSheet, TextInput, Button, ScrollView, TouchableOpacity, Modal, Platform, KeyboardAvoidingView, ActivityIndicator } from 'react-native';
+import { StyleSheet, TextInput, Button, ScrollView, TouchableOpacity, Modal, Platform, KeyboardAvoidingView, ActivityIndicator, Alert } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import AddItemModal from '../itemSubmit/addnewItem/addNewItem';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -132,8 +132,16 @@ export default function TabTwoScreen() {
     update.updateUserInfo.mutate(newItems, {
       onSuccess: () => {
         setIsSubmitting(false);
-        alert('提交成功');
-        // 可以在这里添加其他成功后的操作，比如重置表单
+        Alert.alert(
+          "��交成功",
+          "事件已成功添加",
+          [
+            {
+              text: "确认",
+              onPress: () => router.push("/(tabs)/")
+            }
+          ]
+        );
       },
       onError: (error) => {
         setIsSubmitting(false);

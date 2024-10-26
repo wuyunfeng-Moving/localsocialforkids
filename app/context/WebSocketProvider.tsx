@@ -61,7 +61,6 @@ export const WebSocketProvider = ({ children }) => {
     userInfo,
     token,
     messageHandle,
-    setting,
     updateUserInfo,
     login,
     logout,
@@ -328,7 +327,7 @@ export const WebSocketProvider = ({ children }) => {
     handleSignupEvent,
     markNotificationAsRead,
     acceptSignUp
-  } = comWithServer(orderToServer, kidEvents, notifications, setting.setAndStoreNotifications);
+  } = comWithServer(orderToServer, kidEvents, notifications);
 
   return (
     <WebSocketContext.Provider value={{
