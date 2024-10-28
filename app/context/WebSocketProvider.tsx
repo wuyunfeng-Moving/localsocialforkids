@@ -2,7 +2,8 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import serverData from './serverData';
 import comWithServer from './comWithServer';
 import { MatchEvents, MatchEvent } from '../types/types';
-import { Event, Notification,UserInfo } from '../types/types';
+import { Event,UserInfo,KidInfo } from '../types/types';
+import { UseMutationResult } from 'react-query';
 
 // Define the type for the context value
 interface WebSocketContextValue {
@@ -22,6 +23,24 @@ interface WebSocketContextValue {
       rejectionReason?: string;
       callback: (success: boolean, message: string) => void;
     }) => Promise<void>;
+    deleteEvent: (params: {
+      eventId: number,
+      callback: (success: boolean, message: string) => void
+    }) => Promise<void>;
+  };
+  update: {
+    updateUserInfo: UseMutationResult<any, Error, {
+      type: "addKidInfo" | "deleteKidInfo" | "updateKidInfo" | "deleteEvent" | "addEvent";
+      newUserInfo: any;
+    }>;
+    addkidinfo: (
+      newKidInfo: Partial<KidInfo>,
+      callback: (success: boolean, message: string) => void
+    ) => Promise<void>;
+    deletekidinfo: (
+      kidId:number,
+      callback: (success: boolean, message: string) => void
+    ) => Promise<void>;
   };
   // ... (other properties)
 }
@@ -66,6 +85,8 @@ export const WebSocketProvider = ({ children }) => {
     token,
     messageHandle,
     updateUserInfo,
+    addkidinfo,
+    deletekidinfo,
     login,
     logout,
     refreshUserData,
@@ -369,7 +390,9 @@ export const WebSocketProvider = ({ children }) => {
         matchedEvents
       },
       update: {
-        updateUserInfo
+        updateUserInfo,
+        addkidinfo,
+        deletekidinfo
       },
       searchEvents,
       changeEvent,

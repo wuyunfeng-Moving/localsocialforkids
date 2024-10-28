@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Event, UserInfo, Events, AuthenticationMessage, MessageFromServer, MatchEvents,MatchEvent,RecommendEvents} from '../types/types';
+import { Event, UserInfo, Events, AuthenticationMessage, 
+    MessageFromServer, MatchEvents,MatchEvent,RecommendEvents
+    ,KidInfo} from '../types/types';
 import * as SecureStore from 'expo-secure-store';
 import { Notification } from '../types/notification_types';
 import {useQuery,useMutation,useQueryClient} from "@tanstack/react-query";
@@ -277,13 +279,51 @@ const serverData = (() => {
         return syncData;
     };
 
+    const addkidinfo = (
+        newKidInfo: Partial<KidInfo>,
+        callback: (success: boolean, message: string) => void
+    ) => {
+        updateUserInfo.mutate(
+            {
+                type: 'addKidInfo',
+                newUserInfo: newKidInfo
+            },
+            {
+                onSuccess: () => callback(true, "Kid info added successfully"),
+                onError: (error) => callback(false, error.message)
+            }
+        );
+    }
+
+    const deletekidinfo = (
+        kidId:number,
+        callback:(success:boolean,message:string)=>void
+    )=>{
+        updateUserInfo.mutate(
+            {
+                type:'deleteKidInfo',
+                newUserInfo:{id:kidId}
+            },
+            {
+                onSuccess:()=>callback(true,"Kid info deleted successfully"),
+                onError:(error)=>callback(false,error.message)
+            }
+        )
+    }
 
     const updateUserInfo = useMutation({
-        mutationFn: async (newUserInfo: Partial<UserInfo>) => {
+        mutationFn: async ({
+            type,
+            newUserInfo
+        }: {
+            type: 'addKidInfo'|'deleteKidInfo'|'updateKidInfo'|'deleteEvent'|'addEvent';
+            newUserInfo: any;  // Changed from Partial<UserInfo> since it could be different types
+        }) => {
             const token = await getToken();
             if (!token) throw new Error('No token');
 
-            const response = await axios.post(`${BASE_URL}/userInfo`, newUserInfo, {
+            const response = await axios.post(`${BASE_URL}/userInfo`, 
+                {type,newUserInfo}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -481,6 +521,39 @@ const serverData = (() => {
         }
     };
 
+    const deleteEvent = async (params: {
+        eventId: number,
+        callback: (success: boolean, message: string) => void
+    }) => {
+        try {
+            const token = await getToken();
+            if (!token) throw new Error('No token');
+
+            const response = await axios.post(`${BASE_URL}/changeEvent`, {
+                eventId: params.eventId,
+                type: 'deleteEvent'
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (response.data.success) {
+                console.log("Event deleted successfully:", response.data);
+                queryClient.invalidateQueries(['userData']);
+                params.callback(true, "Successfully deleted the event");
+            } else {
+                console.warn("Failed to delete event:", response.data.message);
+                params.callback(false, response.data.message || "Failed to delete the event");
+            }
+        } catch (error) {
+            console.error('Error deleting event:', error);
+            let errorMessage = "An error occurred while deleting the event";
+            if (axios.isAxiosError(error) && error.response) {
+                errorMessage = error.response.data.message || errorMessage;
+            }
+            params.callback(false, errorMessage);
+        }
+    };
+
     return ({
         notifications: userDataQuery.data?.notifications||[],
         userEvents: userDataQuery.data?.userEvents || [],
@@ -497,6 +570,8 @@ const serverData = (() => {
         error: userDataQuery.error,
         messageHandle,
         updateUserInfo,
+        addkidinfo,
+        deletekidinfo,
         login: loginMutation.mutate,
         logout: logoutMutation.mutate,
         isLoggingIn: loginMutation.isPending,
@@ -509,12 +584,16 @@ const serverData = (() => {
         },
         changeEvent:{
             signupEvent,
-            approveSignupRequest,  // Add this new function to the returned object
+            approveSignupRequest,
+            deleteEvent,  // Add the new function here
         },
     });
 });
 
 export default serverData;
+
+
+
 
 
 

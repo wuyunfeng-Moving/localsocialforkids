@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, Dimensions, ScrollView, Image, TextInput, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, Dimensions, ScrollView, Image, TextInput, TouchableOpacity, FlatList } from 'react-native';
 import { useWebSocket } from '../../context/WebSocketProvider';
 import { MaterialIcons } from '@expo/vector-icons';
 
@@ -7,14 +7,23 @@ const UserInfoScreen = () => {
   const { userInfo, loginState, update } = useWebSocket();
   const [newEmail, setNewEmail] = useState(userInfo.email||'');
 
-  useEffect(() => {
-    console.log('Current userInfo:', userInfo);
-  }, [userInfo]);
-
   const handleUpdateEmail = () => {
     // 这里应该调用 update 函数来更新邮箱
     update.updateUserInfo({ ...userInfo, email: newEmail ,type:'updateUserInfo'});
   };
+
+  const renderKidItem = ({ item }) => (
+    <View style={styles.kidItem}>
+      <View style={styles.kidPhotoContainer}>
+        <Image
+          source={{ uri: item.photoPath }}
+          style={styles.kidPhoto}
+        />
+      </View>
+      <Text style={styles.kidName}>{item.name}</Text>
+      <Text style={styles.kidAge}>{`${item.age}岁`}</Text>
+    </View>
+  );
 
   return (
     <ScrollView style={styles.container}>
@@ -43,10 +52,23 @@ const UserInfoScreen = () => {
             <TouchableOpacity style={styles.updateButton} onPress={handleUpdateEmail}>
               <Text style={styles.updateButtonText}>更新邮箱</Text>
             </TouchableOpacity>
-            <View style={styles.userInfoItem}>
-              <MaterialIcons name="child-care" size={24} color="#666" />
-              <Text style={styles.label}>孩子：</Text>
-              <Text style={styles.value}>{userInfo.kidinfo.length > 0 ? userInfo.kidinfo.join(', ') : '无'}</Text>
+            <View style={styles.kidSection}>
+              <View style={styles.kidSectionHeader}>
+                <MaterialIcons name="child-care" size={24} color="#666" />
+                <Text style={styles.label}>孩子信息：</Text>
+              </View>
+              {userInfo.kidinfo && userInfo.kidinfo.length > 0 ? (
+                <FlatList
+                  data={userInfo.kidinfo}
+                  renderItem={renderKidItem}
+                  keyExtractor={(item) => item.id.toString()}
+                  horizontal={true}
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.kidList}
+                />
+              ) : (
+                <Text style={styles.noKidsText}>暂无孩子信息</Text>
+              )}
             </View>
           </View>
         </>
@@ -150,6 +172,49 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  kidSection: {
+    marginTop: 20,
+  },
+  kidSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  kidList: {
+    paddingVertical: 8,
+  },
+  kidItem: {
+    alignItems: 'center',
+    marginRight: 16,
+    width: 80,
+  },
+  kidPhotoContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    overflow: 'hidden',
+    marginBottom: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  kidPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  kidName: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  kidAge: {
+    fontSize: 12,
+    color: '#666',
+  },
+  noKidsText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
   },
 });
 

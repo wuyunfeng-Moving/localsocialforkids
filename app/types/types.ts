@@ -32,7 +32,7 @@ export type MatchEvents = {
     [sourceEventId:number]:MatchEvent[]
 };
 
-type KidInfo ={
+export type KidInfo ={
     id: number;
     name: string;
     gender: 'male' | 'female';

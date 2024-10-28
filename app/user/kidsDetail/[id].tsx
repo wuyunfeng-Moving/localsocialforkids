@@ -1,43 +1,25 @@
 import { useState, useEffect } from 'react';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
-import { UserInfo } from '@/app/types/types';
-
-interface Kid {
-  id: string;
-  name: string;
-  age: number;
-  image:string;//location
-  description:string;
-  label:string;
-  // 添加其他需要的属性
-}
+import { KidInfo } from '@/app/types/types';
+import { useWebSocket } from '@/app/context/WebSocketProvider';
 
 export default function KidPage() {
   const { id } = useLocalSearchParams();
-  const [kid, setKid] = useState<Kid | null>({
-    id: '9999',
-    name: 'testname',
-    age: 5,
-    image:'',
-    description:'test description',
-    label:'活泼好动',
-  });
+  const { update, userInfo } = useWebSocket();
   const [isEditing, setIsEditing] = useState(false);
+  const [kid, setKid] = useState<KidInfo | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    // 从API获取孩子信息
-    if (id) {
-      fetchKidData(id as string);
+    if (id && userInfo) {
+      // Extract kid info from userInfo
+      const kidInfo = userInfo.kidinfo?.find(k => k.id === parseInt(id));
+      if (kidInfo) {
+        setKid(kidInfo);
+      }
     }
-  }, [id]);
-
-  const fetchKidData = async (kidId: string) => {
-    // 实现从API获取孩子数据的逻辑
-    // 示例: const response = await fetch(`/api/kids/${kidId}`);
-    // const data = await response.json();
-    // setKid(data);
-  };
+  }, [id, userInfo]);
 
   const handleSubmit = async () => {
     // 实现添加或更新孩子信息的逻辑
@@ -48,6 +30,19 @@ export default function KidPage() {
     //   body: JSON.stringify(kid),
     // });
     setIsEditing(false);
+  };
+
+  const handleDelete = async () => {
+    if (kid) {
+      update.deletekidinfo(kid.id, (success, message) => {
+        if (!success) {
+          console.error(message);
+        } else {
+          // Navigate back after successful deletion
+          router.back();
+        }
+      });
+    }
   };
 
   const handleInputChange = (name: string, value: string) => {
@@ -105,6 +100,11 @@ export default function KidPage() {
           title={id ? 'Update' : 'Add'}
           onPress={handleSubmit}
           color="#4CAF50"
+        />
+        <Button
+          title="Delete"
+          onPress={handleDelete}
+          color="red"
         />
         {id && !isEditing && (
           <Button

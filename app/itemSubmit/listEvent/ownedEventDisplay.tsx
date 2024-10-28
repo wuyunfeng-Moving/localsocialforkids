@@ -10,7 +10,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 const OwnedEventDisplay: React.FC = () => {
     const params = useLocalSearchParams<{ event: string }>();
     const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
-    const { getMatchEvents, comWithServer,update } = useWebSocket();
+    const { getMatchEvents, comWithServer,changeEvent } = useWebSocket();
     const [modalVisible, setModalVisible] = useState(false);
     const [matchEvents, setMatchEvents] = useState<MatchEvent[]>([]);
     const { handleDeleteEvent } = comWithServer;
@@ -47,10 +47,10 @@ const OwnedEventDisplay: React.FC = () => {
     const DeleteEvent = () => {
         if (!currentEvent) return;
         setIsDeleting(true);
-        update.updateUserInfo.mutate(
-            { currentEvent, type: 'deleteEvent' },
-            {
-                onSuccess: () => {
+        changeEvent.deleteEvent({
+            eventId: currentEvent.id,
+            callback: (success, message) => {
+                if (success) {
                     setIsDeleting(false);
                     Alert.alert(
                         "删除成功",
@@ -62,14 +62,13 @@ const OwnedEventDisplay: React.FC = () => {
                             }
                         ]
                     );
-                },
-                onError: (error) => {
+                } else {
                     setIsDeleting(false);
                     Alert.alert("删除失败", "删除事件时出现错误");
                     console.error("Error deleting event:", error);
                 }
             }
-        );
+        });
     };
 
     if (error) {
