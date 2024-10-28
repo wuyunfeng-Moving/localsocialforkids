@@ -7,6 +7,8 @@ import useIndex from '../context/userIndex';
 import { useRouter } from 'expo-router';
 import RecommandEvent from '../itemSubmit/listEvent/recommandEvent';
 import SearchEventsDisplay from '../itemSubmit/listEvent/searchEventDisplay';
+import serverData from '../context/serverData';
+import MyCalendar from '../kalender/index';
 
 const getFormattedTime = () => {
   const now = new Date();
@@ -20,16 +22,29 @@ const TABS = [
     render: (props) => <MyEventDisplay kidEvents={props.kidEvents} userEvents={props.userEvents} />
   },
   { 
-    id: 'recommended', 
-    title: '推荐活动',
-    render: (props) => <RecommandEvent />
-  },
-  { 
     id: 'search', 
     title: '搜索活动',
     render: (props) => <SearchEventsDisplay />
   },
-
+  { 
+    id: 'recommended', 
+    title: '推荐活动',
+    render: (props) => <RecommandEvent />
+  },
+  {
+    id: 'kalender',
+    title: '活动日历',
+    render: (props) => <MyCalendar events={
+      // 将 kidEvents 和 userEvents 转换为日历事件格式
+      [...props.kidEvents, ...props.userEvents].map(event => ({
+        title: event.title || event.name,
+        start: new Date(event.startTime || event.start_time),
+        end: new Date(event.endTime || event.end_time),
+        allDay: false,
+        resource: event
+      }))
+    }/>
+  }
 ];
 
 const parseMatchedEvents = (message) => {
@@ -43,20 +58,31 @@ const parseMatchedEvents = (message) => {
 };
 
 export default function TabOneScreen() {
-  const { userInfo, kidEvents: nestedKidEvents, 
-    userEvents,loginState
-  } = useWebSocket();
+  const { 
+    userInfo, 
+    kidEvents: nestedKidEvents, 
+    userEvents,
+    loginState,
+    refreshUserData,
+    isUserDataLoading
+  } = serverData();
   const router = useRouter();
 
   const {
     activeTab,
     setActiveTab,
-    isRefreshing,
-    onRefreshing,
     hasMoreEvents,
     setLoadMoreEvents,
     isLoadingMore
   } = useIndex();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await refreshUserData();
+    setIsRefreshing(false);
+  }, [refreshUserData]);
 
   const kidEvents = nestedKidEvents.flat();
 
@@ -72,14 +98,14 @@ export default function TabOneScreen() {
     return (
       <ScrollView
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={onRefreshing} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
         }
       >
         {currentTab.render(props)}
         {activeTab === 'recommended' && hasMoreEvents && (
           <TouchableOpacity
             style={styles.loadMoreButton}
-            onPress={()=>setLoadMoreEvents(true)}
+            onPress={() => setLoadMoreEvents(true)}
             disabled={isLoadingMore}
           >
             {isLoadingMore ? (

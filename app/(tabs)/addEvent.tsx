@@ -133,7 +133,7 @@ export default function TabTwoScreen() {
       onSuccess: () => {
         setIsSubmitting(false);
         Alert.alert(
-          "��交成功",
+          "提交成功",
           "事件已成功添加",
           [
             {

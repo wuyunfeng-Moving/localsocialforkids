@@ -2,38 +2,42 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import serverData from './serverData';
 import comWithServer from './comWithServer';
 import { MatchEvents, MatchEvent } from '../types/types';
-import { Event, Notification } from '../types/types';
+import { Event, Notification,UserInfo } from '../types/types';
 
-const WebSocketContext = createContext(null);
+// Define the type for the context value
+interface WebSocketContextValue {
+  userInfo:UserInfo,
+  changeEvent: {
+    signupEvent: (signEventParams: {
+      targetEventId: number;
+      sourceEventId?: number;
+      kidsId?: number[];
+      reason: string;
+      callback: (success: boolean, message: string) => void;
+    }) => Promise<void>;
+    approveSignupRequest: (params: {
+      eventId: number;
+      signupId: number;
+      approved: boolean;
+      rejectionReason?: string;
+      callback: (success: boolean, message: string) => void;
+    }) => Promise<void>;
+  };
+  // ... (other properties)
+}
+
+// Create the context with the defined type
+const WebSocketContext = createContext<WebSocketContextValue | null>(null);
 
 const SERVERIP = "121.196.198.126"
 const PORT = "8080"
 
-// 定义 KidInfo 接口
-interface KidInfo {
-  birthdate: string;
-  gender: 'male' | 'female';
-  id: number;
-  name: string;
-  relation: string;
-  type: 'addkidinfo';
-  user_id: number;
-}
-
-// 定义 UserInfo 接口
-interface UserInfo {
-  email: string;
-  id: number;
-  username: string;
-  kidinfo: [];
-}
-
-export const useWebSocket = () => {
-  try {
-    return useContext(WebSocketContext);
-  } catch (e) {
-    console.log(e);
+export const useWebSocket = (): WebSocketContextValue => {
+  const context = useContext(WebSocketContext);
+  if (context === null) {
+    throw new Error('useWebSocket must be used within a WebSocketProvider');
   }
+  return context;
 };
 
 // 定义一个类型别名
@@ -64,7 +68,19 @@ export const WebSocketProvider = ({ children }) => {
     updateUserInfo,
     login,
     logout,
+    refreshUserData,
+    isUserDataLoading,
+    changeEvent,
+    searchEvents,
   } = serverData();
+
+  // 将 userInfo 的类型明确声明为 UserInfo | null
+  const [typedUserInfo, setTypedUserInfo] = useState<UserInfo | null>(null);
+
+  // 使用 useEffect 来更新 typedUserInfo
+  useEffect(() => {
+    setTypedUserInfo(userInfo as UserInfo | null);
+  }, [userInfo]);
 
   useEffect(() => {
     console.log("userEvents in context:", userEvents);
@@ -332,7 +348,7 @@ export const WebSocketProvider = ({ children }) => {
   return (
     <WebSocketContext.Provider value={{
       send,
-      userInfo,
+      userInfo: typedUserInfo,
       loginState,
       registerMessageHandle,
       orderToServer,
@@ -344,6 +360,8 @@ export const WebSocketProvider = ({ children }) => {
       isParticipateEvent,
       login,
       logout,
+      refreshUserData,
+      isUserDataLoading,
       notifications,
       data: {
         recommendEvents,
@@ -353,6 +371,8 @@ export const WebSocketProvider = ({ children }) => {
       update: {
         updateUserInfo
       },
+      searchEvents,
+      changeEvent,
       comWithServer: {
         handleDeleteEvent,
         handleSignupEvent,

@@ -12,7 +12,7 @@ export type Event = {
     description: string;
     kidIds: number[];
     userId: number;
-    pendingSignUps?: Array<{ sourceEventId: number; reason: string }>;
+    pendingSignUps?: Array<{id:number,type:"event"|"kid",kidIds:number[], sourceEventId: number; reason: string }>;
     status:'preparing'|'started'|'ended'|'merged';
 };
 

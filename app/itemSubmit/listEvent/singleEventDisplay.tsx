@@ -20,10 +20,8 @@ export const SingleEventDisplay = ({
 }: SingleEventDisplayElementType) => {
     const [showMatchEvents, setShowMatchEvents] = useState(false);
     const [showEventDetails, setShowEventDetails] = useState(false);
-    const { getMatchEvents, isEventBelongToUser, isParticipateEvent, userInfo,comWithServer } = useWebSocket();
+    const { refreshUserData, isEventBelongToUser, isParticipateEvent, userInfo, changeEvent } = useWebSocket();
     const [isDeleting, setIsDeleting] = useState(false);
-    const matchEvents: MatchEvent[] = getMatchEvents(currentEvent.id);
-    const { acceptSignUp } = comWithServer;
     const [timeRemaining, setTimeRemaining] = useState('');
 
     useEffect(() => {
@@ -126,11 +124,22 @@ export const SingleEventDisplay = ({
     const handleRejectSignUp = async (signUpId: number) => {
         setIsDeleting(true);
         try {
-            await acceptSignUp(currentEvent.id, signUpId, false, () => {
-                console.log("success");
+            await changeEvent.approveSignupRequest({
+                eventId: currentEvent.id,
+                signupId: signUpId,
+                approved: false,
+                callback: async (success, message) => {
+                    if (success) {
+                        console.log("Successfully rejected sign-up");
+                        // Refresh data and wait for completion
+                        await refreshUserData();
+                    } else {
+                        console.error("Failed to reject sign-up:", message);
+                    }
+                }
             });
         } catch (error) {
-            console.error("Error rejecting sign-up:", error);
+            console.error('Error rejecting sign-up:', error);
         }
         setIsDeleting(false);
     };
@@ -138,12 +147,22 @@ export const SingleEventDisplay = ({
     const handleAcceptSignUp = async (signUpId: number) => {
         setIsDeleting(true);
         try {
-            await acceptSignUp(currentEvent.id, signUpId, true, () => {
-                console.log("success");
+            await changeEvent.approveSignupRequest({
+                eventId: currentEvent.id,
+                signupId: signUpId,
+                approved: true,
+                callback: async (success, message) => {
+                    if (success) {
+                        console.log("Successfully accepted sign-up");
+                        // Refresh data and wait for completion
+                        await refreshUserData();
+                    } else {
+                        console.error("Failed to accept sign-up:", message);
+                    }
+                }
             });
-            // Optionally, update the local state or trigger a refresh
         } catch (error) {
-            console.error("Error accepting sign-up:", error);
+            console.error('Error accepting sign-up:', error);
         }
         setIsDeleting(false);
     };
@@ -231,19 +250,25 @@ export const SingleEventDisplay = ({
                     <Text style={styles.pendingSignUpsTitle}>待处理申请:</Text>
                     {currentEvent.pendingSignUps.map((signup, index) => (
                         <View key={index} style={styles.pendingSignUpItem}>
-                            <Text>来源事件ID: {signup.sourceEventId}</Text>
+                            <Text>
+                                {signup.type === 'kid' ? '孩子ID: ' : '事件ID: '}
+                                <Text style={styles.idText}>
+                                    {signup.type === 'kid' ? signup.kidIds.join(', ') : signup.sourceEventId}
+                                </Text>
+                            </Text>
+                            <Text>申请类型: {signup.type === 'kid' ? '孩子' : '事件'}</Text>
                             <Text>原因: {signup.reason}</Text>
                             <View style={styles.signUpButtonContainer}>
                                 <TouchableOpacity
                                     style={[styles.signUpButton, styles.rejectButton]}
-                                    onPress={() => handleRejectSignUp(signup.sourceEventId)}
+                                    onPress={() => handleRejectSignUp(signup.id)}
                                     disabled={isDeleting}
                                 >
                                     <Text style={styles.buttonText}>拒绝</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[styles.signUpButton, styles.acceptButton]}
-                                    onPress={() => handleAcceptSignUp(signup.sourceEventId)}
+                                    onPress={() => handleAcceptSignUp(signup.id)}
                                     disabled={isDeleting}
                                 >
                                     <Text style={styles.buttonText}>通过</Text>

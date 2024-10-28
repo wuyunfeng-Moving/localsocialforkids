@@ -19,28 +19,47 @@ const BASE_URL = `http://${SERVERIP}:${PORT}`;
 
 */
 
+// Custom hook to add delayed loading state
+function useDelayedQuery<TData>(
+  queryKey: string[],
+  queryFn: () => Promise<TData>,
+  delayMs: number = 2000
+) {
+  const query = useQuery<TData>({ queryKey, queryFn });
+  const [delayedLoading, setDelayedLoading] = useState(true);
+
+  useEffect(() => {
+    if (query.isLoading) {
+      setDelayedLoading(true);
+    } else {
+      const timer = setTimeout(() => setDelayedLoading(false), delayMs);
+      return () => clearTimeout(timer);
+    }
+  }, [query.isLoading, delayMs]);
+
+  return {
+    ...query,
+    isLoading: delayedLoading,
+  };
+}
 
 const serverData = (() => {
 
     const queryClient = useQueryClient();
 
-    const userDataQuery = useQuery({
-        queryKey: ['userData'],
-        queryFn: async () => {
-            const token = await getToken();
-            if (!token) throw new Error('no token');
-            
-            // console.log("Fetching user data")
-            const response = await axios.get(`${BASE_URL}/userInfo`, {
-                headers: {Authorization: `Bearer ${token}`}
-            });
-            if (response.data.success) {
-                console.log("Fetching user data",response.data);
-                return response.data;
-            }
-            throw new Error('Failed to fetch user data');
+    const userDataQuery = useDelayedQuery(['userData'], async () => {
+        const token = await getToken();
+        if (!token) throw new Error('no token');
+        
+        const response = await axios.get(`${BASE_URL}/userInfo`, {
+            headers: {Authorization: `Bearer ${token}`}
+        });
+        if (response.data.success) {
+            console.log("Fetching user data", response.data);
+            return response.data;
         }
-    });
+        throw new Error('Failed to fetch user data');
+    }, 2000);  // 2000ms delay
 
     useEffect(() => {
         if (userDataQuery.isSuccess) {
@@ -53,7 +72,6 @@ const serverData = (() => {
     }, [userDataQuery.isSuccess, userDataQuery.isError, userDataQuery.error]);
 
     // const userEvents = userInfoQuery.data.userEvents;
-    const [kidEvents, setKidEvents] = useState<Events>([]);
     const [following,setFollowing] = useState<UserInfo[]>([
         {
             id: 1,
@@ -161,11 +179,6 @@ const serverData = (() => {
 
         fetchTokenAndVerify();
     }, []); // 仅在组件挂载时运行
-    
-    useEffect(()=>{
-        console.log("current kidEvents:",kidEvents);
-
-    },[kidEvents]);
 
     const storeToken = async (token) => {
         try {
@@ -185,57 +198,6 @@ const serverData = (() => {
         }
     };
 
-    
-
-
-    const checkAuthenticationMessage = (message: any): AuthenticationMessage | null => {
-        if (message.type !== 'verifyToken') {
-            console.warn('Unexpected message type for authentication:', message.type);
-            return null;
-        }
-
-        if (typeof message.success !== 'boolean') {
-            console.warn('Authentication message missing success field or not boolean');
-            return null;
-        }
-
-        if (message.success === false) {
-            console.warn('Token verification failed');
-            setLoginState({ logined: false, error: 'Token expired' });
-            setToken(null);
-            setUserInfo(null);
-            setUserEvents([]);
-            setKidEvents([]);
-            return null;
-        }
-
-        if (!Number.isInteger(message.userId)) {
-            console.warn('Authentication message missing userId or not an integer');
-            return null;
-        }
-
-        if (typeof message.userinfo !== 'object' || message.userinfo === null) {
-            console.warn('Authentication message missing userinfo or not an object');
-            return null;
-        }
-
-        const { email, username, id, kidinfo } = message.userinfo;
-
-        if (typeof email !== 'string' || typeof username !== 'string' || !Number.isInteger(id)) {
-            console.warn('Authentication userinfo has invalid or missing fields');
-            return null;
-        }
-
-        if (!Array.isArray(kidinfo)) {
-            console.warn('Authentication userinfo kidinfo is not an array');
-            return null;
-        }
-
-        return message as AuthenticationMessage;
-    };
-
-
-
     const messageHandle = async (message: MessageFromServer) => {
         console.log('Received message:', message);
         let syncData = null;
@@ -244,26 +206,8 @@ const serverData = (() => {
             case 'notification':
                 {
                     console.log('Received notification message:', message);
-                    setAndStoreNotifications(message.notification);
                 }
                 break;
-
-            case 'getUserEvents':
-                {
-                    if (Array.isArray(message.userEvents)) {
-                        setUserEvents(message.userEvents);
-                    }
-                    
-                    if (Array.isArray(message.kidEvents) && message.kidEvents.length > 0) {
-                        // Flatten the nested array and filter out events from the current user
-                        const flattenedKidEvents = message.kidEvents.flat(2).filter(event => event && event.userId !== userInfo?.id);
-                        setKidEvents(flattenedKidEvents);
-                    } else {
-                        setKidEvents([]);
-                    }
-                }
-                break;
-
             case 'getMatch':
                 {
                     try {
@@ -305,42 +249,6 @@ const serverData = (() => {
                     }
                 }
                 break;
-            case 'login':
-                {
-                    if (message.success) {
-                        storeToken(message.token);
-                        setLoginState({ logined: true, error: '' });
-                        // Update the userInfo query data instead of setting state
-                        queryClient.setQueryData(['userInfo'], message.userInfo);
-                    } else {
-                        console.warn("Login failed:", message.message);
-                        setLoginState({ logined: false, error: message.message });
-                    }
-                }
-                break;
-
-            case 'verifyToken':
-                {
-                    const data = checkAuthenticationMessage(message);
-                    if (data && data.success) {
-                        setLoginState({ logined: true, error: '' });
-                        queryClient.setQueryData(['userInfo'], data.userinfo);
-                        
-                        const storedNotifications = await getLocalNotifications();
-                        syncData = {
-                            type: 'appDataSyncToServer',
-                            notification: {
-                                id: storedNotifications.length > 0 ? storedNotifications[storedNotifications.length - 1].id : 0
-                            }
-                        };
-
-                        console.log('syncData:', JSON.stringify(syncData, null, 2));
-                    } else {
-                        console.warn("Token verification failed");
-                        await clearAllData();
-                    }
-                }
-                break;
             case 'addkidinfo':
                 {
                     if (message.success) {
@@ -350,19 +258,6 @@ const serverData = (() => {
                     } else {
                         console.warn("Failed to add kid info");
                         // Handle the error case if needed
-                    }
-                }
-                break;
-            case 'logout':
-                {
-                    if (message.success) {
-                        // console.log("Logout successful:", message.message);
-                        setLoginState({ logined: false, error: '' });
-                        setToken(null);
-                        SecureStore.deleteItemAsync('userToken');
-                    } else {
-                        console.warn("Logout failed:", message.message);
-                        // Optionally handle failed logout
                     }
                 }
                 break;
@@ -405,6 +300,8 @@ const serverData = (() => {
             }
         }
     });
+
+    
 
     const logoutMutation = useMutation({
         mutationFn: async () => {
@@ -473,6 +370,117 @@ const serverData = (() => {
         console.log('Cleared all data due to token verification failure');
     };
 
+    const [searchResults, setSearchResults] = useState<Event[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchError, setSearchError] = useState<Error | null>(null);
+
+    const searchEvents = async (searchParams: {
+        keyword?: string;
+        startDate?: string;
+        endDate?: string;
+        location?: [number, number];  // [latitude, longitude]
+        radius?: number;  // in kilometers
+    }) => {
+        setIsSearching(true);
+        setSearchError(null);
+        try {
+            const token = await getToken();
+            if (!token) throw new Error('No token');
+
+            const response = await axios.post(`${BASE_URL}/searchEvents`, searchParams, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            console.log("Search results:", response.data.events);
+            setSearchResults(response.data.events);
+        } catch (error) {
+            console.error('Failed to search events:', error);
+            setSearchError(error instanceof Error ? error : new Error('An unknown error occurred'));
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const signupEvent = async (signEventParams: {
+        targetEventId: number,
+        sourceEventId?: number,
+        kidsId?: number[],
+        reason: string,
+        callback: (success: boolean, message: string) => void,
+    }) => {
+        try {
+            const token = await getToken();
+            if (!token) throw new Error('No token');
+
+            const response = await axios.post(`${BASE_URL}/changeEvent`, {
+                targetEventId: signEventParams.targetEventId,
+                sourceEventId: signEventParams.sourceEventId,
+                kidsId: signEventParams.kidsId,
+                reason: signEventParams.reason,
+                type:'signupEvent'
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (response.data.success) {
+                console.log("Event signup successful:", response.data);
+                // Update local state if necessary
+                // For example, you might want to update userEvents or kidEvents
+                queryClient.invalidateQueries(['userData']);
+                signEventParams.callback(true, "Successfully signed up for the event");
+            } else {
+                console.warn("Event signup failed:", response.data.message);
+                signEventParams.callback(false, response.data.message || "Failed to sign up for the event");
+            }
+        } catch (error) {
+            console.error('Error signing up for event:', error);
+            let errorMessage = "An error occurred while signing up for the event";
+            if (axios.isAxiosError(error) && error.response) {
+                errorMessage = error.response.data.message || errorMessage;
+            }
+            signEventParams.callback(false, errorMessage);
+        }
+    };
+
+    const approveSignupRequest = async (params: {
+        eventId: number,
+        signupId: number,
+        approved: boolean,
+        rejectionReason?: string,
+        callback: (success: boolean, message: string) => void
+    }) => {
+        try {
+            const token = await getToken();
+            if (!token) throw new Error('No token');
+
+            const response = await axios.post(`${BASE_URL}/changeEvent`, {
+                eventId: params.eventId,
+                signupId: params.signupId,
+                approved: params.approved,
+                type:'approveSignUp',
+                rejectionReason: params.rejectionReason
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (response.data.success) {
+                console.log("Signup request processed successfully:", response.data);
+                queryClient.invalidateQueries(['userData']);
+                params.callback(true, params.approved ? "Signup request approved" : "Signup request rejected");
+            } else {
+                console.warn("Failed to process signup request:", response.data.message);
+                params.callback(false, response.data.message || "Failed to process signup request");
+            }
+        } catch (error) {
+            console.error('Error processing signup request:', error);
+            let errorMessage = "An error occurred while processing the signup request";
+            if (axios.isAxiosError(error) && error.response) {
+                errorMessage = error.response.data.message || errorMessage;
+            }
+            params.callback(false, errorMessage);
+        }
+    };
+
     return ({
         notifications: userDataQuery.data?.notifications||[],
         userEvents: userDataQuery.data?.userEvents || [],
@@ -482,8 +490,9 @@ const serverData = (() => {
         matchedEvents,
         loginState,
         userInfo: userDataQuery.data?.userInfo,
+        refreshUserData:userDataQuery.refetch,
         token,
-        isLoading: userDataQuery.isLoading,
+        isUserDataLoading: userDataQuery.isLoading,
         isError: userDataQuery.isError,
         error: userDataQuery.error,
         messageHandle,
@@ -492,10 +501,25 @@ const serverData = (() => {
         logout: logoutMutation.mutate,
         isLoggingIn: loginMutation.isPending,
         loginError: loginMutation.error,
+        searchEvents: {
+            search: searchEvents,
+            isSearching,
+            searchError,
+            results: searchResults,
+        },
+        changeEvent:{
+            signupEvent,
+            approveSignupRequest,  // Add this new function to the returned object
+        },
     });
 });
 
 export default serverData;
+
+
+
+
+
 
 
 

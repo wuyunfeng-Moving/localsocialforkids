@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { WebSocketProvider } from './context/WebSocketProvider';
+import { LocationProvider } from './context/LocationContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -57,12 +58,15 @@ function RootLayoutNav() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <WebSocketProvider>
+        <LocationProvider>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
             <Stack.Screen name="user"  options={{headerShown: false}}/>
+            <Stack.Screen name='events/[id]' options={{headerShown:true}}/>
             {/* <Stack.Screen name="itemSubmit" options={{}}/> */}
           </Stack>
+          </LocationProvider>
         </WebSocketProvider>
       </ThemeProvider>
     </QueryClientProvider>

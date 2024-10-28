@@ -21,8 +21,6 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <LocationProvider>
-      {/* <WebSocketProvider> */}
         <Tabs
           screenOptions={{
             tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
@@ -81,8 +79,5 @@ export default function TabLayout() {
             }}
           />
         </Tabs>
-
-      {/* </WebSocketProvider> */}
-    </LocationProvider>
   );
 }
