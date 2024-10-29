@@ -21,7 +21,7 @@ const FollowingPage: React.FC = () => {
           return new Promise<FollowedUser>((resolve) => {
             getUserInfo(userId, (userInfo) => {
               resolve({
-                id: userInfo.id,
+                id: userInfo.id.toString(),
                 name: userInfo.username,
                 introduction: userInfo.introduction
               });
@@ -41,7 +41,7 @@ const FollowingPage: React.FC = () => {
     <TouchableOpacity
       style={styles.userItem}
       onPress={() => router.push({
-        pathname: '/followingDetail/[id]',
+        pathname: './followingDetail/[id]',
         params: { id: item.id }
       })}
     >

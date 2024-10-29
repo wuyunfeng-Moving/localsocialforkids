@@ -400,6 +400,8 @@ const serverData = (() => {
         endDate?: string;
         location?: [number, number];  // [latitude, longitude]
         radius?: number;  // in kilometers
+        eventId?:number;
+        callback?: (events: Event[]) => void;
     }) => {
         setIsSearching(true);
         setSearchError(null);
@@ -413,6 +415,7 @@ const serverData = (() => {
 
             console.log("Search results:", response.data.events);
             setSearchResults(response.data.events);
+            searchParams.callback?.(response.data.events);
         } catch (error) {
             console.error('Failed to search events:', error);
             setSearchError(error instanceof Error ? error : new Error('An unknown error occurred'));
@@ -621,6 +624,41 @@ const serverData = (() => {
         }
     };
 
+    const addComment = async (params: {
+        eventId: number,
+        comment: string,
+        callback?: (success: boolean, message: string) => void
+    }) => {
+        try {
+            const token = await getToken();
+            if (!token) throw new Error('No token');
+
+            const response = await axios.post(`${BASE_URL}/changeEvent`, {
+                eventId: params.eventId,
+                comment: params.comment,
+                type: 'addComment'
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (response.data.success) {
+                console.log("Comment added successfully:", response.data);
+                queryClient.invalidateQueries(['userData']);
+                params.callback?.(true, "Successfully added comment");
+            } else {
+                console.warn("Failed to add comment:", response.data.message);
+                params.callback?.(false, response.data.message || "Failed to add comment");
+            }
+        } catch (error) {
+            console.error('Error adding comment:', error);
+            let errorMessage = "An error occurred while adding the comment";
+            if (axios.isAxiosError(error) && error.response) {
+                errorMessage = error.response.data.message || errorMessage;
+            }
+            params.callback?.(false, errorMessage);
+        }
+    };
+
     return ({
         notifications: userDataQuery.data?.notifications||[],
         userEvents: userDataQuery.data?.userEvents || [],
@@ -652,6 +690,7 @@ const serverData = (() => {
             signupEvent,
             approveSignupRequest,
             deleteEvent,  // Add the new function here
+            addComment,
         },
         getUserInfo,  // Add this to the returned object
         followActions: {

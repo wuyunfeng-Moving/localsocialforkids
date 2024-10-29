@@ -9,6 +9,20 @@ import { UseMutationResult } from 'react-query';
 interface WebSocketContextValue {
   userInfo: UserInfo | null,
   getUserInfo: (userId: number,callback: (userInfo: UserInfo,kidEvents: KidInfo[],userEvents: Event[]) => void) => Promise<UserInfo>,
+  searchEvents: {
+    search: (searchParams: {
+      keyword?: string;
+      startDate?: string;
+      endDate?: string;
+      location?: [number, number];  // [latitude, longitude]
+      radius?: number;  // in kilometers
+      eventId?: number;
+      callback?: (events: Event[]) => void;
+    }) => Promise<void>;
+    isSearching: boolean;
+    searchError: Error | null;
+    results: Event[];
+  }
   changeEvent: {
     signupEvent: (signEventParams: {
       targetEventId: number;
@@ -27,6 +41,11 @@ interface WebSocketContextValue {
     deleteEvent: (params: {
       eventId: number,
       callback: (success: boolean, message: string) => void
+    }) => Promise<void>;
+    submitComment: (params: {
+      eventId: number;
+      comment: string;
+      callback: (success: boolean, message: string) => void;
     }) => Promise<void>;
   };
   update: {
@@ -405,7 +424,12 @@ export const WebSocketProvider = ({ children }) => {
         deletekidinfo
       },
       searchEvents,
-      changeEvent,
+      changeEvent: {
+        signupEvent: changeEvent.signupEvent,
+        approveSignupRequest: changeEvent.approveSignupRequest,
+        deleteEvent: changeEvent.deleteEvent,
+        submitComment: changeEvent.addComment,
+      },
       followActions,
       comWithServer: {
         handleDeleteEvent,

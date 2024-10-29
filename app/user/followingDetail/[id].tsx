@@ -6,13 +6,14 @@ import { useWebSocket } from '../../context/WebSocketProvider';
 
 const FollowingUserPage: React.FC = () => {
   const { id } = useLocalSearchParams();
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const { getUserInfo,followActions } = useWebSocket();
+  const [currentUserInfo, setCurrentUserInfo] = useState<UserInfo | null>(null);
+  const { getUserInfo,followActions,userInfo:myUserInfo } = useWebSocket();
+  const [isFollowing,setIsFollowing] = useState(false);
   useEffect(() => {
     const userId = typeof id === 'string' ? parseInt(id) : 0;
     getUserInfo(userId,(userInfo,kidEvents,userEvents) => {
-      setUserInfo(userInfo);
+      setCurrentUserInfo(userInfo);
+      setIsFollowing(myUserInfo?.following?.includes(userInfo.id) || false);
     });
   }, [id]);
 
@@ -20,17 +21,15 @@ const FollowingUserPage: React.FC = () => {
     try {
         if(isFollowing){
             await followActions.unfollowUser({
-                userId: Number(id),
+                userId: parseInt(id),
                 callback: () => {
-                    setIsFollowing(false);
                     Alert.alert('提示', '已取消关注');
                 }
             });
         } else {
             await followActions.followUser({
-                userId: Number(id),
+                userId: parseInt(id),
                 callback: () => {
-                    setIsFollowing(true);
                     Alert.alert('提示', '关注成功');
                 }
             });
@@ -41,17 +40,17 @@ const FollowingUserPage: React.FC = () => {
     }
   };
 
-  if (!userInfo) return <Text>Loading...</Text>;
+  if (!currentUserInfo) return <Text>Loading...</Text>;
 
   return (
     <View style={styles.container}>
-      <Image source={{ uri: userInfo.photoPath }} style={styles.avatar} />
-      <Text style={styles.fullName}>{userInfo.username}</Text>
-      <Text style={styles.username}>@{userInfo.username}</Text>
-      <Text style={styles.bio}>{userInfo.introduction}</Text>
-      {userInfo.following && (
+      <Image source={{ uri: currentUserInfo.photoPath }} style={styles.avatar} />
+      <Text style={styles.fullName}>{currentUserInfo.username}</Text>
+      <Text style={styles.username}>@{currentUserInfo.username}</Text>
+      <Text style={styles.bio}>{currentUserInfo.introduction}</Text>
+      {currentUserInfo.following && (
         <View style={styles.statsContainer}>
-          <Text style={styles.statsText}>Following: {userInfo.following?.length}</Text>
+          <Text style={styles.statsText}>Following: {currentUserInfo.following?.length}</Text>
         </View>
       )}
       

@@ -1,5 +1,12 @@
 import {Notification} from "./notification_types"
 
+export type Comment = {
+    id: number;
+    content: string;
+    userId: number;
+};
+
+
 export type Event = {
     id: number;
     place: {
@@ -14,6 +21,7 @@ export type Event = {
     userId: number;
     pendingSignUps?: Array<{id:number,type:"event"|"kid",kidIds:number[], sourceEventId: number; reason: string }>;
     status:'preparing'|'started'|'ended'|'merged';
+    comments?:Comment[];
 };
 
 export type RecommendEvent={
