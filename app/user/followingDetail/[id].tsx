@@ -1,36 +1,68 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserInfo } from '../../types/types';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useWebSocket } from '../../context/WebSocketProvider';
 
-interface FollowingUserProps {
-  userInfo: UserInfo;
-}
+const FollowingUserPage: React.FC = () => {
+  const { id } = useLocalSearchParams();
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const { getUserInfo,followActions } = useWebSocket();
+  useEffect(() => {
+    const userId = typeof id === 'string' ? parseInt(id) : 0;
+    getUserInfo(userId,(userInfo,kidEvents,userEvents) => {
+      setUserInfo(userInfo);
+    });
+  }, [id]);
 
-const FollowingUserPage: React.FC<FollowingUserProps> = ({ userInfo }) => {
-  // 初始化一个示例 userInfo
-  const sampleUserInfo: UserInfo = {
-    id: '1',
-    username: 'johndoe',
-    fullName: 'John Doe',
-    avatar: 'https://example.com/avatar.jpg',
-    bio: 'Passionate developer and tech enthusiast',
-    followersCount: 1000,
-    followingCount: 500,
+  const handleFollowToggle = async () => {
+    try {
+        if(isFollowing){
+            await followActions.unfollowUser({
+                userId: Number(id),
+                callback: () => {
+                    setIsFollowing(false);
+                    Alert.alert('提示', '已取消关注');
+                }
+            });
+        } else {
+            await followActions.followUser({
+                userId: Number(id),
+                callback: () => {
+                    setIsFollowing(true);
+                    Alert.alert('提示', '关注成功');
+                }
+            });
+        }
+    } catch (error) {
+      console.error('Error toggling follow status:', error);
+      Alert.alert('错误', '操作失败，请稍后重试');
+    }
   };
 
-  // 使用 props 中的 userInfo，如果没有则使用示例数据
-  const user = userInfo || sampleUserInfo;
+  if (!userInfo) return <Text>Loading...</Text>;
 
   return (
     <View style={styles.container}>
-      <Image source={{ uri: user.avatar }} style={styles.avatar} />
-      <Text style={styles.fullName}>{user.fullName}</Text>
-      <Text style={styles.username}>@{user.username}</Text>
-      <Text style={styles.bio}>{user.bio}</Text>
-      <View style={styles.statsContainer}>
-        <Text style={styles.statsText}>Followers: {user.followersCount}</Text>
-        <Text style={styles.statsText}>Following: {user.followingCount}</Text>
-      </View>
+      <Image source={{ uri: userInfo.photoPath }} style={styles.avatar} />
+      <Text style={styles.fullName}>{userInfo.username}</Text>
+      <Text style={styles.username}>@{userInfo.username}</Text>
+      <Text style={styles.bio}>{userInfo.introduction}</Text>
+      {userInfo.following && (
+        <View style={styles.statsContainer}>
+          <Text style={styles.statsText}>Following: {userInfo.following?.length}</Text>
+        </View>
+      )}
+      
+      <TouchableOpacity 
+        style={[styles.followButton, isFollowing && styles.followingButton]} 
+        onPress={handleFollowToggle}
+      >
+        <Text style={styles.followButtonText}>
+          {isFollowing ? '取消关注' : '关注'}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -68,6 +100,21 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   statsText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  followButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginTop: 20,
+  },
+  followingButton: {
+    backgroundColor: '#gray',
+  },
+  followButtonText: {
+    color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
   },

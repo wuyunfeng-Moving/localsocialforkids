@@ -1,31 +1,52 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { useWebSocket } from '../context/WebSocketProvider';
 
 interface FollowedUser {
   id: string;
-  name: string;
+  name?: string;
   introduction: string;
 }
 
 const FollowingPage: React.FC = () => {
-  const { data } = useWebSocket();
+  const { userInfo, getUserInfo } = useWebSocket();
   const router = useRouter();
+  const [followedUsers, setFollowedUsers] = useState<FollowedUser[]>([]);
 
-  const followedUsers: FollowedUser[] = data.following.map((user) => ({
-    id: user.id,
-    name: user.username,
-    introduction: user.introduction,
-  }));
+  useEffect(() => {
+    const fetchFollowedUsers = async () => {
+      if (userInfo?.following) {
+        const usersPromises = userInfo.following.map(async (userId) => {
+          return new Promise<FollowedUser>((resolve) => {
+            getUserInfo(userId, (userInfo) => {
+              resolve({
+                id: userInfo.id,
+                name: userInfo.username,
+                introduction: userInfo.introduction
+              });
+            });
+          });
+        });
+
+        const users = await Promise.all(usersPromises);
+        setFollowedUsers(users);
+      }
+    };
+
+    fetchFollowedUsers();
+  }, [userInfo]);
 
   const renderUserItem = ({ item }: { item: FollowedUser }) => (
     <TouchableOpacity
       style={styles.userItem}
-      onPress={() => router.push(`./followingDetail/[id]`)}
+      onPress={() => router.push({
+        pathname: '/followingDetail/[id]',
+        params: { id: item.id }
+      })}
     >
-      <Text style={styles.userName}>{item.name}</Text>
-      <Text style={styles.userIntro}>{item.introduction}</Text>
+      <Text style={styles.userName}>{item.name || '未知用户'}</Text>
+      <Text style={styles.userIntro}>{item.introduction || '暂无简介'}</Text>
     </TouchableOpacity>
   );
 

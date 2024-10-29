@@ -7,7 +7,8 @@ import { UseMutationResult } from 'react-query';
 
 // Define the type for the context value
 interface WebSocketContextValue {
-  userInfo:UserInfo,
+  userInfo: UserInfo | null,
+  getUserInfo: (userId: number,callback: (userInfo: UserInfo,kidEvents: KidInfo[],userEvents: Event[]) => void) => Promise<UserInfo>,
   changeEvent: {
     signupEvent: (signEventParams: {
       targetEventId: number;
@@ -42,7 +43,16 @@ interface WebSocketContextValue {
       callback: (success: boolean, message: string) => void
     ) => Promise<void>;
   };
-  // ... (other properties)
+  followActions: {
+    followUser: (params: { 
+      userId: number; 
+      callback: (success: boolean, message: string) => void 
+    }) => Promise<void>;
+    unfollowUser: (params: { 
+      userId: number; 
+      callback: (success: boolean, message: string) => void 
+    }) => Promise<void>;
+  };
 }
 
 // Create the context with the defined type
@@ -77,7 +87,6 @@ export const WebSocketProvider = ({ children }) => {
     notifications,
     userEvents,
     kidEvents,
-    following,
     recommendEvents,
     matchedEvents,
     loginState,
@@ -90,9 +99,11 @@ export const WebSocketProvider = ({ children }) => {
     login,
     logout,
     refreshUserData,
+    getUserInfo,
     isUserDataLoading,
     changeEvent,
     searchEvents,
+    followActions,
   } = serverData();
 
   // 将 userInfo 的类型明确声明为 UserInfo | null
@@ -372,7 +383,7 @@ export const WebSocketProvider = ({ children }) => {
       userInfo: typedUserInfo,
       loginState,
       registerMessageHandle,
-      orderToServer,
+      getUserInfo:getUserInfo,
       // events,
       userEvents,
       kidEvents,
@@ -386,7 +397,6 @@ export const WebSocketProvider = ({ children }) => {
       notifications,
       data: {
         recommendEvents,
-        following,
         matchedEvents
       },
       update: {
@@ -396,6 +406,7 @@ export const WebSocketProvider = ({ children }) => {
       },
       searchEvents,
       changeEvent,
+      followActions,
       comWithServer: {
         handleDeleteEvent,
         handleSignupEvent,

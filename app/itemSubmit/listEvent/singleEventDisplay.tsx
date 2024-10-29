@@ -4,12 +4,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useWebSocket } from '@/app/context/WebSocketProvider';
 import FullScreenModal from '../commonItem/FullScreenModal';
 import { Event, Events, MatchEvent, MatchEvents, UserInfo } from '@/app/types/types';
+import { useRouter } from 'expo-router';
 
 export type SingleEventDisplayElementType = {
     currentEvent: Event,
     depth: number,
     list: 1 | 0,
-    match?: matchEventElementType
+    match?: MatchEvent
 };
 
 export const SingleEventDisplay = ({
@@ -18,6 +19,7 @@ export const SingleEventDisplay = ({
     list,
     match
 }: SingleEventDisplayElementType) => {
+    const router = useRouter();
     const [showMatchEvents, setShowMatchEvents] = useState(false);
     const [showEventDetails, setShowEventDetails] = useState(false);
     const { refreshUserData, isEventBelongToUser, isParticipateEvent, userInfo, changeEvent } = useWebSocket();
@@ -167,6 +169,12 @@ export const SingleEventDisplay = ({
         setIsDeleting(false);
     };
 
+    const handleUserPress = () => {
+        if (currentEvent.userId && !isEventBelongToUser(currentEvent.userId)) {
+            router.push(`/user/followingDetail/${currentEvent.userId}`);
+        }
+    };
+
     return (
         // <TouchableOpacity onPress={handleEventPress} disabled={list !== 1}>
         <View style={getContainerStyle()}>
@@ -229,10 +237,18 @@ export const SingleEventDisplay = ({
             )}
 
             {currentEvent.userId && (
-                <View style={styles.infoRow}>
-                    <Ionicons name="person-outline" size={20} color="#666" />
-                    <Text style={styles.infoText}>创建人: {currentEvent.userId}</Text>
-                </View>
+                <TouchableOpacity 
+                    onPress={handleUserPress}
+                    disabled={isEventBelongToUser(currentEvent.userId)}
+                >
+                    <View style={styles.infoRow}>
+                        <Ionicons name="person-outline" size={20} color="#666" />
+                        <Text style={[
+                            styles.infoText,
+                            !isEventBelongToUser(currentEvent.userId) && styles.clickableText
+                        ]}>创建人: {currentEvent.userId}</Text>
+                    </View>
+                </TouchableOpacity>
             )}
 
             {match && (
@@ -405,5 +421,9 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#007AFF',
         fontWeight: 'bold',
+    },
+    clickableText: {
+        color: '#007AFF',
+        textDecorationLine: 'underline',
     },
 });

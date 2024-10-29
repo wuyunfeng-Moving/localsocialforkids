@@ -73,26 +73,6 @@ const serverData = (() => {
         }
     }, [userDataQuery.isSuccess, userDataQuery.isError, userDataQuery.error]);
 
-    // const userEvents = userInfoQuery.data.userEvents;
-    const [following,setFollowing] = useState<UserInfo[]>([
-        {
-            id: 1,
-            username: 'Alice',
-            email: '',
-            introduction: '测试一下',
-            kidinfo: [
-                {
-                    id: 1,
-                    name: 'Alice\'s kid 1',
-                    birthDate: '2021-01-01',
-                    gender: 'male',
-                    photoPath: '',
-                    description: '',
-                    personalSpaceUrl: '',
-                    guardians: []
-                }]
-            }
-    ]);
     const [recommendEvents, setRecommendEvents] = useState<RecommendEvents>([
         {
             event: {
@@ -554,11 +534,97 @@ const serverData = (() => {
         }
     };
 
+    // Add this new query function
+    const getUserInfo = async (userId: number,callback: (userInfo: UserInfo,kidEvents: KidInfo[],userEvents: Event[]) => void): Promise<UserInfo> => {
+        const token = await getToken();
+        if (!token) throw new Error('No token');
+
+        console.log("getUserInfo",userId);
+        
+        const response = await axios.get(`${BASE_URL}/getUserInfo/${userId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        console.log("getUserInfo response",response.data);  
+        if (response.data.success) {
+            callback(response.data.data.userInfo,response.data.data.kidEvents,response.data.data.userEvents);
+            return response.data.data.userInfo;
+        }
+        throw new Error(response.data.message || 'Failed to fetch user info');
+    };
+
+    // Add following state near other state declarations
+    const [following, setFollowing] = useState<number[]>([]);
+
+    // Add these new functions inside serverData
+    const followUser = async (params: {
+        userId: number,
+        callback: (success: boolean, message: string) => void
+    }) => {
+        try {
+            const token = await getToken();
+            if (!token) throw new Error('No token');
+
+            const response = await axios.post(`${BASE_URL}/userInfo`, {
+                targetUserId: params.userId,
+                type: 'follow'
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (response.data.success) {
+                setFollowing(prev => [...prev, params.userId]);
+                queryClient.invalidateQueries(['userData']);
+                params.callback(true, "Successfully followed user");
+            } else {
+                params.callback(false, response.data.message || "Failed to follow user");
+            }
+        } catch (error) {
+            console.error('Error following user:', error);
+            let errorMessage = "An error occurred while following the user";
+            if (axios.isAxiosError(error) && error.response) {
+                errorMessage = error.response.data.message || errorMessage;
+            }
+            params.callback(false, errorMessage);
+        }
+    };
+
+    const unfollowUser = async (params: {
+        userId: number,
+        callback: (success: boolean, message: string) => void
+    }) => {
+        try {
+            const token = await getToken();
+            if (!token) throw new Error('No token');
+
+            const response = await axios.post(`${BASE_URL}/userInfo`, {
+                targetUserId: params.userId,
+                type: 'unfollow'
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (response.data.success) {
+                setFollowing(prev => prev.filter(id => id !== params.userId));
+                queryClient.invalidateQueries(['userData']);
+                params.callback(true, "Successfully unfollowed user");
+            } else {
+                params.callback(false, response.data.message || "Failed to unfollow user");
+            }
+        } catch (error) {
+            console.error('Error unfollowing user:', error);
+            let errorMessage = "An error occurred while unfollowing the user";
+            if (axios.isAxiosError(error) && error.response) {
+                errorMessage = error.response.data.message || errorMessage;
+            }
+            params.callback(false, errorMessage);
+        }
+    };
+
     return ({
         notifications: userDataQuery.data?.notifications||[],
         userEvents: userDataQuery.data?.userEvents || [],
         kidEvents: userDataQuery.data?.kidEvents || [],
-        following,
         recommendEvents,
         matchedEvents,
         loginState,
@@ -587,10 +653,19 @@ const serverData = (() => {
             approveSignupRequest,
             deleteEvent,  // Add the new function here
         },
+        getUserInfo,  // Add this to the returned object
+        followActions: {
+            followUser,
+            unfollowUser
+        },
     });
 });
 
 export default serverData;
+
+
+
+
 
 
 

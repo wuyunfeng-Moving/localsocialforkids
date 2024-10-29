@@ -22,6 +22,16 @@ const INITIAL_INPUTS = [
   { title: 'maxNumber', label: '最大参与人数', value: 10 },
 ];
 
+interface NewEventData {
+  kidIds?: number[];
+  place?: { location: number[]; maxNumber: number };
+  dateTime?: string;
+  duration?: number;
+  topic?: string;
+  description?: string;
+  [key: string]: any;
+}
+
 export default function TabTwoScreen() {
   const [inputs, setInputs] = useState(INITIAL_INPUTS);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -82,7 +92,7 @@ export default function TabTwoScreen() {
   }, []);
 
   const addItem = () => {
-    const newItems = inputs.reduce((acc, item) => {
+    const newItems: NewEventData = inputs.reduce((acc, item) => {
       switch (item.title) {
         case 'childOrder':
           const selectedKid = userInfo.kidinfo.find(kid => kid.name === item.value);
@@ -116,7 +126,7 @@ export default function TabTwoScreen() {
           break;
       }
       return acc;
-    }, { type: 'addNewEvent' });
+    }, {} as NewEventData);
 
     // Check if all required fields are present
     const requiredFields = ['kidIds', 'place', 'dateTime', 'duration', 'topic', 'description'];
@@ -129,7 +139,7 @@ export default function TabTwoScreen() {
 
     console.log('sending data:', JSON.stringify(newItems));
     setIsSubmitting(true);
-    update.updateUserInfo.mutate(newItems, {
+    update.updateUserInfo.mutate({type: 'addNewEvent', newUserInfo: newItems}, {
       onSuccess: () => {
         setIsSubmitting(false);
         Alert.alert(

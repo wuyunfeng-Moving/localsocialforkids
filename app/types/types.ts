@@ -52,6 +52,8 @@ export type UserInfo = {
     id: number;
     introduction?: string;
     kidinfo: KidInfo[];
+    following: number[];
+    followers: number[];
 };
 
 export type Events = Event[];
