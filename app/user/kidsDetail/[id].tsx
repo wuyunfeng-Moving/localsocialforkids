@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Image, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { KidInfo } from '@/app/types/types';
 import { useWebSocket } from '@/app/context/WebSocketProvider';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function KidPage() {
   const { id } = useLocalSearchParams();
@@ -49,72 +50,103 @@ export default function KidPage() {
     setKid(prevKid => ({ ...prevKid, [name]: value }));
   };
 
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      handleInputChange('photoPath', result.assets[0].uri);
+    }
+  };
+
   if (!kid && !isEditing) return <View style={styles.loadingContainer}><Text>Loading...</Text></View>;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{id ? 'Edit Kid' : 'Add New Kid'}</Text>
-      <View style={styles.form}>
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Name:</Text>
-          <TextInput
-            style={styles.input}
-            value={kid?.name || ''}
-            onChangeText={(value) => handleInputChange('name', value)}
-            placeholder="Enter kid's name"
-          />
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+    >
+      <ScrollView 
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.container}>
+          <View style={styles.form}>
+            <View style={styles.photoContainer}>
+              <TouchableOpacity onPress={pickImage}>
+                <Image 
+                  source={kid?.photoPath ? { uri: kid.photoPath } : require('@/assets/images/people.jpg')}
+                  style={styles.photo}
+                />
+                <Text style={styles.photoText}>Tap to change photo</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Name:</Text>
+              <TextInput
+                style={styles.input}
+                value={kid?.name || ''}
+                onChangeText={(value) => handleInputChange('name', value)}
+                placeholder="Enter kid's name"
+              />
+            </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Description:</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={kid?.description || ''}
+                onChangeText={(value) => handleInputChange('description', value)}
+                multiline
+                numberOfLines={4}
+                placeholder="Enter kid's description"
+              />
+            </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Birth Date:</Text>
+              <TextInput
+                style={styles.input}
+                value={kid?.birthDate || ''}
+                onChangeText={(value) => handleInputChange('birthDate', value)}
+                placeholder="YYYY-MM-DD"
+              />
+            </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Label:</Text>
+              <TextInput
+                style={styles.input}
+                value={kid?.label || ''}
+                onChangeText={(value) => handleInputChange('label', value)}
+                placeholder="Enter kid's label"
+              />
+            </View>
+          </View>
+          <View style={styles.buttonContainer}>
+            <Button
+              title={id ? 'Update' : 'Add'}
+              onPress={handleSubmit}
+              color="#4CAF50"
+            />
+            <Button
+              title="Delete"
+              onPress={handleDelete}
+              color="red"
+            />
+            {id && !isEditing && (
+              <Button
+                title="Edit"
+                onPress={() => setIsEditing(true)}
+                color="#2196F3"
+              />
+            )}
+          </View>
         </View>
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Age:</Text>
-          <TextInput
-            style={styles.input}
-            value={kid?.age?.toString() || ''}
-            onChangeText={(value) => handleInputChange('age', value)}
-            keyboardType="numeric"
-            placeholder="Enter kid's age"
-          />
-        </View>
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Description:</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={kid?.description || ''}
-            onChangeText={(value) => handleInputChange('description', value)}
-            multiline
-            numberOfLines={4}
-            placeholder="Enter kid's description"
-          />
-        </View>
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Label:</Text>
-          <TextInput
-            style={styles.input}
-            value={kid?.label || ''}
-            onChangeText={(value) => handleInputChange('label', value)}
-            placeholder="Enter kid's label"
-          />
-        </View>
-      </View>
-      <View style={styles.buttonContainer}>
-        <Button
-          title={id ? 'Update' : 'Add'}
-          onPress={handleSubmit}
-          color="#4CAF50"
-        />
-        <Button
-          title="Delete"
-          onPress={handleDelete}
-          color="red"
-        />
-        {id && !isEditing && (
-          <Button
-            title="Edit"
-            onPress={() => setIsEditing(true)}
-            color="#2196F3"
-          />
-        )}
-      </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -170,5 +202,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginTop: 20,
+  },
+  photoContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  photo: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    marginBottom: 8,
+  },
+  photoText: {
+    color: '#666',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

@@ -121,7 +121,7 @@ const EventDetailsPage = () => {
 
   return (
     <ScrollView style={styles.container}>
-      <SingleEventDisplay currentEvent={event}/>
+      <SingleEventDisplay currentEvent={event} depth={0} list={0}/>
       <TouchableOpacity style={styles.joinButton} onPress={handleJoinRequest}>
         <Text style={styles.joinButtonText}>申请加入</Text>
       </TouchableOpacity>

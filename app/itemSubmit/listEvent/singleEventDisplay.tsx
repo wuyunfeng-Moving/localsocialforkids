@@ -15,12 +15,12 @@ export type SingleEventDisplayElementType = {
 
 export const SingleEventDisplay = ({
     currentEvent,
-    depth = 0, // 新增参数，用于控制递归深度
+    depth = 0,
     list,
     match
 }: SingleEventDisplayElementType) => {
     const router = useRouter();
-    const { refreshUserData,searchEvents, isEventBelongToUser, isParticipateEvent, userInfo, changeEvent } = useWebSocket();
+    const { refreshUserData, searchEvents, isEventBelongToUser, isParticipateEvent, userInfo, changeEvent } = useWebSocket();
     const [isDeleting, setIsDeleting] = useState(false);
     const [timeRemaining, setTimeRemaining] = useState('');
     const [comment, setComment] = useState('');
@@ -237,12 +237,7 @@ export const SingleEventDisplay = ({
             <View style={getContainerStyle()}>
                 <Text style={styles.title}>{internalCurrentEvent.topic}</Text>
 
-                {/* Add state display */}
-                <View style={styles.infoRow}>
-                    <Ionicons name="flag-outline" size={20} color="#666" />
-                    <Text style={styles.infoText}>状态: {getEventState(internalCurrentEvent)}</Text>
-                </View>
-
+                {/* 基本信息 - 在列表和详情视图中都显示 */}
                 <View style={styles.infoRow}>
                     <Ionicons name="flag-outline" size={20} color="#666" />
                     <Text style={styles.infoText}>状态: {internalCurrentEvent.status}</Text>
@@ -268,140 +263,141 @@ export const SingleEventDisplay = ({
                     </Text>
                 </View>
 
-                <View style={styles.infoRow}>
-                    <Ionicons name="people-outline" size={20} color="#666" />
-                    <Text style={styles.infoText}>最多参与人数: {internalCurrentEvent.place.maxNumber}</Text>
-                </View>
-
-                {internalCurrentEvent.description && (
-                    <View style={styles.infoRow}>
-                        <Ionicons name="information-circle-outline" size={20} color="#666" />
-                        <Text style={styles.infoText}>{internalCurrentEvent.description}</Text>
-                    </View>
-                )}
-
-                {internalCurrentEvent.kidIds && internalCurrentEvent.kidIds.length > 0 && (
-                    <View style={styles.infoRow}>
-                        <Ionicons name="people-circle-outline" size={20} color="#666" />
-                        <Text style={styles.infoText}>参与的孩子ID: </Text>
-                        {internalCurrentEvent.kidIds.map((kidId, index) => (
-                            <Text key={kidId} style={styles.kidText}>
-                                {kidId}
-                                {index < internalCurrentEvent.kidIds.length - 1 ? ', ' : ''}
-                            </Text>
-                        ))}
-                    </View>
-                )}
-
-                {internalCurrentEvent.userId && (
-                    <View style={styles.infoRow}>
-                        <Ionicons name="person-outline" size={20} color="#666" />
-                        <Text style={styles.infoText}>创建人: </Text>
-                        <TouchableOpacity 
-                            onPress={handleUserPress}
-                            disabled={isEventBelongToUser(internalCurrentEvent.userId)}
-                        >
-                            <Text style={[
-                                styles.infoText,
-                                !isEventBelongToUser(internalCurrentEvent.userId) && styles.clickableText
-                            ]}>{internalCurrentEvent.userId}</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                {match && (
-                    <View style={styles.infoRow}>
-                        <Ionicons name="star-outline" size={20} color="#666" />
-                        <Text style={styles.infoText}>匹配分数: {match.score}</Text>
-                    </View>
-                )}
-
-                {/* 
-                    当pendingSignUps存在时，显示待处理的申请，并且在每个申请的下方显示拒绝、通过两种按钮，在点击后，分别发送消息到服务器。
-                    */}
-                {list === 0 && internalCurrentEvent.pendingSignUps && internalCurrentEvent.pendingSignUps.length > 0 && (
-                    <View style={styles.pendingSignUpsContainer}>
-                        <Text style={styles.pendingSignUpsTitle}>待处理申请:</Text>
-                        {internalCurrentEvent.pendingSignUps.map((signup, index) => (
-                            <View key={index} style={styles.pendingSignUpItem}>
-                                <Text>
-                                    {signup.type === 'kid' ? '孩子ID: ' : '事件ID: '}
-                                    <Text style={styles.idText}>
-                                        {signup.type === 'kid' ? signup.kidIds.join(', ') : signup.sourceEventId}
-                                    </Text>
-                                </Text>
-                                <Text>申请类型: {signup.type === 'kid' ? '孩子' : '事件'}</Text>
-                                <Text>原因: {signup.reason}</Text>
-                                <View style={styles.signUpButtonContainer}>
-                                    <TouchableOpacity
-                                        style={[styles.signUpButton, styles.rejectButton]}
-                                        onPress={() => handleRejectSignUp(signup.id)}
-                                        disabled={isDeleting}
-                                    >
-                                        <Text style={styles.buttonText}>拒绝</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.signUpButton, styles.acceptButton]}
-                                        onPress={() => handleAcceptSignUp(signup.id)}
-                                        disabled={isDeleting}
-                                    >
-                                        <Text style={styles.buttonText}>通过</Text>
-                                    </TouchableOpacity>
-                                </View>
-                                {isDeleting && <ActivityIndicator style={styles.loader} />}
-                            </View>
-                        ))}
-                    </View>
-                )}
-
-                {/* Replace the existing comment section with this */}
+                {/* 详细信息 - 仅在详情视图中显示 */}
                 {list === 0 && (
-                    <View style={styles.commentSection}>
-                        <Text style={styles.commentTitle}>评论</Text>
-                        <View style={styles.existingComments}>
-                            {renderComments()}
+                    <>
+                        <View style={styles.infoRow}>
+                            <Ionicons name="people-outline" size={20} color="#666" />
+                            <Text style={styles.infoText}>最多参与人数: {internalCurrentEvent.place.maxNumber}</Text>
                         </View>
-                        <View style={styles.commentInputContainer}>
-                            <TextInput
-                                style={styles.commentInput}
-                                value={comment}
-                                onChangeText={setComment}
-                                placeholder="输入您的评论..."
-                                multiline
-                            />
-                            <TouchableOpacity
-                                style={[
-                                    styles.commentButton,
-                                    (!comment.trim() || isSubmittingComment) && styles.disabledButton
-                                ]}
-                                onPress={handleSubmitComment}
-                                disabled={!comment.trim() || isSubmittingComment}
-                            >
-                                {isSubmittingComment ? (
-                                    <ActivityIndicator color="#fff" size="small" />
-                                ) : (
-                                    <Text style={styles.commentButtonText}>提交</Text>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                )}
 
-                {/* Add delete button for owned events */}
-                {getEventState(internalCurrentEvent) === 'owned' && (
-                    <View style={styles.actionButtonsContainer}>
-                        <TouchableOpacity
-                            style={[styles.actionButton, styles.deleteButton]}
-                            onPress={handleDeleteEvent}
-                            disabled={isDeleting}
-                        >
-                            {isDeleting ? (
-                                <ActivityIndicator color="#fff" size="small" />
-                            ) : (
-                                <Text style={styles.actionButtonText}>删除事件</Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
+                        {internalCurrentEvent.description && (
+                            <View style={styles.infoRow}>
+                                <Ionicons name="information-circle-outline" size={20} color="#666" />
+                                <Text style={styles.infoText}>{internalCurrentEvent.description}</Text>
+                            </View>
+                        )}
+
+                        {internalCurrentEvent.kidIds && internalCurrentEvent.kidIds.length > 0 && (
+                            <View style={styles.infoRow}>
+                                <Ionicons name="people-circle-outline" size={20} color="#666" />
+                                <Text style={styles.infoText}>参与的孩子ID: </Text>
+                                {internalCurrentEvent.kidIds.map((kidId, index) => (
+                                    <Text key={kidId} style={styles.kidText}>
+                                        {kidId}
+                                        {index < internalCurrentEvent.kidIds.length - 1 ? ', ' : ''}
+                                    </Text>
+                                ))}
+                            </View>
+                        )}
+
+                        {internalCurrentEvent.userId && (
+                            <View style={styles.infoRow}>
+                                <Ionicons name="person-outline" size={20} color="#666" />
+                                <Text style={styles.infoText}>创建人: </Text>
+                                <TouchableOpacity 
+                                    onPress={handleUserPress}
+                                    disabled={isEventBelongToUser(internalCurrentEvent.userId)}
+                                >
+                                    <Text style={[
+                                        styles.infoText,
+                                        !isEventBelongToUser(internalCurrentEvent.userId) && styles.clickableText
+                                    ]}>{internalCurrentEvent.userId}</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        {match && (
+                            <View style={styles.infoRow}>
+                                <Ionicons name="star-outline" size={20} color="#666" />
+                                <Text style={styles.infoText}>匹配分数: {match.score}</Text>
+                            </View>
+                        )}
+
+                        {/* 待处理申请部分 */}
+                        {internalCurrentEvent.pendingSignUps && internalCurrentEvent.pendingSignUps.length > 0 && (
+                            <View style={styles.pendingSignUpsContainer}>
+                                <Text style={styles.pendingSignUpsTitle}>待处理申请:</Text>
+                                {internalCurrentEvent.pendingSignUps.map((signup, index) => (
+                                    <View key={index} style={styles.pendingSignUpItem}>
+                                        <Text>
+                                            {signup.type === 'kid' ? '孩子ID: ' : '事件ID: '}
+                                            <Text style={styles.idText}>
+                                                {signup.type === 'kid' ? signup.kidIds.join(', ') : signup.sourceEventId}
+                                            </Text>
+                                        </Text>
+                                        <Text>申请类型: {signup.type === 'kid' ? '孩子' : '事件'}</Text>
+                                        <Text>原因: {signup.reason}</Text>
+                                        <View style={styles.signUpButtonContainer}>
+                                            <TouchableOpacity
+                                                style={[styles.signUpButton, styles.rejectButton]}
+                                                onPress={() => handleRejectSignUp(signup.id)}
+                                                disabled={isDeleting}
+                                            >
+                                                <Text style={styles.buttonText}>拒绝</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.signUpButton, styles.acceptButton]}
+                                                onPress={() => handleAcceptSignUp(signup.id)}
+                                                disabled={isDeleting}
+                                            >
+                                                <Text style={styles.buttonText}>通过</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        {isDeleting && <ActivityIndicator style={styles.loader} />}
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+
+                        {/* 评论部分 */}
+                        <View style={styles.commentSection}>
+                            <Text style={styles.commentTitle}>评论</Text>
+                            <View style={styles.existingComments}>
+                                {renderComments()}
+                            </View>
+                            <View style={styles.commentInputContainer}>
+                                <TextInput
+                                    style={styles.commentInput}
+                                    value={comment}
+                                    onChangeText={setComment}
+                                    placeholder="输入您的评论..."
+                                    multiline
+                                />
+                                <TouchableOpacity
+                                    style={[
+                                        styles.commentButton,
+                                        (!comment.trim() || isSubmittingComment) && styles.disabledButton
+                                    ]}
+                                    onPress={handleSubmitComment}
+                                    disabled={!comment.trim() || isSubmittingComment}
+                                >
+                                    {isSubmittingComment ? (
+                                        <ActivityIndicator color="#fff" size="small" />
+                                    ) : (
+                                        <Text style={styles.commentButtonText}>提交</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* 删除按钮 */}
+                        {getEventState(internalCurrentEvent) === 'owned' && (
+                            <View style={styles.actionButtonsContainer}>
+                                <TouchableOpacity
+                                    style={[styles.actionButton, styles.deleteButton]}
+                                    onPress={handleDeleteEvent}
+                                    disabled={isDeleting}
+                                >
+                                    {isDeleting ? (
+                                        <ActivityIndicator color="#fff" size="small" />
+                                    ) : (
+                                        <Text style={styles.actionButtonText}>删除事件</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </>
                 )}
             </View>
         </ScrollView>
