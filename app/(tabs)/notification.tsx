@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Modal, View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import OwnedEventDisplay from '../itemSubmit/listEvent/ownedEventDisplay';
 import { Event, Notification } from '@/app/types/types';
 import { useWebSocket } from '../context/WebSocketProvider';
 import BackButton from '@/components/back';
@@ -50,22 +49,6 @@ const NotificationScreen = () => {
           <Text>No notifications</Text>
         )}
       </ScrollView>
-
-      <Modal
-        animationType="slide"
-        transparent={false}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <BackButton onPress={() => setModalVisible(false)}/>
-          {selectedEvent && (
-            <OwnedEventDisplay
-              {...selectedEvent}
-            />
-          )}
-        </View>
-      </Modal>
     </View>
   );
 };

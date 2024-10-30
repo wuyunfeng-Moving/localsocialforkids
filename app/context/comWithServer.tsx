@@ -2,17 +2,6 @@ import { useState, useEffect } from 'react';
 import serverData from './serverData';
 
 const comWithServer = (orderToServer, userEvents, notifications) => {
-    //get matches at first get the userinfo
-    useEffect(() => {
-        orderToServer('getMatch', { start: 0, end: 10 }, (matchMessage) => {
-            // Handle the matched events here
-            // You might want to store these matched events in a state
-            console.log('Matched events:', matchMessage);
-        });
-        orderToServer('notifications');
-    }
-        , [userEvents]);
-
     const handleDeleteEvent = ((event, callback) => {
         if (!orderToServer) {
             callback({ success: false, error: 'WebSocket not available' });

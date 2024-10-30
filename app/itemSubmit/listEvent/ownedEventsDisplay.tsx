@@ -14,23 +14,10 @@ const EventsDisplay: React.FC<{eventType: 'owned' | 'participated',targetEvents:
 
 	const handleEventPress = (event: Event) => {
 		console.log("handleEventPress", event);
-		if (eventType === 'owned') {
-			router.push({
-				pathname: '../itemSubmit/listEvent/ownedEventDisplay',
-				params: { event: JSON.stringify(event) }  // 序列化事件对象
-			});
-		} else {
-			router.push({
-				pathname: '../itemSubmit/listEvent/participateEventDisplay',
-				// pathname: '../itemSubmit/listEvent/test',
-				params: { event: JSON.stringify(event) }
-			});
-		}
-	};
-
-	const closeModal = () => {
-		setModalVisible(false);
-		setSelectedEvent(null);
+		router.push({
+			pathname: '../events/[id]',
+			params: { id: event.id, eventData: JSON.stringify(event) }  // 序列化事件对象
+		});
 	};
 
 	// 根据 eventType 设置标题
@@ -52,25 +39,6 @@ const EventsDisplay: React.FC<{eventType: 'owned' | 'participated',targetEvents:
 				<Text style={styles.emptyText}>{emptyText}</Text>
 			)}
 
-			{/* <Modal
-				animationType="slide"
-				transparent={false}
-				visible={modalVisible}
-				onRequestClose={closeModal}
-			>
-				<View style={styles.modalContainer}>
-					<BackButton onPress={closeModal}/>
-					<ScrollView>
-						{selectedEvent && (
-							eventType === 'owned' ? (
-								<OwnedEventDisplay {...selectedEvent} />
-							) : (
-								<ParticipateEventDisplay {...selectedEvent} />
-							)
-						)}
-					</ScrollView>
-				</View>
-			</Modal> */}
 		</View>
 	);
 };

@@ -3,20 +3,23 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } fr
 import { useLocalSearchParams } from 'expo-router';
 import { SingleEventDisplay } from '../itemSubmit/listEvent/singleEventDisplay';
 import { useWebSocket } from '../context/WebSocketProvider';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Event } from '../types/types';
 
 const EventDetailsPage = () => {
   const params = useLocalSearchParams();
   const { id, eventData } = params;
-  const { changeEvent, userInfo } = useWebSocket(); // 假设 user 对象包含孩子信息
+  const { changeEvent, userInfo} = useWebSocket(); // 假设 user 对象包含孩子信息
   const [showKidSelection, setShowKidSelection] = useState(false);
   const [selectedKidIds, setSelectedKidIds] = useState<number[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   // 使用 useMemo 来解析事件数据，避免不必要的重复解析
-  const event = React.useMemo(() => {
+  const event: Event | null = React.useMemo(() => {
     if (eventData) {
       try {
-        return JSON.parse(eventData);
+        return JSON.parse(eventData as string);
       } catch (error) {
         console.error('Error parsing event data:', error);
         return null;
@@ -122,9 +125,41 @@ const EventDetailsPage = () => {
   return (
     <ScrollView style={styles.container}>
       <SingleEventDisplay currentEvent={event} depth={0} list={0}/>
-      <TouchableOpacity style={styles.joinButton} onPress={handleJoinRequest}>
-        <Text style={styles.joinButtonText}>申请加入</Text>
-      </TouchableOpacity>
+      <View style={styles.actionButtonsContainer}>
+        {event.userId !== userInfo?.id && (
+          <TouchableOpacity style={styles.joinButton} onPress={handleJoinRequest}>
+            <Text style={styles.joinButtonText}>申请加入</Text>
+          </TouchableOpacity>
+        )}
+        {event.userId === userInfo?.id ? (
+          event.chatIds?.length > 0 && (
+            <View style={styles.chatButtonsContainer}>
+              {event.chatIds.map((chatId) => (
+                <TouchableOpacity 
+                  key={chatId}
+                  style={styles.chatButton} 
+                  onPress={() => router.push({
+                    pathname: '/chat',
+                    params: { comingChatId: chatId, eventId: id }
+                  })}
+                >
+                  <Text style={styles.chatButtonText}>查看聊天:{chatId}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )) : (
+            <TouchableOpacity 
+              style={styles.chatButton} 
+              onPress={() => router.push({
+                pathname: '/chat',
+                params: { eventId: id }
+              })}
+            >
+              <Ionicons name="chatbubble-outline" size={24} color="white" />
+            </TouchableOpacity>
+          )
+        }
+      </View>
       {renderKidSelectionModal()}
       <Modal
         visible={showSuccessMessage}
@@ -183,13 +218,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     padding: 15,
     borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 20,
+    flex: 1,
+    marginRight: 10,
   },
   joinButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  chatButton: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  chatButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
   },
   modalContainer: {
     flex: 1,
@@ -245,6 +292,12 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  actionButtonsContainer: {
+    marginTop: 20,
+  },
+  chatButtonsContainer: {
+    marginTop: 10,
   },
 });
 

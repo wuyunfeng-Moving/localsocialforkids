@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import serverData from './serverData';
 import comWithServer from './comWithServer';
-import { MatchEvents, MatchEvent } from '../types/types';
+import { MatchEvents, MatchEvent, ChatMessagesArray, ChatMessage } from '../types/types';
 import { Event,UserInfo,KidInfo } from '../types/types';
 import { UseMutationResult } from 'react-query';
 
@@ -72,6 +72,12 @@ interface WebSocketContextValue {
       callback: (success: boolean, message: string) => void 
     }) => Promise<void>;
   };
+  chat: {
+    chatMessages: ChatMessagesArray;
+    getChatHistory: (chatId: number, callback: (success: boolean, messages: ChatMessage[]) => void) => Promise<void>;
+    sendMessage: (params: { chatId: number, message: string, callback: (success: boolean, message: string) => void }) => Promise<void>;
+    createChat: (params: { eventId: number, callback: (success: boolean, message: string,chatId:number) => void }) => Promise<void>;
+  };
 }
 
 // Create the context with the defined type
@@ -111,7 +117,8 @@ export const WebSocketProvider = ({ children }) => {
     loginState,
     userInfo,
     token,
-    messageHandle,
+    websocketMessageHandle,
+    chat,
     updateUserInfo,
     addkidinfo,
     deletekidinfo,
@@ -319,10 +326,6 @@ export const WebSocketProvider = ({ children }) => {
     return result;
   };
 
-  const isEventBelongToUser = (userId:number) => {
-    return userId === userInfo?.id;
-  };
-
   const isParticipateEvent = (event:Event) => {
     if (!userInfo || !userInfo.kidinfo || !Array.isArray(userInfo.kidinfo)) {
       return false;
@@ -407,7 +410,6 @@ export const WebSocketProvider = ({ children }) => {
       userEvents,
       kidEvents,
       getMatchEvents,
-      isEventBelongToUser,
       isParticipateEvent,
       login,
       logout,
@@ -436,6 +438,12 @@ export const WebSocketProvider = ({ children }) => {
         handleSignupEvent,
         markNotificationAsRead,
         acceptSignUp
+      },
+      chat:{
+        chatMessages: chat.chatMessages,
+        getChatHistory: chat.getChatHistory,
+        sendMessage: chat.sendMessage,
+        createChat: chat.createChat
       }
     }}>
       {children}

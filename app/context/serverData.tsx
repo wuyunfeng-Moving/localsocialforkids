@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Event, UserInfo, Events, AuthenticationMessage, 
     MessageFromServer, MatchEvents,MatchEvent,RecommendEvents
-    ,KidInfo} from '../types/types';
+    ,KidInfo,ChatMessage,ChatMessagesArray} from '../types/types';
 import * as SecureStore from 'expo-secure-store';
 import { Notification } from '../types/notification_types';
 import {useQuery,useMutation,useQueryClient} from "@tanstack/react-query";
@@ -180,14 +180,34 @@ const serverData = (() => {
         }
     };
 
-    const messageHandle = async (message: MessageFromServer) => {
+    const websocketMessageHandle = async (message: MessageFromServer) => {
         console.log('Received message:', message);
         let syncData = null;
         
         switch (message.type) {
-            case 'notification':
+            case 'newChat':
                 {
-                    console.log('Received notification message:', message);
+                    console.log('Received new chat message:', message);
+                    setChatMessages(prevMessages => {
+                        const chatId = message.chatId;
+                        const newMessages = message.messages;
+                        
+                        // Find existing chat index
+                        const chatIndex = prevMessages.findIndex(chat => chat.chatId === chatId);
+                        
+                        if (chatIndex !== -1) {
+                            // Update existing chat
+                            const updatedMessages = [...prevMessages];
+                            updatedMessages[chatIndex] = {
+                                chatId,
+                                messages: newMessages
+                            };
+                            return updatedMessages;
+                        } else {
+                            // Add new chat
+                            return [...prevMessages, { chatId, messages: newMessages }];
+                        }
+                    });
                 }
                 break;
             case 'getMatch':
@@ -559,6 +579,9 @@ const serverData = (() => {
     // Add following state near other state declarations
     const [following, setFollowing] = useState<number[]>([]);
 
+    // Add this state near other state declarations
+    const [chatMessages, setChatMessages] = useState<ChatMessagesArray>([]);
+
     // Add these new functions inside serverData
     const followUser = async (params: {
         userId: number,
@@ -659,6 +682,79 @@ const serverData = (() => {
         }
     };
 
+    const createChat = async (params: {
+        eventId: number,
+        callback: (success: boolean, message: string,chatId:number) => void
+    }) => {
+        const token = await getToken();
+        if (!token) throw new Error('No token');
+
+        const response = await axios.post(`${BASE_URL}/chats`, {
+            eventId: params.eventId
+        }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        console.log("res createChat",response.data);
+
+        if (response.data.success) {
+            params.callback(true, "Chat created successfully",response.data.chatId);
+        } else {
+            params.callback(false, response.data.message || "Failed to create chat",-1);
+        }
+    }
+
+    const getChatHistory = async (chatId: number, callback: (success: boolean, messages: ChatMessage[]) => void) => {
+        const token = await getToken();
+        if (!token) throw new Error('No token');
+
+        console.log("getChatHistory",chatId);
+
+        const response = await axios.get(`${BASE_URL}/chats/${chatId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.data.success) {
+            // Update only the specific chat's messages
+            setChatMessages(prevMessages => {
+                const chatIndex = prevMessages.findIndex(chat => chat.chatId === chatId);
+                if (chatIndex !== -1) {
+                    const updatedMessages = [...prevMessages];
+                    updatedMessages[chatIndex] = {
+                        chatId,
+                        messages: response.data.messages
+                    };
+                    return updatedMessages;
+                }
+                return [...prevMessages, { chatId, messages: response.data.messages }];
+            });
+            callback(true,response.data.messages);
+        } else {
+            callback(false,[]);
+        }
+    }
+
+    const sendMessage = async (params: {
+        chatId: number,
+        message: string,
+        callback: (success: boolean, message: string) => void
+    }) => {
+        const token = await getToken();
+        if (!token) throw new Error('No token');
+
+        const response = await axios.post(`${BASE_URL}/chats/${params.chatId}`, {
+            content: params.message
+        }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.data.success) {
+            params.callback(true, "Message sent successfully");
+        } else {
+            params.callback(false, response.data.message || "Failed to send message");
+        }
+    }   
+
     return ({
         notifications: userDataQuery.data?.notifications||[],
         userEvents: userDataQuery.data?.userEvents || [],
@@ -672,7 +768,7 @@ const serverData = (() => {
         isUserDataLoading: userDataQuery.isLoading,
         isError: userDataQuery.isError,
         error: userDataQuery.error,
-        messageHandle,
+        websocketMessageHandle,
         updateUserInfo,
         addkidinfo,
         deletekidinfo,
@@ -696,6 +792,12 @@ const serverData = (() => {
         followActions: {
             followUser,
             unfollowUser
+        },
+        chat: {
+            chatMessages,
+            createChat,
+            getChatHistory,
+            sendMessage
         },
     });
 });

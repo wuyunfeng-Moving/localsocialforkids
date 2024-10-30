@@ -20,7 +20,7 @@ export const SingleEventDisplay = ({
     match
 }: SingleEventDisplayElementType) => {
     const router = useRouter();
-    const { refreshUserData, searchEvents, isEventBelongToUser, isParticipateEvent, userInfo, changeEvent } = useWebSocket();
+    const { refreshUserData, searchEvents, isParticipateEvent, userInfo, changeEvent } = useWebSocket();
     const [isDeleting, setIsDeleting] = useState(false);
     const [timeRemaining, setTimeRemaining] = useState('');
     const [comment, setComment] = useState('');
@@ -69,11 +69,11 @@ export const SingleEventDisplay = ({
     };
 
     const getEventState = (event: Event): 'owned' | 'signup' | 'joined' | 'available' => {
-        if (isEventBelongToUser(event.userId)) {
+        if (event.userId === userInfo?.id) {
             return 'owned';
         } else if (isParticipateEvent(event)) {
             return 'joined';
-        } else if (event.pendingSignUps && event.pendingSignUps.some(signup => isEventBelongToUser(signup.sourceEventId))) {
+        } else if (event.pendingSignUps && event.pendingSignUps.some(signup => signup.sourceEventId === event.id)) {
             return 'signup';
         } else {
             return 'available';
@@ -155,7 +155,7 @@ export const SingleEventDisplay = ({
     };
 
     const handleUserPress = () => {
-        if (internalCurrentEvent.userId && !isEventBelongToUser(internalCurrentEvent.userId)) {
+        if (internalCurrentEvent.userId && internalCurrentEvent.userId !== userInfo?.id) {
             router.push(`/user/followingDetail/${internalCurrentEvent.userId}`);
         }
     };
@@ -297,11 +297,11 @@ export const SingleEventDisplay = ({
                                 <Text style={styles.infoText}>创建人: </Text>
                                 <TouchableOpacity 
                                     onPress={handleUserPress}
-                                    disabled={isEventBelongToUser(internalCurrentEvent.userId)}
+                                    disabled={internalCurrentEvent.userId === userInfo?.id}
                                 >
-                                    <Text style={[
+                                    <Text style={[  
                                         styles.infoText,
-                                        !isEventBelongToUser(internalCurrentEvent.userId) && styles.clickableText
+                                        internalCurrentEvent.userId !== userInfo?.id && styles.clickableText
                                     ]}>{internalCurrentEvent.userId}</Text>
                                 </TouchableOpacity>
                             </View>

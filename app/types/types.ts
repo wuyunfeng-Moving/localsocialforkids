@@ -22,6 +22,7 @@ export type Event = {
     pendingSignUps?: Array<{id:number,type:"event"|"kid",kidIds:number[], sourceEventId: number; reason: string }>;
     status:'preparing'|'started'|'ended'|'merged';
     comments?:Comment[];
+    chatIds?:number[];
 };
 
 export type RecommendEvent={
@@ -87,3 +88,14 @@ export type AppDataSyncPayload = {
     kidEvents: Event[];
 };
 
+export type ChatMessage = {
+    id: number;
+    userId: number;
+    content: string;
+    timestamp: string;
+};
+
+export type ChatMessagesArray = {
+    chatId:number;
+    messages:ChatMessage[];
+}[];

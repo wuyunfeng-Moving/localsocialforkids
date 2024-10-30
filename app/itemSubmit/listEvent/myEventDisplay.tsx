@@ -10,7 +10,7 @@ interface MyEventDisplayProps {
 }
 
 const MyEventDisplay: React.FC<MyEventDisplayProps> = ({ kidEvents, userEvents }) => {
-  const { isEventBelongToUser, isParticipateEvent } = useWebSocket();
+    const { isParticipateEvent, userInfo } = useWebSocket();
 
   return (
     <View style={styles.container}>
@@ -24,7 +24,7 @@ const MyEventDisplay: React.FC<MyEventDisplayProps> = ({ kidEvents, userEvents }
       <View style={styles.section}>
         <EventsDisplay 
           eventType="owned" 
-          targetEvents={userEvents.filter(event => isEventBelongToUser(event.userId))}
+          targetEvents={userEvents.filter(event => event.userId === userInfo?.id)}
         />
       </View>
     </View>
