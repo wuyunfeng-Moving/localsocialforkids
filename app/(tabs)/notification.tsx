@@ -9,24 +9,37 @@ import BackButton from '@/components/back';
 const NotificationScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const { userEvents,notifications,searchEvents} = useWebSocket();
+  const { userEvents,notifications,searchEvents,setNotificationsRead} = useWebSocket();
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleNotificationPress = async (notification: Notification) => {
     if (!notification.read) {
-      // markNotificationAsRead(notification.id);
+      setNotificationsRead(notification.id, (success, message) => {
+        if (success) {
+          console.log('Notification marked as read');
+        } else {
+          console.error('Failed to mark notification as read:', message);
+        }
+      }); 
     }
 
     if (notification.type === 'signUpRequest') {
-      console.log("userEvents:::",userEvents)
-      console.log(notification.targetEventId)
-      const event = userEvents.find(event => event.id === notification.targetEventId);
-      console.log("get event",event)
-      if (event) {
-        setSelectedEvent(event);
-        setModalVisible(true);
-      }
+      searchEvents.search({
+        eventId: Number(notification.eventId),
+        callback: (success,message,events) => {
+          if(success){
+            router.push({
+              pathname: '/events/[id]',
+              params: { id: notification.eventId, eventData: JSON.stringify(events[0]) }
+            });
+          }
+          else{
+            setErrorMessage(message);
+            setErrorModalVisible(true);
+          }
+        }
+      })
     }
     else if(notification.type === 'activityCreated'){
       searchEvents.search({

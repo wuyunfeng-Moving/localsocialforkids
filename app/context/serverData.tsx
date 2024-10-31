@@ -5,7 +5,7 @@ import { Event, UserInfo, Events, AuthenticationMessage,
     ,KidInfo,ChatMessage,ChatMessagesArray} from '../types/types';
 import * as SecureStore from 'expo-secure-store';
 import { Notification } from '../types/notification_types';
-import {useQuery,useMutation,useQueryClient} from "@tanstack/react-query";
+import {useQuery,useMutation,useQueryClient, UseMutationResult} from "@tanstack/react-query";
 import axios from 'axios';
 
 
@@ -20,6 +20,98 @@ const BASE_URL = `http://${SERVERIP}:${PORT}`;
 3.
 
 */
+
+interface ServerData {
+    notifications: Notification[];
+    userEvents: Event[];
+    kidEvents: KidInfo[];
+    recommendEvents: RecommendEvents;
+    matchedEvents: MatchEvents;
+    loginState: {
+        logined: boolean;
+        error: 'No token' | 'Token expired' | string;
+    };
+    userInfo: UserInfo | undefined;
+    refreshUserData: () => void;
+    token: string | null;
+    isUserDataLoading: boolean;
+    isError: boolean;
+    error: Error | null;
+    websocketMessageHandle: (message: MessageFromServer) => void;
+    updateUserInfo: UseMutationResult;
+    addkidinfo: (newKidInfo: Partial<KidInfo>, callback: (success: boolean, message: string) => void) => void;
+    deletekidinfo: (kidId: number, callback: (success: boolean, message: string) => void) => void;
+    login: (credentials: { email: string; password: string }) => void;
+    logout: () => void;
+    isLoggingIn: boolean;
+    loginError: Error | null;
+    searchEvents: {
+        search: (searchParams: {
+            keyword?: string;
+            startDate?: string;
+            endDate?: string;
+            location?: [number, number];
+            radius?: number;
+            eventId?: number;
+            callback?: (success: boolean, message: string, events: Event[]) => void;
+        }) => Promise<void>;
+        isSearching: boolean;
+        searchError: Error | null;
+        results: Event[];
+    };
+    changeEvent: {
+        signupEvent: (params: {
+            targetEventId: number;
+            sourceEventId?: number;
+            kidsId?: number[];
+            reason: string;
+            callback: (success: boolean, message: string) => void;
+        }) => Promise<void>;
+        approveSignupRequest: (params: {
+            eventId: number;
+            signupId: number;
+            approved: boolean;
+            rejectionReason?: string;
+            callback: (success: boolean, message: string) => void;
+        }) => Promise<void>;
+        deleteEvent: (params: {
+            eventId: number;
+            callback: (success: boolean, message: string) => void;
+        }) => Promise<void>;
+        addComment: (params: {
+            eventId: number;
+            comment: string;
+            callback?: (success: boolean, message: string) => void;
+        }) => Promise<void>;
+    };
+    getUserInfo: (userId: number, callback: (userInfo: UserInfo, kidEvents: KidInfo[], userEvents: Event[]) => void) => Promise<UserInfo>;
+    followActions: {
+        followUser: (params: {
+            userId: number;
+            callback: (success: boolean, message: string) => void;
+        }) => Promise<void>;
+        unfollowUser: (params: {
+            userId: number;
+            callback: (success: boolean, message: string) => void;
+        }) => Promise<void>;
+    };
+    chat: {
+        chatMessages: ChatMessagesArray;
+        createChat: (params: {
+            eventId: number;
+            callback: (success: boolean, message: string, chatId: number) => void;
+        }) => Promise<void>;
+        getChatHistory: (chatId: number, callback: (success: boolean, messages: ChatMessage[]) => void) => Promise<void>;
+        sendMessage: (params: {
+            chatId: number;
+            message: string;
+            callback: (success: boolean, message: string) => void;
+        }) => Promise<void>;
+    };
+    setNotificationsRead: (notificationId: number, callback: (success: boolean, message: string) => void) => Promise<void>;
+}
+
+
 
 // Custom hook to add delayed loading state
 function useDelayedQuery<TData>(
@@ -45,7 +137,7 @@ function useDelayedQuery<TData>(
   };
 }
 
-const serverData = (() => {
+const serverData: ServerData = (() => {
 
     const queryClient = useQueryClient();
 
@@ -761,6 +853,34 @@ const serverData = (() => {
         }
     }   
 
+
+    const setNotificationsRead = async (notificationId: number, callback: (success: boolean, message: string) => void) => {
+        const token = await getToken();
+        if (!token) throw new Error('No token');
+
+        const response = await axios.post(`${BASE_URL}/notifications`, {
+            notificationId,
+            type: 'setNotificationsRead'
+        }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.data.success) {
+            // Update local notifications by marking the specified notification as read
+            queryClient.setQueryData(['userData'], (oldData: any) => ({
+                ...oldData,
+                notifications: oldData.notifications.map((notification: Notification) =>
+                    notification.id === notificationId
+                        ? { ...notification, read: true }
+                        : notification
+                )
+            }));
+            callback(true, "Notifications marked as read");
+        } else {
+            callback(false, response.data.message || "Failed to mark notifications as read");
+        }
+    }
+
     return ({
         notifications: userDataQuery.data?.notifications||[],
         userEvents: userDataQuery.data?.userEvents || [],
@@ -805,6 +925,7 @@ const serverData = (() => {
             getChatHistory,
             sendMessage
         },
+        setNotificationsRead,
     });
 });
 

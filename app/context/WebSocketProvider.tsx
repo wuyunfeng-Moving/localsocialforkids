@@ -8,6 +8,9 @@ import { UseMutationResult } from 'react-query';
 // Define the type for the context value
 interface WebSocketContextValue {
   userInfo: UserInfo | null,
+  userEvents: Event[],
+  kidEvents: KidInfo[],
+  notifications: Notification[],
   getUserInfo: (userId: number,callback: (userInfo: UserInfo,kidEvents: KidInfo[],userEvents: Event[]) => void) => Promise<UserInfo>,
   searchEvents: {
     search: (searchParams: {
@@ -78,6 +81,7 @@ interface WebSocketContextValue {
     sendMessage: (params: { chatId: number, message: string, callback: (success: boolean, message: string) => void }) => Promise<void>;
     createChat: (params: { eventId: number, callback: (success: boolean, message: string,chatId:number) => void }) => Promise<void>;
   };
+  setNotificationsRead: (notificationId: number, callback: (success: boolean, message: string) => void) => Promise<void>;
 }
 
 // Create the context with the defined type
@@ -130,6 +134,7 @@ export const WebSocketProvider = ({ children }) => {
     changeEvent,
     searchEvents,
     followActions,
+    setNotificationsRead,
   } = serverData();
 
   // 将 userInfo 的类型明确声明为 UserInfo | null
@@ -444,7 +449,8 @@ export const WebSocketProvider = ({ children }) => {
         getChatHistory: chat.getChatHistory,
         sendMessage: chat.sendMessage,
         createChat: chat.createChat
-      }
+      },
+      setNotificationsRead: setNotificationsRead
     }}>
       {children}
     </WebSocketContext.Provider>
