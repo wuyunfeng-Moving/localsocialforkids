@@ -421,7 +421,7 @@ const serverData = (() => {
         location?: [number, number];  // [latitude, longitude]
         radius?: number;  // in kilometers
         eventId?:number;
-        callback?: (events: Event[]) => void;
+        callback?: (success:boolean,message:string,events: Event[]) => void;
     }) => {
         setIsSearching(true);
         setSearchError(null);
@@ -433,11 +433,17 @@ const serverData = (() => {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            console.log("Search results:", response.data.events);
-            setSearchResults(response.data.events);
-            searchParams.callback?.(response.data.events);
+            if(response.data.success){
+                console.log("Search results:", response.data.events);
+                setSearchResults(response.data.events);
+                searchParams.callback?.(true,"",response.data.events);
+            }
+            else{
+                searchParams.callback?.(false,response.data.message,[]);
+            }
         } catch (error) {
             console.error('Failed to search events:', error);
+            searchParams.callback?.(false,"",[]);
             setSearchError(error instanceof Error ? error : new Error('An unknown error occurred'));
         } finally {
             setIsSearching(false);

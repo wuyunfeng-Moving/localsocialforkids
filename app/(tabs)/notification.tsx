@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
-import { Modal, View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import { Event, Notification } from '@/app/types/types';
+import { Modal, View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Alert } from 'react-native';
+import { Notification } from '@/app/types/notification_types';
+import { Event } from '@/app/types/types';
 import { useWebSocket } from '../context/WebSocketProvider';
+import { router } from 'expo-router';
 import BackButton from '@/components/back';
 
 const NotificationScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const { userEvents,notifications,comWithServer } = useWebSocket();
-  const {markNotificationAsRead} = comWithServer;
+  const { userEvents,notifications,searchEvents} = useWebSocket();
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
   const handleNotificationPress = async (notification: Notification) => {
     if (!notification.read) {
-      markNotificationAsRead(notification.id);
+      // markNotificationAsRead(notification.id);
     }
 
     if (notification.type === 'signUpRequest') {
@@ -23,6 +27,25 @@ const NotificationScreen = () => {
         setSelectedEvent(event);
         setModalVisible(true);
       }
+    }
+    else if(notification.type === 'activityCreated'){
+      searchEvents.search({
+        eventId: Number(notification.activityId),
+        callback: (success,message,events) => {
+          if(success){
+            router.push({
+              pathname: '/events/[id]',
+              params: { 
+                id: notification.activityId, 
+                eventData: JSON.stringify(events[0]) 
+              }
+            });
+          } else {
+            setErrorMessage(message || '获取活动详情失败');
+            setErrorModalVisible(true);
+          }
+        }
+      });
     }
   };
 
@@ -49,6 +72,25 @@ const NotificationScreen = () => {
           <Text>No notifications</Text>
         )}
       </ScrollView>
+      
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={errorModalVisible}
+        onRequestClose={() => setErrorModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalText}>{errorMessage}</Text>
+            <TouchableOpacity 
+              style={styles.modalButton}
+              onPress={() => setErrorModalVisible(false)}
+            >
+              <Text style={styles.modalButtonText}>确定</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -86,6 +128,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'white',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    elevation: 5,
+    minWidth: 250,
+  },
+  modalText: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+  },
+  modalButtonText: {
+    color: 'white',
+    fontSize: 16,
   },
 });
 

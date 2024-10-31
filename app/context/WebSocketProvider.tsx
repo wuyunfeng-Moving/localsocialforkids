@@ -17,7 +17,7 @@ interface WebSocketContextValue {
       location?: [number, number];  // [latitude, longitude]
       radius?: number;  // in kilometers
       eventId?: number;
-      callback?: (events: Event[]) => void;
+      callback?: (success:boolean,message:string,events: Event[]) => void;
     }) => Promise<void>;
     isSearching: boolean;
     searchError: Error | null;
