@@ -24,41 +24,54 @@ const NotificationScreen = () => {
       }); 
     }
 
-    if (notification.type === 'signUpRequest') {
-      searchEvents.search({
-        eventId: Number(notification.eventId),
-        callback: (success,message,events) => {
-          if(success){
-            router.push({
-              pathname: '/events/[id]',
-              params: { id: notification.eventId, eventData: JSON.stringify(events[0]) }
-            });
+    switch (notification.type) {
+      case 'signUpRequest':
+        searchEvents.search({
+          eventId: Number(notification.eventId),
+          callback: (success, message, events) => {
+            if(success) {
+              router.push({
+                pathname: '/events/[id]',
+                params: { id: notification.eventId, eventData: JSON.stringify(events[0]) }
+              });
+            } else {
+              setErrorMessage(message);
+              setErrorModalVisible(true);
+            }
           }
-          else{
-            setErrorMessage(message);
-            setErrorModalVisible(true);
+        });
+        break;
+
+      case 'activityCreated':
+        searchEvents.search({
+          eventId: Number(notification.activityId),
+          callback: (success, message, events) => {
+            if(success) {
+              router.push({
+                pathname: '/events/[id]',
+                params: { 
+                  id: notification.activityId, 
+                  eventData: JSON.stringify(events[0]) 
+                }
+              });
+            } else {
+              setErrorMessage(message || '获取活动详情失败');
+              setErrorModalVisible(true);
+            }
           }
-        }
-      })
-    }
-    else if(notification.type === 'activityCreated'){
-      searchEvents.search({
-        eventId: Number(notification.activityId),
-        callback: (success,message,events) => {
-          if(success){
-            router.push({
-              pathname: '/events/[id]',
-              params: { 
-                id: notification.activityId, 
-                eventData: JSON.stringify(events[0]) 
-              }
-            });
-          } else {
-            setErrorMessage(message || '获取活动详情失败');
-            setErrorModalVisible(true);
+        });
+        break;
+
+      case 'chatMessage':
+        // Navigate to chat screen with the chat ID
+        router.push({
+          pathname: '/chat',
+          params: { 
+            id: notification.chatId,
+            eventId: notification.eventId
           }
-        }
-      });
+        });
+        break;
     }
   };
 

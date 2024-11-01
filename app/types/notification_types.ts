@@ -32,6 +32,13 @@ interface ActivityCreatedNotification extends BaseNotification {
     creatorId: number;
 }
 
+interface ChatMessageNotification extends BaseNotification {
+    type: 'chatMessage';
+    chatId: number;
+    senderId: number;
+    eventId: number;
+}
+
 // Define NotificationType union type
 type NotificationType = 
     | 'signUpRequest'
@@ -40,11 +47,13 @@ type NotificationType =
     | 'signUpConfirmation'
     | 'cancellationConfirmation'
     | 'unfollowNotification'
-    | 'activityCreated';
+    | 'activityCreated'
+    | 'chatMessage';
 
 // Export the final Notification type as a union of all specific notification types
 export type Notification = 
     | SignUpRequestNotification 
     | EventRelatedNotification 
     | UnfollowNotification 
-    | ActivityCreatedNotification;
+    | ActivityCreatedNotification
+    | ChatMessageNotification;
