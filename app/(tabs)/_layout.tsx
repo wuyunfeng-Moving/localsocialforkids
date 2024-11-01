@@ -6,7 +6,7 @@ import { Pressable } from 'react-native';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-import { WebSocketProvider } from '../context/WebSocketProvider';
+import { WebSocketProvider, useWebSocket } from '../context/WebSocketProvider';
 import { LocationProvider } from '../context/LocationContext';
 
 // 使用 Ionicons 替代 FontAwesome
@@ -19,6 +19,10 @@ function TabBarIcon(props: {
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { notifications } = useWebSocket();
+
+  // Calculate unread notifications count
+  const unreadCount = notifications?.filter(notification => !notification.read).length || 0;
 
   return (
         <Tabs
@@ -62,6 +66,10 @@ export default function TabLayout() {
             options={{
               title: '通知',
               tabBarIcon: ({ color }) => <TabBarIcon name="notifications" color={color} />,
+              tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+              tabBarBadgeStyle: {
+                backgroundColor: Colors[colorScheme ?? 'light'].tint,
+              },
             }}
           />
           <Tabs.Screen
