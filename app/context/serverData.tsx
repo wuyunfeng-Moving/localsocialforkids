@@ -17,14 +17,15 @@ const BASE_URL = `http://${SERVERIP}:${PORT}`;
 核心数据：
 1.userInfo
 2.kidInfo
-3.
+3.*/
 
-*/
+
 
 interface ServerData {
     notifications: Notification[];
     userEvents: Event[];
     kidEvents: KidInfo[];
+
     recommendEvents: RecommendEvents;
     matchedEvents: MatchEvents;
     loginState: {
@@ -37,7 +38,7 @@ interface ServerData {
     isUserDataLoading: boolean;
     isError: boolean;
     error: Error | null;
-    websocketMessageHandle: (message: MessageFromServer) => void;
+    websocketMessageHandle: (message: MessageFromServer) => Promise<void>;
     updateUserInfo: UseMutationResult;
     addkidinfo: (newKidInfo: Partial<KidInfo>, callback: (success: boolean, message: string) => void) => void;
     deletekidinfo: (kidId: number, callback: (success: boolean, message: string) => void) => void;
@@ -137,8 +138,8 @@ function useDelayedQuery<TData>(
   };
 }
 
-const serverData: ServerData = (() => {
-
+// Change from a variable to a custom hook
+const useServerData = (): ServerData => {
     const queryClient = useQueryClient();
 
     const userDataQuery = useDelayedQuery(['userData'], async () => {
@@ -226,7 +227,7 @@ const serverData: ServerData = (() => {
         logined: false,
         error: ''
     });
-    const [token, setToken] = useState(null);
+    const [token, setToken] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchTokenAndVerify = async () => {
@@ -237,6 +238,7 @@ const serverData: ServerData = (() => {
                         headers: { Authorization: `Bearer ${tempToken}` }
                     });
                     if (response.data.success) {
+                        setToken(tempToken);
                         setLoginState({ logined: true, error: '' });
                         queryClient.setQueryData(['userData'], response.data.userInfo);
                     } else {
@@ -282,22 +284,22 @@ const serverData: ServerData = (() => {
                     console.log('Received new chat message:', message);
                     setChatMessages(prevMessages => {
                         const chatId = message.chatId;
-                        const newMessages = message.messages;
+                        const newMessage = message.messages;
                         
                         // Find existing chat index
                         const chatIndex = prevMessages.findIndex(chat => chat.chatId === chatId);
                         
                         if (chatIndex !== -1) {
-                            // Update existing chat
+                            // Update existing chat by appending the new message
                             const updatedMessages = [...prevMessages];
                             updatedMessages[chatIndex] = {
                                 chatId,
-                                messages: newMessages
+                                messages: [...updatedMessages[chatIndex].messages, newMessage]
                             };
                             return updatedMessages;
                         } else {
-                            // Add new chat
-                            return [...prevMessages, { chatId, messages: newMessages }];
+                            // Add new chat with single message
+                            return [...prevMessages, { chatId, messages: [newMessage] }];
                         }
                     });
                 }
@@ -882,14 +884,14 @@ const serverData: ServerData = (() => {
     }
 
     return ({
-        notifications: userDataQuery.data?.notifications||[],
+        notifications: userDataQuery.data?.notifications || [],
         userEvents: userDataQuery.data?.userEvents || [],
         kidEvents: userDataQuery.data?.kidEvents || [],
         recommendEvents,
         matchedEvents,
         loginState,
         userInfo: userDataQuery.data?.userInfo,
-        refreshUserData:userDataQuery.refetch,
+        refreshUserData: userDataQuery.refetch,
         token,
         isUserDataLoading: userDataQuery.isLoading,
         isError: userDataQuery.isError,
@@ -908,7 +910,7 @@ const serverData: ServerData = (() => {
             searchError,
             results: searchResults,
         },
-        changeEvent:{
+        changeEvent: {
             signupEvent,
             approveSignupRequest,
             deleteEvent,  // Add the new function here
@@ -927,9 +929,9 @@ const serverData: ServerData = (() => {
         },
         setNotificationsRead,
     });
-});
+};
 
-export default serverData;
+export { useServerData };
 
 
 

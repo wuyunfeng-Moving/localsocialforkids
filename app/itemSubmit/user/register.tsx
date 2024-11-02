@@ -10,7 +10,7 @@ const RegisterScreen = ({ closeModal }) => {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  const { send, registerMessageHandle } = useWebSocket();
+  const { send } = useWebSocket();
 
   const handleMessages = (message) => {
     console.log("get message from register:", message);
@@ -24,12 +24,11 @@ const RegisterScreen = ({ closeModal }) => {
       } else {
         setError(message.message);
       }
-      registerMessageHandle(false, { name: 'registerHandler', handle: handleMessages });
+
     }
   };
 
   const handleRegister = async () => {
-    registerMessageHandle(true, { name: 'registerHandler', handle: handleMessages });
     send({ type: 'register', username, email, password });
   };
 

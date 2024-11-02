@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import serverData from './serverData';
-import comWithServer from './comWithServer';
+import { useServerData } from './serverData';
 import { MatchEvents, MatchEvent, ChatMessagesArray, ChatMessage } from '../types/types';
 import { Event,UserInfo,KidInfo } from '../types/types';
-import { UseMutationResult } from 'react-query';
+import { UseMutationResult } from '@tanstack/react-query';
 
 // Define the type for the context value
 interface WebSocketContextValue {
@@ -135,7 +134,7 @@ export const WebSocketProvider = ({ children }) => {
     searchEvents,
     followActions,
     setNotificationsRead,
-  } = serverData();
+  } = useServerData();
 
   // 将 userInfo 的类型明确声明为 UserInfo | null
   const [typedUserInfo, setTypedUserInfo] = useState<UserInfo | null>(null);
@@ -143,13 +142,7 @@ export const WebSocketProvider = ({ children }) => {
   // 使用 useEffect 来更新 typedUserInfo
   useEffect(() => {
     setTypedUserInfo(userInfo as UserInfo | null);
-  }, [userInfo]);
-
-  useEffect(() => {
-    console.log("userEvents in context:", userEvents);
-    // console.log("recommendEvents",recommendEvents);
-  }, [userEvents]);
-    
+  }, [userInfo]);    
 
   useEffect(() => {
     messageHandlers.forEach((handler) => {
@@ -165,161 +158,28 @@ export const WebSocketProvider = ({ children }) => {
       return;
     }
 
-    console.log("Sending data:", JSON.stringify(data, null, 2));
+    const messageWithToken = {
+      ...data,
+      token: token
+    };
+
+    console.log("Sending data:", JSON.stringify(messageWithToken, null, 2));
     console.log("WebSocket readyState:", ws.readyState);
-    console.log("Login state:", loginState);
     
     try {
-      ws.send(JSON.stringify(data));
+      ws.send(JSON.stringify(messageWithToken));
       console.log("Data sent successfully");
     } catch (error) {
       console.error("Error sending data:", error);
       setMessageQueue(prevQueue => [...prevQueue, data]);
     }
-  }, [ws, loginState]);
+  }, [ws, token]);
 
-  const setHandleForMessage = ((command, type, callbackAfterGetRes) => {
-    const messageHandler = {
-      name: command,
-      handle: (message) => {
-        if (message.type === type) {
-          registerMessageHandle(false, messageHandler);
-
-          if (callbackAfterGetRes) {
-            callbackAfterGetRes(message);
-          }
-        }
-      }
-    }
-    registerMessageHandle(true, messageHandler);
-  });
-
-  type OrderCommand = 'getMatch' | 'getUserEvents' | 'deleteEvent' | 'addNewEvent' | 'signUpEvent' | 'notifications'|'approveSignUp';
-  type ParaOfOrder = {
-    [key: string]: any;
-    signUpEvent?: {
-      sourceEventId: number;
-      targetEventId: number;
-      reason: string;
-    };
-    approveSignUp?: {
-      eventId: number;
-      targetEventId: number;
-      approve: boolean;
-    }
-    setNotificationReaded?:{
-      id:number;
-    }
-  };
-  const orderToServer = async (command: OrderCommand, params: ParaOfOrder, callbackAfterGetRes?: (message: any) => void) => {
-    try {
-      switch (command) {
-        case 'getMatch': {
-          const { start = 0, end = 10 } = params;
-          if (userEvents.length > 0) {
-            for (const event of userEvents) {
-              setHandleForMessage(`getMatch_${event.id}`, 'getMatch', callbackAfterGetRes);
-              // Send the request
-              send({ type: 'getMatch', eventId: event.id, start, end });
-            }
-          }
-          break;
-        }
-        case 'getUserEvents': {
-          setHandleForMessage(command, 'getUserEvents', callbackAfterGetRes);
-          send({ type: 'getUserEvents', userId: userInfo?.id });
-          break;
-        }
-        case 'deleteEvent': {
-          const { event = null } = params;
-          setHandleForMessage(command, 'deleteEvent', callbackAfterGetRes);
-          if (event) {
-            send({ type: 'deleteEvent', eventId: event.id });
-          }
-          break;
-        }
-        //同名命令
-        case 'addNewEvent': {
-          // console.log("Adding new event");
-          const { event = null } = params;
-          setHandleForMessage(command, command, callbackAfterGetRes);
-          if (event) {
-            event.type = command;
-            send(event);
-          }
-          break;
-        }
-        case 'approveSignUp': {
-          setHandleForMessage(command, command, callbackAfterGetRes);
-          const { approve, eventId, targetEventId } = params.approveSignUp || {};
-          if (approve !== undefined && eventId !== undefined && targetEventId !== undefined) {
-            send({
-              type: command,
-              approve,
-              eventId,
-              targetEventId
-            });
-          } else {
-            console.error('Missing required parameters for approveSignUp');
-          }
-          break;
-        }
-        case 'signUpEvent':
-          {
-            setHandleForMessage(command, command, callbackAfterGetRes);
-            const msg = {
-              type: 'signUpEvent',
-              targetEventId: params.signUpEvent?.targetEventId,
-              sourceEventId: params.signUpEvent?.sourceEventId,
-              reason: params.signUpEvent?.reason
-            }
-            send(msg);
-            break;
-          }
-        case 'setNotificationReaded':
-          {
-            setHandleForMessage(command,command,callbackAfterGetRes);
-            const msg={
-              type:command,
-              notificationId:params.setNotificationReaded?.id,
-            }
-            send(msg);
-            break;
-          }
-      }
-    } catch (e) {
-      console.error('Error in orderToServer:', e);
-    }
-  };
-
-  function handleMessages(event) {
+  async function handleMessages(event) {
     const message = JSON.parse(event.data);
     setMessageFromServer(message);
-    messageHandle(message).then(res => {
-        if(res) {
-          setMessageQueue(prevQueue => [...prevQueue, res]);
-        }
-    });
+    await websocketMessageHandle(message);
   }
-
-  const registerMessageHandle = (on: boolean, handler: MessageHandler) => {
-    if (on) {
-      setMessageHandlers(prevHandlers => {
-        if (!prevHandlers.some(h => h.name === handler.name)) {
-          const newHandlers = [...prevHandlers, handler];
-          // console.log('Updated message handlers:', newHandlers);
-          return newHandlers;
-        }
-        return prevHandlers;
-      });
-    } else {
-      setMessageHandlers(prevHandlers => {
-        const updatedHandlers = prevHandlers.filter(h => h.name !== handler.name);
-        console.log('Updated message handlers:', updatedHandlers);
-        return updatedHandlers;
-      });
-    }
-  };
 
   const getMatchEvents: GetMatchEventsFunction = (eventId) => {
     // console.log("getMatchEvents::::",matchedEvents);
@@ -350,13 +210,20 @@ export const WebSocketProvider = ({ children }) => {
 
 
   const connectWebSocket = useCallback(() => {
+    if (!token) {
+      console.log('No token available, skipping WebSocket connection');
+      return;
+    }
+
     console.log('Attempting to connect WebSocket...');
-    const wsaddress = "ws://" + SERVERIP + ":" + PORT;
+    const wsaddress = `ws://${SERVERIP}:${PORT}`;
     const socket = new WebSocket(wsaddress);
     
     socket.onopen = () => {
-      // console.log('WebSocket connected successfully');
+      console.log('WebSocket connected successfully');
       setWs(socket);
+      //send token to server
+      send({type:"token",token:token});
     };
 
     socket.onmessage = (event) => {
@@ -379,15 +246,27 @@ export const WebSocketProvider = ({ children }) => {
     return () => {
       socket.close();
     };
-  }, []);
+  }, [token]);
 
   useEffect(() => {
-    const cleanup = connectWebSocket();
+    let cleanup: (() => void) | undefined;
+
+    if (loginState.logined && token) {
+      console.log('User is logged in with valid token, connecting WebSocket...');
+      cleanup = connectWebSocket();
+    } else {
+      // Close existing connection if user logs out or token becomes invalid
+      if (ws) {
+        console.log('User logged out or token invalid, closing WebSocket connection');
+        ws.close();
+        setWs(null);
+      }
+    }
 
     return () => {
       if (cleanup) cleanup();
     };
-  }, [connectWebSocket]);
+  }, [loginState.logined, token, connectWebSocket]);
 
   useEffect(() => {
     if (ws && ws.readyState === WebSocket.OPEN && messageQueue.length > 0) {
@@ -397,19 +276,11 @@ export const WebSocketProvider = ({ children }) => {
     }
   }, [ws, messageQueue, send]);
 
-  const {
-    handleDeleteEvent,
-    handleSignupEvent,
-    markNotificationAsRead,
-    acceptSignUp
-  } = comWithServer(orderToServer, kidEvents, notifications);
-
   return (
     <WebSocketContext.Provider value={{
       send,
       userInfo: typedUserInfo,
       loginState,
-      registerMessageHandle,
       getUserInfo:getUserInfo,
       // events,
       userEvents,
@@ -438,12 +309,6 @@ export const WebSocketProvider = ({ children }) => {
         submitComment: changeEvent.addComment,
       },
       followActions,
-      comWithServer: {
-        handleDeleteEvent,
-        handleSignupEvent,
-        markNotificationAsRead,
-        acceptSignUp
-      },
       chat:{
         chatMessages: chat.chatMessages,
         getChatHistory: chat.getChatHistory,

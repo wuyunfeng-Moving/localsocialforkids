@@ -18,11 +18,10 @@ interface MatchedEventDisplayProps {
 }
 
 const MatchedEventsDisplay: React.FC<MatchedEventDisplayProps> = ({ currentEvent, list, match }) => {
-    const { userEvents, getMatchEvents,comWithServer } = useWebSocket() || {};
+    const { userEvents, getMatchEvents } = useWebSocket() || {};
     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [isApplying, setIsApplying] = useState(false);
-    const { handleDeleteEvent, handleSignupEvent, handleCancelSignupEvent } = comWithServer;
    
 
     const eventWithoutPendingSignUps =(event:Event)=>{

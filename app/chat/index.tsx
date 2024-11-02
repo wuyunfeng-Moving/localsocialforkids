@@ -14,6 +14,15 @@ export default function ChatScreen() {
   const [chatId, setChatId] = useState<number | null>(comingChatId ? Number(comingChatId) : null);
   const flatListRef = useRef<FlatList>(null);
 
+  useEffect(() => {
+    if (chatId !== null) {
+      const currentChat = chat.chatMessages.find(c => c.chatId === chatId);
+      if (currentChat) {
+        setMessages(currentChat.messages);
+      }
+    }
+  }, [chatId, chat.chatMessages]);
+
   // Fetch event details and chat history when component mounts
   useEffect(() => {
     searchEvents.search({
