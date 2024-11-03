@@ -20,12 +20,14 @@ export const SingleEventDisplay = ({
     match
 }: SingleEventDisplayElementType) => {
     const router = useRouter();
-    const { refreshUserData, searchEvents, isParticipateEvent, userInfo, changeEvent } = useWebSocket();
+    const { refreshUserData, searchEvents, isParticipateEvent, userInfo, changeEvent,getKidInfo,getUserInfo } = useWebSocket();
     const [isDeleting, setIsDeleting] = useState(false);
     const [timeRemaining, setTimeRemaining] = useState('');
     const [comment, setComment] = useState('');
     const [isSubmittingComment, setIsSubmittingComment] = useState(false);
     const [internalCurrentEvent, setInternalCurrentEvent] = useState(currentEvent);
+    const [kidNames, setKidNames] = useState<{[key: number]: string}>({});
+    const [creatorName, setCreatorName] = useState<string>('');
 
     useEffect(() => {
         const updateTimeRemaining = () => {
@@ -54,6 +56,27 @@ export const SingleEventDisplay = ({
 
         return () => clearInterval(timer);
     }, [internalCurrentEvent]);
+
+    useEffect(() => {
+        // Load kid names when kidIds change
+        console.log("internalCurrentEvent.kidIds",internalCurrentEvent.kidIds);
+        if (internalCurrentEvent.kidIds) {
+            internalCurrentEvent.kidIds.forEach(async (kidId) => {
+                await getKidInfo(kidId, (kidInfo) => {
+                    console.log("get kidInfo",kidInfo);
+                    setKidNames(prev => ({ ...prev, [kidId]: kidInfo.name }));
+                },false);
+            });
+        }
+    }, [internalCurrentEvent.kidIds]);
+
+    useEffect(() => {
+        if (internalCurrentEvent.userId) {
+            getUserInfo(internalCurrentEvent.userId, (user, kidEvents, userEvents) => {
+                setCreatorName(user.username);
+            });
+        }
+    }, [internalCurrentEvent.userId]);
 
     const formatDateTime = (dateTimeString: string) => {
         const date = new Date(dateTimeString);
@@ -281,10 +304,10 @@ export const SingleEventDisplay = ({
                         {internalCurrentEvent.kidIds && internalCurrentEvent.kidIds.length > 0 && (
                             <View style={styles.infoRow}>
                                 <Ionicons name="people-circle-outline" size={20} color="#666" />
-                                <Text style={styles.infoText}>参与的孩子ID: </Text>
+                                <Text style={styles.infoText}>参与的孩子: </Text>
                                 {internalCurrentEvent.kidIds.map((kidId, index) => (
                                     <Text key={kidId} style={styles.kidText}>
-                                        {kidId}
+                                        {kidNames[kidId] || kidId}
                                         {index < internalCurrentEvent.kidIds.length - 1 ? ', ' : ''}
                                     </Text>
                                 ))}
@@ -302,7 +325,7 @@ export const SingleEventDisplay = ({
                                     <Text style={[  
                                         styles.infoText,
                                         internalCurrentEvent.userId !== userInfo?.id && styles.clickableText
-                                    ]}>{internalCurrentEvent.userId}</Text>
+                                    ]}>{creatorName}</Text>
                                 </TouchableOpacity>
                             </View>
                         )}

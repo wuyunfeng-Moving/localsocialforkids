@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useWebSocket } from '../context/WebSocketProvider';
 import { Event, ChatMessage } from '../types/types';
 
@@ -39,8 +39,13 @@ export default function ChatScreen() {
       const chatIdNum = Number(comingChatId);
       setChatId(chatIdNum);
       chat.getChatHistory(chatIdNum, (success, messages: ChatMessage[]) => {
-        console.log("getChatHistory", messages);
-        setMessages(messages);
+        if (success) {
+          console.log("getChatHistory", messages);
+          setMessages(messages);
+        }
+        else{
+          router.back();
+        }
       });
     } else if (eventId) {
       chat.createChat({

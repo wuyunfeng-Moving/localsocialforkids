@@ -11,6 +11,7 @@ interface WebSocketContextValue {
   kidEvents: KidInfo[],
   notifications: Notification[],
   getUserInfo: (userId: number,callback: (userInfo: UserInfo,kidEvents: KidInfo[],userEvents: Event[]) => void) => Promise<UserInfo>,
+  getKidInfo: (kidId: number, callback: (kidInfo: KidInfo) => void, forceUpdate: boolean) => Promise<void>,
   searchEvents: {
     search: (searchParams: {
       keyword?: string;
@@ -129,6 +130,7 @@ export const WebSocketProvider = ({ children }) => {
     logout,
     refreshUserData,
     getUserInfo,
+    getKidInfo,
     isUserDataLoading,
     changeEvent,
     searchEvents,
@@ -282,6 +284,7 @@ export const WebSocketProvider = ({ children }) => {
       userInfo: typedUserInfo,
       loginState,
       getUserInfo:getUserInfo,
+      getKidInfo:getKidInfo,
       // events,
       userEvents,
       kidEvents,

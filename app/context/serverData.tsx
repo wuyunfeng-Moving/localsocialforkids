@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Event, UserInfo, Events, AuthenticationMessage, 
     MessageFromServer, MatchEvents,MatchEvent,RecommendEvents
@@ -25,7 +25,6 @@ interface ServerData {
     notifications: Notification[];
     userEvents: Event[];
     kidEvents: KidInfo[];
-
     recommendEvents: RecommendEvents;
     matchedEvents: MatchEvents;
     loginState: {
@@ -86,6 +85,7 @@ interface ServerData {
         }) => Promise<void>;
     };
     getUserInfo: (userId: number, callback: (userInfo: UserInfo, kidEvents: KidInfo[], userEvents: Event[]) => void) => Promise<UserInfo>;
+    getKidInfo: (kidId: number, callback: (kidInfo: KidInfo) => void, forceUpdate: boolean) => Promise<void>;
     followActions: {
         followUser: (params: {
             userId: number;
@@ -139,8 +139,38 @@ function useDelayedQuery<TData>(
 }
 
 // Change from a variable to a custom hook
+const useInfoCache = () => {
+    const [userInfoCache, setUserInfoCache] = useState<Record<number, {
+        userInfo: UserInfo;
+        kidEvents: KidInfo[];
+        userEvents: Event[];
+        timestamp: number;
+    }>>({});
+    
+    const [kidInfoCache, setKidInfoCache] = useState<Record<number, {
+        kidInfo: KidInfo;
+        timestamp: number;
+    }>>({});
+
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+    const isCacheValid = useCallback((timestamp: number) => {
+        return Date.now() - timestamp < CACHE_DURATION;
+    }, []);
+
+    return {
+        userInfoCache,
+        kidInfoCache,
+        setUserInfoCache,
+        setKidInfoCache,
+        isCacheValid
+    };
+};
+
+// Inside useServerData, add these modified functions:
 const useServerData = (): ServerData => {
     const queryClient = useQueryClient();
+    const { userInfoCache, kidInfoCache, setUserInfoCache, setKidInfoCache, isCacheValid } = useInfoCache();
 
     const userDataQuery = useDelayedQuery(['userData'], async () => {
         const token = await getToken();
@@ -424,8 +454,34 @@ const useServerData = (): ServerData => {
             return response.data;
         },
         onSuccess: (data) => {
-            console.log("get response.data userInfo",data);
+            // console.log("get response.data userInfo",data);
             queryClient.setQueryData(['userData'], data);
+            
+            // Update caches when userInfo is updated
+            if (data.userInfo) {
+                setUserInfoCache(prev => ({
+                    ...prev,
+                    [data.userInfo.id]: {
+                        userInfo: data.userInfo,
+                        kidEvents: data.kidEvents || [],
+                        userEvents: data.userEvents || [],
+                        timestamp: Date.now()
+                    }
+                }));
+
+                // Update kidInfo cache if kidEvents are present
+                if (data.kidEvents) {
+                    data.kidEvents.forEach(kidInfo => {
+                        setKidInfoCache(prev => ({
+                            ...prev,
+                            [kidInfo.id]: {
+                                kidInfo,
+                                timestamp: Date.now()
+                            }
+                        }));
+                    });
+                }
+            }
         },
         onError: (error) => {
             console.error('Failed to update user info:', error);
@@ -658,23 +714,95 @@ const useServerData = (): ServerData => {
     };
 
     // Add this new query function
-    const getUserInfo = async (userId: number,callback: (userInfo: UserInfo,kidEvents: KidInfo[],userEvents: Event[]) => void): Promise<UserInfo> => {
+    const getUserInfo = useCallback(async (
+        userId: number,
+        callback: (userInfo: UserInfo, kidEvents: KidInfo[], userEvents: Event[]) => void,
+        forceUpdate: boolean = false
+    ): Promise<UserInfo> => {
+        // Check cache first
+        const cachedData = userInfoCache[userId];
+        if (!forceUpdate && cachedData && isCacheValid(cachedData.timestamp)) {
+            callback(cachedData.userInfo, cachedData.kidEvents, cachedData.userEvents);
+            return cachedData.userInfo;
+        }
+
+        // If not in cache or force update, fetch from server
         const token = await getToken();
         if (!token) throw new Error('No token');
 
-        console.log("getUserInfo",userId);
-        
         const response = await axios.get(`${BASE_URL}/getUserInfo/${userId}`, {
             headers: { Authorization: `Bearer ${token}` }
         });
-        
-        console.log("getUserInfo response",response.data);  
+
         if (response.data.success) {
-            callback(response.data.data.userInfo,response.data.data.kidEvents,response.data.data.userEvents);
-            return response.data.data.userInfo;
+            const { userInfo, kidEvents, userEvents } = response.data.data;
+            
+            // Update cache
+            setUserInfoCache(prev => ({
+                ...prev,
+                [userId]: {
+                    userInfo,
+                    kidEvents,
+                    userEvents,
+                    timestamp: Date.now()
+                }
+            }));
+
+            // Update kidInfo cache for each kid
+            kidEvents.forEach(kidInfo => {
+                setKidInfoCache(prev => ({
+                    ...prev,
+                    [kidInfo.id]: {
+                        kidInfo,
+                        timestamp: Date.now()
+                    }
+                }));
+            });
+
+            callback(userInfo, kidEvents, userEvents);
+            return userInfo;
         }
         throw new Error(response.data.message || 'Failed to fetch user info');
-    };
+    }, [userInfoCache, isCacheValid]);
+
+    const getKidInfo = useCallback(async (
+        kidId: number,
+        callback: (kidInfo: KidInfo) => void,
+        forceUpdate: boolean = false
+    ): Promise<void> => {
+        // Check cache first
+        const cachedData = kidInfoCache[kidId];
+        if (!forceUpdate && cachedData && isCacheValid(cachedData.timestamp)) {
+            console.log("cachedData",cachedData);
+            callback(cachedData.kidInfo);
+        }
+
+        // If not in cache or force update, fetch from server
+        const token = await getToken();
+        if (!token) throw new Error('No token');
+
+        console.log("fetching kidInfo",kidId);
+        const response = await axios.get(`${BASE_URL}/getKidInfo/${kidId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        console.log("response.data",response.data);
+        if (response.data.success) {
+            const kidInfo = response.data.kidInfo;
+            
+            // Update cache
+            setKidInfoCache(prev => ({
+                ...prev,
+                [kidId]: {
+                    kidInfo,
+                    timestamp: Date.now()
+                }
+            }));
+
+            callback(kidInfo);
+        }
+        throw new Error(response.data.message || 'Failed to fetch kid info');
+    }, [kidInfoCache, isCacheValid]);
 
     // Add following state near other state declarations
     const [following, setFollowing] = useState<number[]>([]);
@@ -917,6 +1045,7 @@ const useServerData = (): ServerData => {
             addComment,
         },
         getUserInfo,  // Add this to the returned object
+        getKidInfo,
         followActions: {
             followUser,
             unfollowUser

@@ -10,7 +10,7 @@ import { Event } from '../types/types';
 const EventDetailsPage = () => {
   const params = useLocalSearchParams();
   const { id, eventData } = params;
-  const { changeEvent, userInfo} = useWebSocket(); // 假设 user 对象包含孩子信息
+  const { changeEvent, userInfo,getKidInfo} = useWebSocket(); // 假设 user 对象包含孩子信息
   const [showKidSelection, setShowKidSelection] = useState(false);
   const [selectedKidIds, setSelectedKidIds] = useState<number[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);

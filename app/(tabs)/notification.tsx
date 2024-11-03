@@ -67,7 +67,7 @@ const NotificationScreen = () => {
         router.push({
           pathname: '/chat',
           params: { 
-            id: notification.chatId,
+            comingChatId: notification.chatId,
             eventId: notification.eventId
           }
         });
