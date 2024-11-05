@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Event, UserInfo, Events, AuthenticationMessage, 
     MessageFromServer, MatchEvents,MatchEvent,RecommendEvents
-    ,KidInfo,ChatMessage,ChatMessagesArray} from '../types/types';
+    ,KidInfo,ChatMessage,ChatMessagesArray,LoginState} from '../types/types';
 import * as SecureStore from 'expo-secure-store';
 import { Notification } from '../types/notification_types';
 import {useQuery,useMutation,useQueryClient, UseMutationResult} from "@tanstack/react-query";
@@ -27,10 +27,7 @@ interface ServerData {
     kidEvents: KidInfo[];
     recommendEvents: RecommendEvents;
     matchedEvents: MatchEvents;
-    loginState: {
-        logined: boolean;
-        error: 'No token' | 'Token expired' | string;
-    };
+    loginState: LoginState;
     userInfo: UserInfo | undefined;
     refreshUserData: () => void;
     token: string | null;

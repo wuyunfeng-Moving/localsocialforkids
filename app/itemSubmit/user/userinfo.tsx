@@ -2,15 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Text, Dimensions, ScrollView, Image, TextInput, TouchableOpacity, FlatList } from 'react-native';
 import { useWebSocket } from '../../context/WebSocketProvider';
 import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 
 const UserInfoScreen = () => {
-  const { userInfo, loginState, update } = useWebSocket();
-  const [newEmail, setNewEmail] = useState(userInfo.email||'');
-
-  const handleUpdateEmail = () => {
-    // 这里应该调用 update 函数来更新邮箱
-    update.updateUserInfo({ ...userInfo, email: newEmail ,type:'updateUserInfo'});
-  };
+  const { userInfo, loginState } = useWebSocket();
 
   const renderKidItem = ({ item }) => (
     <View style={styles.kidItem}>
@@ -30,42 +25,56 @@ const UserInfoScreen = () => {
       {loginState.logined ? (
         <>
           <View style={styles.header}>
-            <View style={styles.photoContainer}>
-              <Image
-                source={require('@/assets/images/people.jpg')}
-                style={styles.userPhoto}
-              />
+            <View style={styles.headerContent}>
+              <View style={styles.photoContainer}>
+                <Image
+                  source={require('@/assets/images/people.jpg')}
+                  style={styles.userPhoto}
+                />
+              </View>
+              <View style={styles.userTextInfo}>
+                <Text style={styles.title}>{userInfo.name}</Text>
+                <Text style={styles.emailText}>{userInfo.email}</Text>
+              </View>
             </View>
-            <Text style={styles.title}>{userInfo.name}</Text>
           </View>
           <View style={styles.userInfoContainer}>
-            <View style={styles.userInfoItem}>
+            {/* <View style={styles.userInfoItem}>
               <MaterialIcons name="email" size={24} color="#666" />
               <Text style={styles.label}>邮箱：</Text>
-              <TextInput
-                style={styles.input}
-                value={newEmail}
-                onChangeText={setNewEmail}
-                placeholder="输入新的邮箱地址"
-              />
-            </View>
-            <TouchableOpacity style={styles.updateButton} onPress={handleUpdateEmail}>
-              <Text style={styles.updateButtonText}>更新邮箱</Text>
+              <Text style={styles.value}>{userInfo.email}</Text>
+            </View> */}
+
+            <TouchableOpacity 
+              style={styles.updateButton} 
+              onPress={() => router.push('/itemSubmit/user/editProfile')}
+            >
+              <Text style={styles.updateButtonText}>编辑资料</Text>
             </TouchableOpacity>
+
             <View style={styles.kidSection}>
               <View style={styles.kidSectionHeader}>
                 <MaterialIcons name="child-care" size={24} color="#666" />
                 <Text style={styles.label}>孩子信息：</Text>
               </View>
-              {userInfo.kidinfo && userInfo.kidinfo.length > 0 ? (
-                <FlatList
-                  data={userInfo.kidinfo}
-                  renderItem={renderKidItem}
-                  keyExtractor={(item) => item.id.toString()}
-                  horizontal={true}
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.kidList}
-                />
+              {userInfo?.kidinfo && userInfo.kidinfo.length > 0 ? (
+                <View>
+                  <FlatList
+                    data={userInfo.kidinfo}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity 
+                        onPress={() => router.push(`../user/kidsDetail/${item.id}`)}
+                        style={styles.kidItem}
+                      >
+                        {renderKidItem({ item })}
+                      </TouchableOpacity>
+                    )}
+                    keyExtractor={(item) => item.id.toString()}
+                    horizontal={true}
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.kidList}
+                  />
+                </View>
               ) : (
                 <Text style={styles.noKidsText}>暂无孩子信息</Text>
               )}
@@ -75,7 +84,7 @@ const UserInfoScreen = () => {
       ) : (
         <View style={styles.notLoggedInContainer}>
           <MaterialIcons name="lock" size={60} color="#999" />
-          <Text style={styles.notLoggedInText}>未登录</Text>
+          <Text style={styles.notLoggedInText}>未���录</Text>
         </View>
       )}
     </ScrollView>
@@ -90,17 +99,40 @@ const styles = StyleSheet.create({
     backgroundColor: '#f7f7f7',
   },
   header: {
-    alignItems: 'center',
-    padding: 24,
+    padding: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  photoContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    overflow: 'hidden',
+    backgroundColor: '#f0f0f0',
+  },
+  userPhoto: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  userTextInfo: {
+    marginLeft: 16,
+    justifyContent: 'center',
+  },
   title: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginTop: 12,
     color: '#333',
+  },
+  emailText: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 4,
   },
   userInfoContainer: {
     backgroundColor: '#fff',
@@ -141,17 +173,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     color: '#999',
     marginTop: 16,
-  },
-  photoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  userPhoto: {
-    width: '100%',
-    height: '100%',
   },
   input: {
     flex: 1,
@@ -215,6 +236,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     fontStyle: 'italic',
+  },
+  inputError: {
+    borderBottomColor: 'red',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    marginTop: 4,
   },
 });
 

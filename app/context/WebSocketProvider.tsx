@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useServerData } from './serverData';
-import { MatchEvents, MatchEvent, ChatMessagesArray, ChatMessage } from '../types/types';
+import { MatchEvents, MatchEvent, ChatMessagesArray, ChatMessage, LoginState } from '../types/types';
 import { Event,UserInfo,KidInfo } from '../types/types';
 import { UseMutationResult } from '@tanstack/react-query';
 
@@ -9,7 +9,9 @@ interface WebSocketContextValue {
   userInfo: UserInfo | null,
   userEvents: Event[],
   kidEvents: KidInfo[],
+  loginState: LoginState,
   notifications: Notification[],
+  refreshUserData: () => void,
   getUserInfo: (userId: number,callback: (userInfo: UserInfo,kidEvents: KidInfo[],userEvents: Event[]) => void) => Promise<UserInfo>,
   getKidInfo: (kidId: number, callback: (kidInfo: KidInfo) => void, forceUpdate: boolean) => Promise<void>,
   searchEvents: {

@@ -63,7 +63,7 @@ export default function UserScreen() {
             {userInfo && userInfo.email? (
                 <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                     {renderUserInfoWithPhoto()}
-                    {renderMyChildrenSection()}
+                    {/* {renderMyChildrenSection()} */}
                     {renderFollowingSection()}
                     <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                         <Text style={styles.logoutButtonText}>登出</Text>

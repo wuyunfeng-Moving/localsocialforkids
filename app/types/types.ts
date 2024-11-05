@@ -99,3 +99,8 @@ export type ChatMessagesArray = {
     chatId:number;
     messages:ChatMessage[];
 }[];
+
+export type LoginState = {
+    logined: boolean;
+    error: 'No token' | 'Token expired' | string;
+};

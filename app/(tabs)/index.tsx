@@ -7,7 +7,6 @@ import useIndex from '../context/userIndex';
 import { useRouter } from 'expo-router';
 import RecommandEvent from '../itemSubmit/listEvent/recommandEvent';
 import SearchEventsDisplay from '../itemSubmit/listEvent/searchEventDisplay';
-import { useServerData } from '../context/serverData';
 import MyCalendar from '../kalender/index';
 
 const getFormattedTime = () => {
@@ -64,8 +63,7 @@ export default function TabOneScreen() {
     userEvents,
     loginState,
     refreshUserData,
-    isUserDataLoading
-  } = useServerData();
+  } = useWebSocket();
   const router = useRouter();
 
   const {
