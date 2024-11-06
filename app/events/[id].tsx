@@ -28,12 +28,15 @@ const EventDetailsPage = () => {
     return null;
   }, [eventData]);
 
+
+
   // 仅在组件挂载时打印一次参数
   React.useEffect(() => {
     console.log('Received params:', params);
     console.log('ID:', id);
     console.log('Event Data:', eventData);
-  }, []); // 空依赖数组，确保效果只运行一次
+    console.log("event",event);
+  }, [event]); // 空依赖数组，确保效果只运行一次
 
   const handleJoinRequest = () => {
     if (userInfo.kidinfo.length === 0) {
@@ -120,11 +123,15 @@ const EventDetailsPage = () => {
 
   if (!event) {
     return <Text>Loading event details...</Text>;
-  }
+  } 
+
+  console.log("event in eventDetailsPage",event);
 
   return (
     <ScrollView style={styles.container}>
-      <SingleEventDisplay currentEvent={event} depth={0} list={0}/>
+      {event && (
+        <SingleEventDisplay currentEvent={event} depth={0} list={0}/>
+      )}
       <View style={styles.actionButtonsContainer}>
         {event.userId !== userInfo?.id && (
           <TouchableOpacity style={styles.joinButton} onPress={handleJoinRequest}>

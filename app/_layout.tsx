@@ -64,7 +64,6 @@ function RootLayoutNav() {
             <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
             <Stack.Screen name="user"  options={{headerShown: false}}/>
             <Stack.Screen name='events/[id]' options={{headerShown:true}}/>
-            <Stack.Screen name='user/kidsDetail/[id]' options={{headerShown:true}}/>
             {/* <Stack.Screen name="itemSubmit" options={{}}/> */}
           </Stack>
           </LocationProvider>

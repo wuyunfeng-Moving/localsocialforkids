@@ -35,16 +35,6 @@ export default function UserScreen() {
         </View>
     );
 
-    const renderMyChildrenSection = () => (
-        <TouchableOpacity style={styles.section} onPress={() => {router.push('../user/kids')}}>
-            <View style={styles.sectionHeader}>
-                <FontAwesome name="child" size={24} color="#007AFF" style={styles.sectionIcon} />
-                <Text style={styles.sectionTitle}>我的孩子</Text>
-            </View>
-            <Text style={styles.sectionSubtitle}>查看和管理您的孩子信息</Text>
-        </TouchableOpacity>
-    );
-
     const renderFollowingSection = () => (
         <TouchableOpacity 
             style={styles.section} 

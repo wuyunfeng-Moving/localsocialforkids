@@ -3,6 +3,7 @@ import { useServerData } from './serverData';
 import { MatchEvents, MatchEvent, ChatMessagesArray, ChatMessage, LoginState } from '../types/types';
 import { Event,UserInfo,KidInfo } from '../types/types';
 import { UseMutationResult } from '@tanstack/react-query';
+import { Notification } from '../types/notification_types';
 
 // Define the type for the context value
 interface WebSocketContextValue {
@@ -12,6 +13,8 @@ interface WebSocketContextValue {
   loginState: LoginState,
   notifications: Notification[],
   refreshUserData: () => void,
+  isUserDataLoading: boolean,
+  isParticipateEvent: (event:Event) => boolean,
   getUserInfo: (userId: number,callback: (userInfo: UserInfo,kidEvents: KidInfo[],userEvents: Event[]) => void) => Promise<UserInfo>,
   getKidInfo: (kidId: number, callback: (kidInfo: KidInfo) => void, forceUpdate: boolean) => Promise<void>,
   searchEvents: {

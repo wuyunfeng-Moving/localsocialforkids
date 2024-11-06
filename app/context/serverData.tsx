@@ -583,14 +583,14 @@ const useServerData = (): ServerData => {
             if(response.data.success){
                 console.log("Search results:", response.data.events);
                 setSearchResults(response.data.events);
-                searchParams.callback?.(true,"",response.data.events);
+                searchParams.callback && searchParams.callback(true,"",response.data.events);
             }
             else{
-                searchParams.callback?.(false,response.data.message,[]);
+                searchParams.callback && searchParams.callback(false,response.data.message,[]);
             }
         } catch (error) {
             console.error('Failed to search events:', error);
-            searchParams.callback?.(false,"",[]);
+            searchParams.callback && searchParams.callback(false,"",[]);
             setSearchError(error instanceof Error ? error : new Error('An unknown error occurred'));
         } finally {
             setIsSearching(false);
@@ -797,6 +797,7 @@ const useServerData = (): ServerData => {
             }));
 
             callback(kidInfo);
+            return;
         }
         throw new Error(response.data.message || 'Failed to fetch kid info');
     }, [kidInfoCache, isCacheValid]);

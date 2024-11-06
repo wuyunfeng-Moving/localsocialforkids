@@ -221,7 +221,7 @@ export const SingleEventDisplay = ({
 
         // Sort comments by timestamp in descending order (newest first)
         const sortedComments = [...internalCurrentEvent.comments].sort((a, b) => 
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()
         );
 
         return sortedComments.map((comment, index) => (
@@ -258,7 +258,14 @@ export const SingleEventDisplay = ({
     return (
         <ScrollView>
             <View style={getContainerStyle()}>
-                <Text style={styles.title}>{internalCurrentEvent.topic}</Text>
+                <View style={styles.headerContainer}>
+                    <Text style={styles.title}>{internalCurrentEvent.topic}</Text>
+                    {getEventState(internalCurrentEvent) === 'owned' ? (
+                        <Ionicons name="person" size={24} color="#666" />
+                    ) : getEventState(internalCurrentEvent) === 'joined' ? (
+                        <Ionicons name="people" size={24} color="#666" />
+                    ) : null}
+                </View>
 
                 {/* 基本信息 - 在列表和详情视图中都显示 */}
                 <View style={styles.infoRow}>
@@ -640,5 +647,18 @@ const styles = StyleSheet.create({
     actionButtonText: {
         color: '#fff',
         fontWeight: 'bold',
+    },
+    headerContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    title: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#333',
+        flex: 1,
+        marginRight: 8,
     },
 });

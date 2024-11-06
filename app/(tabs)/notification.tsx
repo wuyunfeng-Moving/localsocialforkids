@@ -30,6 +30,7 @@ const NotificationScreen = () => {
           eventId: Number(notification.eventId),
           callback: (success, message, events) => {
             if(success) {
+
               router.push({
                 pathname: '/events/[id]',
                 params: { id: notification.eventId, eventData: JSON.stringify(events[0]) }

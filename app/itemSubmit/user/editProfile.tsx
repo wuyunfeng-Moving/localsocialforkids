@@ -5,15 +5,29 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 
+// 添加类型定义
+interface FormData {
+  name: string;
+  email: string;
+  avatar: string;
+  phone?: string;
+}
+
+interface FormErrors {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
 const EditProfileScreen = () => {
   const { userInfo, update } = useWebSocket();
-  const [formData, setFormData] = useState({
-    name: userInfo.name || '',
-    email: userInfo.email || '',
-    phone: userInfo.phone || '',
-    avatar: userInfo.avatar || '',
+  const [formData, setFormData] = useState<FormData>({
+    name: userInfo?.username || '',
+    email: userInfo?.email || '',
+    avatar: userInfo?.avatar || '',
+    phone: userInfo?.phone || '',
   });
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,7 +53,7 @@ const EditProfileScreen = () => {
   };
 
   const handleSubmit = () => {
-    const newErrors = {};
+    const newErrors: FormErrors = {};
 
     if (!formData.name.trim()) {
       newErrors.name = '请输入姓名';
@@ -112,7 +126,7 @@ const EditProfileScreen = () => {
           {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
         </View>
 
-        <View style={styles.inputGroup}>
+        {/* <View style={styles.inputGroup}>
           <Text style={styles.label}>手机号码</Text>
           <TextInput
             style={[styles.input, errors.phone && styles.inputError]}
@@ -125,7 +139,7 @@ const EditProfileScreen = () => {
             keyboardType="phone-pad"
           />
           {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
-        </View>
+        </View> */}
 
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
           <Text style={styles.submitButtonText}>保存修改</Text>

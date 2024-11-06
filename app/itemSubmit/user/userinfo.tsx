@@ -3,11 +3,12 @@ import { View, StyleSheet, Text, Dimensions, ScrollView, Image, TextInput, Touch
 import { useWebSocket } from '../../context/WebSocketProvider';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { KidInfo } from '@/app/types/types';
 
 const UserInfoScreen = () => {
   const { userInfo, loginState } = useWebSocket();
 
-  const renderKidItem = ({ item }) => (
+  const renderKidItem = ({ item }: { item: KidInfo }) => (
     <View style={styles.kidItem}>
       <View style={styles.kidPhotoContainer}>
         <Image
@@ -16,7 +17,7 @@ const UserInfoScreen = () => {
         />
       </View>
       <Text style={styles.kidName}>{item.name}</Text>
-      <Text style={styles.kidAge}>{`${item.age}岁`}</Text>
+      <Text style={styles.kidAge}>{`${item.birthDate}岁`}</Text>
     </View>
   );
 
@@ -33,9 +34,15 @@ const UserInfoScreen = () => {
                 />
               </View>
               <View style={styles.userTextInfo}>
-                <Text style={styles.title}>{userInfo.name}</Text>
-                <Text style={styles.emailText}>{userInfo.email}</Text>
+                <Text style={styles.title}>{userInfo?.username}</Text>
+                <Text style={styles.emailText}>{userInfo?.email}</Text>
               </View>
+              <TouchableOpacity 
+                style={styles.editButton} 
+                onPress={() => router.push('/itemSubmit/user/editProfile')}
+              >
+                <Text style={styles.editButtonText}>编辑</Text>
+              </TouchableOpacity>
             </View>
           </View>
           <View style={styles.userInfoContainer}>
@@ -45,30 +52,34 @@ const UserInfoScreen = () => {
               <Text style={styles.value}>{userInfo.email}</Text>
             </View> */}
 
-            <TouchableOpacity 
-              style={styles.updateButton} 
-              onPress={() => router.push('/itemSubmit/user/editProfile')}
-            >
-              <Text style={styles.updateButtonText}>编辑资料</Text>
-            </TouchableOpacity>
-
             <View style={styles.kidSection}>
               <View style={styles.kidSectionHeader}>
                 <MaterialIcons name="child-care" size={24} color="#666" />
                 <Text style={styles.label}>孩子信息：</Text>
               </View>
-              {userInfo?.kidinfo && userInfo.kidinfo.length > 0 ? (
+              {userInfo?.kidinfo ? (
                 <View>
                   <FlatList
-                    data={userInfo.kidinfo}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity 
-                        onPress={() => router.push(`../user/kidsDetail/${item.id}`)}
-                        style={styles.kidItem}
-                      >
-                        {renderKidItem({ item })}
-                      </TouchableOpacity>
-                    )}
+                    data={[...(userInfo.kidinfo || []), { id: 'add_button' }]}
+                    renderItem={({ item }) => 
+                      item.id === 'add_button' ? (
+                        <TouchableOpacity 
+                          style={styles.addKidItem}
+                          onPress={() => router.push('/itemSubmit/user/addKid')}
+                        >
+                          <View style={styles.addKidCircle}>
+                            <MaterialIcons name="add" size={30} color="#007AFF" />
+                          </View>
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity 
+                          onPress={() => router.push(`../user/kidsDetail/${item.id}`)}
+                          style={styles.kidItem}
+                        >
+                          {renderKidItem({ item })}
+                        </TouchableOpacity>
+                      )
+                    }
                     keyExtractor={(item) => item.id.toString()}
                     horizontal={true}
                     showsHorizontalScrollIndicator={false}
@@ -76,7 +87,14 @@ const UserInfoScreen = () => {
                   />
                 </View>
               ) : (
-                <Text style={styles.noKidsText}>暂无孩子信息</Text>
+                <TouchableOpacity 
+                  style={styles.addKidItem}
+                  onPress={() => router.push('/itemSubmit/user/addKid')}
+                >
+                  <View style={styles.addKidCircle}>
+                    <MaterialIcons name="add" size={30} color="#007AFF" />
+                  </View>
+                </TouchableOpacity>
               )}
             </View>
           </View>
@@ -84,7 +102,7 @@ const UserInfoScreen = () => {
       ) : (
         <View style={styles.notLoggedInContainer}>
           <MaterialIcons name="lock" size={60} color="#999" />
-          <Text style={styles.notLoggedInText}>未���录</Text>
+          <Text style={styles.notLoggedInText}>未登录</Text>
         </View>
       )}
     </ScrollView>
@@ -107,6 +125,7 @@ const styles = StyleSheet.create({
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   photoContainer: {
     width: 60,
@@ -123,6 +142,7 @@ const styles = StyleSheet.create({
   userTextInfo: {
     marginLeft: 16,
     justifyContent: 'center',
+    flex: 1,
   },
   title: {
     fontSize: 18,
@@ -182,17 +202,15 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ccc',
     paddingVertical: 4,
   },
-  updateButton: {
-    backgroundColor: '#007AFF',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 16,
+  editButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    backgroundColor: '#f0f0f0',
   },
-  updateButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  editButtonText: {
+    fontSize: 14,
+    color: '#666',
   },
   kidSection: {
     marginTop: 20,
@@ -244,6 +262,23 @@ const styles = StyleSheet.create({
     color: 'red',
     fontSize: 12,
     marginTop: 4,
+  },
+  addKidItem: {
+    width: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  addKidCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0f0f0',
   },
 });
 

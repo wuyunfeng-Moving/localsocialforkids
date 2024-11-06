@@ -60,6 +60,7 @@ export type UserInfo = {
     username: string;
     id: number;
     introduction?: string;
+    avatar?: string;
     kidinfo: KidInfo[];
     following: number[];
     followers: number[];
