@@ -63,7 +63,7 @@ export const SingleEventDisplay = ({
         if (internalCurrentEvent.kidIds) {
             internalCurrentEvent.kidIds.forEach(async (kidId) => {
                 await getKidInfo(kidId, (kidInfo) => {
-                    console.log("get kidInfo",kidInfo);
+
                     setKidNames(prev => ({ ...prev, [kidId]: kidInfo.name }));
                 },false);
             });
@@ -128,6 +128,21 @@ export const SingleEventDisplay = ({
                 return styles.mergedContainer;
             default:
                 return {};
+        }
+    };
+
+    const getStatusText = (status: Event['status']): string => {
+        switch (status) {
+            case 'preparing':
+                return '准备中';
+            case 'started':
+                return '进行中';
+            case 'ended':
+                return '已结束';
+            case 'merged':
+                return '已合并';
+            default:
+                return '未知状态';
         }
     };
 
@@ -270,7 +285,7 @@ export const SingleEventDisplay = ({
                 {/* 基本信息 - 在列表和详情视图中都显示 */}
                 <View style={styles.infoRow}>
                     <Ionicons name="flag-outline" size={20} color="#666" />
-                    <Text style={styles.infoText}>状态: {internalCurrentEvent.status}</Text>
+                    <Text style={styles.infoText}>状态: {getStatusText(internalCurrentEvent.status)}</Text>
                     {timeRemaining && (
                         <Text style={styles.timeRemainingText}>
                             {internalCurrentEvent.status === 'preparing' ? '距离开始还有: ' : '距离结束还有: '}

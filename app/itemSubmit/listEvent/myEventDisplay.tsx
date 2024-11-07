@@ -47,7 +47,9 @@ const MyEventDisplay: React.FC<MyEventDisplayProps> = ({ kidEvents, userEvents }
         <View style={styles.container}>
           {combinedEvents.length > 0 ? (
             combinedEvents.map((event) => (
-              <TouchableOpacity onPress={() => handleEventPress(event)}>
+              <TouchableOpacity 
+                key={event.id}
+                onPress={() => handleEventPress(event)}>
                 <SingleEventDisplay currentEvent={event} list={1} depth={0} />
               </TouchableOpacity>
             ))

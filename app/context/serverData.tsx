@@ -496,7 +496,6 @@ const useServerData = (): ServerData => {
             const response = await axios.post(`${BASE_URL}/logout`,{
                 headers: { Authorization: `Bearer ${token}` }
             });
-            console.log("response.data out",response.data);
             return response.data;
         },
         onSuccess: (data) => {
@@ -527,7 +526,6 @@ const useServerData = (): ServerData => {
     const loginMutation = useMutation({
         mutationFn: async (credentials: { email: string; password: string }) => {
             const response = await axios.post(`${BASE_URL}/login`, credentials);
-            console.log(response.data);
             return response.data;
         },
         onSuccess: (data) => {
@@ -783,7 +781,6 @@ const useServerData = (): ServerData => {
             headers: { Authorization: `Bearer ${token}` }
         });
 
-        console.log("response.data",response.data);
         if (response.data.success) {
             const kidInfo = response.data.kidInfo;
             

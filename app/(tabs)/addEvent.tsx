@@ -137,7 +137,6 @@ export default function TabTwoScreen() {
       return;
     }
 
-    console.log('sending data:', JSON.stringify(newItems));
     setIsSubmitting(true);
     update.updateUserInfo.mutate({type: 'addNewEvent', newUserInfo: newItems}, {
       onSuccess: () => {
@@ -172,22 +171,24 @@ export default function TabTwoScreen() {
         visible={isSelecting}
         onRequestClose={() => setIsSelecting(false)}
       >
-        <View style={styles.modalView}>
-          <Picker
-            selectedValue={value.toString()}
-            onValueChange={(itemValue) => {
-              handleInputChange(title === 'duration' ? parseInt(itemValue, 10) : itemValue, title, 'value');
-              setIsSelecting(false);
-            }}
-            style={styles.picker}
-          >
-            {options.map((option, index) => (
-              <Picker.Item label={option.toString()} value={option.toString()} key={index} />
-            ))}
-          </Picker>
-          <TouchableOpacity style={styles.closeButton} onPress={() => setIsSelecting(false)}>
-            <Text style={styles.closeButtonText}>关闭</Text>
-          </TouchableOpacity>
+        <View style={styles.bottomModalContainer}>
+          <View style={styles.bottomModalContent}>
+            <Picker
+              selectedValue={value.toString()}
+              onValueChange={(itemValue) => {
+                handleInputChange(title === 'duration' ? parseInt(itemValue, 10) : itemValue, title, 'value');
+                setIsSelecting(false);
+              }}
+              style={styles.picker}
+            >
+              {options.map((option, index) => (
+                <Picker.Item label={option.toString()} value={option.toString()} key={index} />
+              ))}
+            </Picker>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setIsSelecting(false)}>
+              <Text style={styles.closeButtonText}>关闭</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </View>
@@ -495,5 +496,17 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     backgroundColor: '#a5d6a7',
+  },
+  bottomModalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  bottomModalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    alignItems: 'center',
   },
 });
