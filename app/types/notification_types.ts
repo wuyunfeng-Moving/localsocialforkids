@@ -57,3 +57,12 @@ export type Notification =
     | UnfollowNotification 
     | ActivityCreatedNotification
     | ChatMessageNotification;
+
+
+export const isNotification = (notification: any): notification is Notification => {
+    return typeof notification.id === 'number' &&
+        typeof notification.userId === 'number' &&
+        typeof notification.message === 'string' &&
+        typeof notification.createdAt === 'string' &&
+        typeof notification.read === 'boolean';
+};

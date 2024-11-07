@@ -1,29 +1,15 @@
-import {Notification} from "./notification_types"
+import {Notification,isNotification} from "./notification_types"
+import {WebSocketMessageFromServer,isWebSocketMessageFromServer} from "./serverDataTypes"
+import {UserInfo,isUserInfo,Event,isEvent,KidInfo,isKidInfo} from "./baseType"
+import {} from "./serverDataTypes"
 
-export type Comment = {
-    id: number;
-    content: string;
-    userId: number;
+
+export interface MessageFromServer extends WebSocketMessageFromServer{}
+export const isMessageFromServer = (message: WebSocketMessageFromServer): message is MessageFromServer => {
+    return isWebSocketMessageFromServer(message);
 };
 
-
-export type Event = {
-    id: number;
-    place: {
-        location: [number, number];
-        maxNumber: number;
-    };
-    dateTime: string;
-    duration: number;
-    topic: string;
-    description: string;
-    kidIds: number[];
-    userId: number;
-    pendingSignUps?: Array<{id:number,type:"event"|"kid",kidIds:number[], sourceEventId: number; reason: string }>;
-    status:'preparing'|'started'|'ended'|'merged';
-    comments?:Comment[];
-    chatIds?:number[];
-};
+export 
 
 export type RecommendEvent={
     event:Event,
@@ -31,42 +17,6 @@ export type RecommendEvent={
 };
 
 export type RecommendEvents = RecommendEvent[];
-
-export type MatchEvent ={
-    event:Event,
-    score:number
-};
-
-export type MatchEvents = {
-    [sourceEventId:number]:MatchEvent[]
-};
-
-export type KidInfo ={
-    id: number;
-    name: string;
-    gender: 'male' | 'female';
-    photoPath: string;
-    description: string;
-    personalSpaceUrl: string;
-    birthDate: string;
-    guardians: Array<{
-        userId: number;
-        relationship: string;
-    }>;
-}
-
-export type UserInfo = {
-    email: string;
-    username: string;
-    id: number;
-    introduction?: string;
-    avatar?: string;
-    kidinfo: KidInfo[];
-    following: number[];
-    followers: number[];
-};
-
-export type Events = Event[];
 
 export interface AuthenticationMessage {
     type: 'verifyToken';
@@ -77,31 +27,18 @@ export interface AuthenticationMessage {
     kidEvents: any[];
 }
 
-export type MessageFromServer =
-    | { type: 'notification'; notification: Notification } 
-    | { type: 'appDataSyncToClient'; success: boolean; data: AppDataSyncPayload } 
-    | { type: string; [key: string]: any };
 
-export type AppDataSyncPayload = {
-    notifications: Notification[];
-    userInfo: UserInfo;
-    userEvents: Event[];
-    kidEvents: Event[];
-};
 
-export type ChatMessage = {
-    id: number;
-    userId: number;
-    content: string;
-    timestamp: string;
-};
 
-export type ChatMessagesArray = {
-    chatId:number;
-    messages:ChatMessage[];
-}[];
 
-export type LoginState = {
-    logined: boolean;
-    error: 'No token' | 'Token expired' | string;
-};
+
+
+
+
+
+
+
+
+
+
+
