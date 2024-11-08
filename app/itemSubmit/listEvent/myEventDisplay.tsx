@@ -1,18 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useWebSocket ,AllEvents} from '../../context/WebSocketProvider';
+import { useWebSocket} from '../../context/WebSocketProvider';
 import { Event } from "@/app/types/types";
 import { SingleEventDisplay } from './singleEventDisplay';
 import { router } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
 
-interface MyEventDisplayProps {
-  kidEvents: Event[];
-  userEvents: Event[];
-}
-
-const MyEventDisplay: React.FC<MyEventDisplayProps> = ({ kidEvents, userEvents }) => {
-    const AllEvents = useQueryClient().getQueryData(['categorizedEvents']) as AllEvents;
+const MyEventDisplay: React.FC = () => {
+    const { userEvents, kidEvents, appliedEvents } = useWebSocket();
 
     const handleEventPress = (event: Event) => {
       console.log("handleEventPress", event);
@@ -24,8 +18,8 @@ const MyEventDisplay: React.FC<MyEventDisplayProps> = ({ kidEvents, userEvents }
 
     return (
         <View style={styles.container}>
-          {AllEvents.created.length > 0 ? (
-            AllEvents.created.map((event) => (
+          {userEvents.length > 0 ? (
+            userEvents.map((event) => (
               <TouchableOpacity 
                 key={event.id}
                 onPress={() => handleEventPress(event)}>
@@ -33,8 +27,8 @@ const MyEventDisplay: React.FC<MyEventDisplayProps> = ({ kidEvents, userEvents }
               </TouchableOpacity>
             ))
           ) : 
-          AllEvents.participating.length > 0 ? (
-            AllEvents.participating.map((event) => (
+          kidEvents.length > 0 ? (
+            kidEvents.map((event) => (
               <TouchableOpacity 
                 key={event.id}
                 onPress={() => handleEventPress(event)}>
@@ -42,8 +36,8 @@ const MyEventDisplay: React.FC<MyEventDisplayProps> = ({ kidEvents, userEvents }
               </TouchableOpacity>
             ))
           ) :
-          AllEvents.applied.length > 0 ? (
-            AllEvents.applied.map((event) => (
+          appliedEvents.length > 0 ? (
+            appliedEvents.map((event) => (
               <TouchableOpacity 
                 key={event.id}
                 onPress={() => handleEventPress(event)}>

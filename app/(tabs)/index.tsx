@@ -18,7 +18,7 @@ const TABS = [
   { 
     id: 'myEvent', 
     title: '我的活动',
-    render: (props) => <MyEventDisplay kidEvents={props.kidEvents} userEvents={props.userEvents} />
+    render: () => <MyEventDisplay />
   },
   { 
     id: 'search', 
@@ -34,7 +34,6 @@ const TABS = [
     id: 'kalender',
     title: '活动日历',
     render: (props) => <MyCalendar events={
-      // 将 kidEvents 和 userEvents 转换为日历事件格式
       [...props.kidEvents, ...props.userEvents].map(event => ({
         title: event.title || event.name,
         start: new Date(event.startTime || event.start_time),

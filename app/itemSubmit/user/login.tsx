@@ -16,8 +16,7 @@ const LoginScreen = ({ closeModal, isModal = false }) => {
   const router = useRouter();
 
   useEffect(() => {
-    console.log('loginState:', loginState,userInfo);
-
+    console.log("loginState in login",loginState,userInfo,userInfo?.email);
     if (loginState.logined&&userInfo&&userInfo.email) {
        handleClose();
     }
@@ -30,9 +29,7 @@ const LoginScreen = ({ closeModal, isModal = false }) => {
     }
 
     try {
-      console.log("start")
       await login({ email, password });
-      console.log("end")
     } catch (error) {
       setError('An error occurred. Please try again.');
     }

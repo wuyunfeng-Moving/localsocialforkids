@@ -40,14 +40,13 @@ export type LoginState = {
 
 interface UserData {
     userInfo: UserInfo;
-    userEvents: Event[];
+    userAllEvents: Event[];
     notifications: Notification[];
  }
 
  const isUserData = (userData: UserData): userData is UserData => {
     return isUserInfo(userData.userInfo) &&
-        Array.isArray(userData.kidEvents) && userData.kidEvents.every((kidEvent: any) => isEvent(kidEvent)) &&
-        Array.isArray(userData.userEvents) && userData.userEvents.every((userEvent: any) => isEvent(userEvent)) &&
+        Array.isArray(userData.userAllEvents) && userData.userAllEvents.every((userEvent: any) => isEvent(userEvent)) &&
         Array.isArray(userData.notifications) && userData.notifications.every((notification: any) => isNotification(notification));
 };
 
@@ -57,20 +56,16 @@ export interface BaseResponse {
 }
 
 export const isBaseResponse = (response: BaseResponse): response is BaseResponse => {
-    console.log('Validating BaseResponse:', response);
+    // console.log('Validating BaseResponse:', response);
     const isValid = typeof response.success === 'boolean' && 
         (response.message === undefined || typeof response.message === 'string');
-    console.log('BaseResponse validation result:', isValid);
+    // console.log('BaseResponse validation result:', isValid);
     return isValid;
 };
 
 export interface LoginResponse extends BaseResponse {
     token: string;
-    userData: {
-        userInfo: UserInfo;
-        userAllEvents: Event[];
-        notifications: Notification[];
-    };
+    userInfo: UserInfo;
 }
 
 export const isLoginResponse = (response: LoginResponse): response is LoginResponse => {
@@ -81,35 +76,11 @@ export const isLoginResponse = (response: LoginResponse): response is LoginRespo
     
     const isTokenValid = typeof response.token === 'string';
     console.log('isToken check:', isTokenValid);
+
+    const isUserInfoValid = isUserInfo(response.userInfo);
+    console.log('isUserInfo check:', isUserInfoValid);
     
-    let isUserDataValid = false;
-    if (!response.success) {
-        isUserDataValid = true;
-    } else {
-        console.log('Checking UserInfo:', response.userData.userInfo);
-        const hasUserInfo = isUserInfo(response.userData.userInfo);
-        const hasValidEvents = Array.isArray(response.userData.userAllEvents);
-        const hasValidEventItems = hasValidEvents && response.userData.userAllEvents.every((event: any) => isEvent(event));
-        
-        console.log('UserInfo structure:', {
-            email: typeof response.userData.userInfo.email,
-            followers: Array.isArray(response.userData.userInfo.followers),
-            following: Array.isArray(response.userData.userInfo.following),
-            id: typeof response.userData.userInfo.id,
-            kidinfo: Array.isArray(response.userData.userInfo.kidinfo),
-            username: typeof response.userData.userInfo.username
-        });
-        console.log('UserInfo check:', hasUserInfo);
-        console.log('Events array check:', hasValidEvents);
-        console.log('Events items check:', hasValidEventItems);
-        
-        isUserDataValid = hasUserInfo && hasValidEvents && hasValidEventItems;
-    }
-    console.log('UserData check:', isUserDataValid);
-    
-    const isValid = isBaseResponseValid && isTokenValid && isUserDataValid;
-    console.log('LoginResponse validation result:', isValid);
-    return isValid;
+    return isBaseResponseValid && isTokenValid && isUserInfoValid;
 };
 
 export interface SearchEventsResponse extends BaseResponse {
