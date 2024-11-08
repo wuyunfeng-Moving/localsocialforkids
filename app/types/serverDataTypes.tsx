@@ -40,7 +40,6 @@ export type LoginState = {
 
 interface UserData {
     userInfo: UserInfo;
-    kidEvents: Event[];
     userEvents: Event[];
     notifications: Notification[];
  }
@@ -52,27 +51,68 @@ interface UserData {
         Array.isArray(userData.notifications) && userData.notifications.every((notification: any) => isNotification(notification));
 };
 
- interface BaseResponse {
+export interface BaseResponse {
     success: boolean;
-    message: string;
+    message?: string;
 }
 
 export const isBaseResponse = (response: BaseResponse): response is BaseResponse => {
-    return typeof response.success === 'boolean' && typeof response.message === 'string';
+    console.log('Validating BaseResponse:', response);
+    const isValid = typeof response.success === 'boolean' && 
+        (response.message === undefined || typeof response.message === 'string');
+    console.log('BaseResponse validation result:', isValid);
+    return isValid;
 };
 
-interface LoginResponse extends BaseResponse {
+export interface LoginResponse extends BaseResponse {
     token: string;
-    userData: UserData;
+    userData: {
+        userInfo: UserInfo;
+        userAllEvents: Event[];
+        notifications: Notification[];
+    };
 }
 
 export const isLoginResponse = (response: LoginResponse): response is LoginResponse => {
-    return isBaseResponse(response) &&
-        typeof response.token === 'string' &&
-        (!response.success || isUserData(response.userData));
+    console.log('Validating LoginResponse:', response);
+    
+    const isBaseResponseValid = isBaseResponse(response);
+    console.log('isBaseResponse check:', isBaseResponseValid);
+    
+    const isTokenValid = typeof response.token === 'string';
+    console.log('isToken check:', isTokenValid);
+    
+    let isUserDataValid = false;
+    if (!response.success) {
+        isUserDataValid = true;
+    } else {
+        console.log('Checking UserInfo:', response.userData.userInfo);
+        const hasUserInfo = isUserInfo(response.userData.userInfo);
+        const hasValidEvents = Array.isArray(response.userData.userAllEvents);
+        const hasValidEventItems = hasValidEvents && response.userData.userAllEvents.every((event: any) => isEvent(event));
+        
+        console.log('UserInfo structure:', {
+            email: typeof response.userData.userInfo.email,
+            followers: Array.isArray(response.userData.userInfo.followers),
+            following: Array.isArray(response.userData.userInfo.following),
+            id: typeof response.userData.userInfo.id,
+            kidinfo: Array.isArray(response.userData.userInfo.kidinfo),
+            username: typeof response.userData.userInfo.username
+        });
+        console.log('UserInfo check:', hasUserInfo);
+        console.log('Events array check:', hasValidEvents);
+        console.log('Events items check:', hasValidEventItems);
+        
+        isUserDataValid = hasUserInfo && hasValidEvents && hasValidEventItems;
+    }
+    console.log('UserData check:', isUserDataValid);
+    
+    const isValid = isBaseResponseValid && isTokenValid && isUserDataValid;
+    console.log('LoginResponse validation result:', isValid);
+    return isValid;
 };
 
-interface SearchEventsResponse extends BaseResponse {
+export interface SearchEventsResponse extends BaseResponse {
     events?: Event[];
 }
 
@@ -81,7 +121,7 @@ export const isSearchEventsResponse = (response: SearchEventsResponse): response
         (!response.success || (Array.isArray(response.events)));
 };
 
-interface ChangeEventResponse extends BaseResponse {
+export interface ChangeEventResponse extends BaseResponse {
     event?: Event;
     updatedUserInfo?: UserInfo;
 }
@@ -92,7 +132,7 @@ export const isChangeEventResponse = (response: ChangeEventResponse): response i
         (response.updatedUserInfo === undefined || typeof response.updatedUserInfo === 'object');
 };
 
-interface NotificationResponse extends BaseResponse {
+export interface NotificationResponse extends BaseResponse {
     notifications?: Notification[];
 }
 
@@ -101,7 +141,7 @@ export const isNotificationResponse = (response: NotificationResponse): response
         (response.notifications === undefined || Array.isArray(response.notifications));
 };
 
-interface KidInfoResponse extends BaseResponse {
+export interface KidInfoResponse extends BaseResponse {
     kidInfo?: KidInfo;
 }
 
@@ -110,7 +150,7 @@ export const isKidInfoResponse = (response: KidInfoResponse): response is KidInf
         (response.kidInfo === undefined || typeof response.kidInfo === 'object');
 };
 
-interface UserDataResponse extends BaseResponse {
+export interface UserDataResponse extends BaseResponse {
     data: UserData;
 }
 

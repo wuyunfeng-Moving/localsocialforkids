@@ -6,6 +6,12 @@ import { UseMutationResult } from '@tanstack/react-query';
 import { Notification } from '../types/notification_types';
 
 // Define the type for the context value
+export interface AllEvents {
+  created: Event[];
+  participating: Event[];
+  applied: Event[];
+}
+
 interface WebSocketContextValue {
   userInfo: UserInfo | null,
   userEvents: Event[],

@@ -3,10 +3,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Event, UserInfo, Events, AuthenticationMessage, 
     MessageFromServer, MatchEvents,MatchEvent,RecommendEvents
     ,KidInfo,ChatMessage,ChatMessagesArray,LoginState,isUserInfo,isKidInfo,isEvent,isComment,isChatMessage,isUserDataResponse,
-    isBaseResponse,isSearchEventsResponse,isChangeEventResponse,isNotificationResponse,isKidInfoResponse,isLoginResponse
+    isBaseResponse,isSearchEventsResponse,isChangeEventResponse,isNotificationResponse,isKidInfoResponse,
+    WebSocketMessageFromServer,isWebSocketMessageFromServer,
+    Notification,isNotification,
+    UserDataResponse,
+    LoginResponse,isLoginResponse
 } from '../types/types';
 import * as SecureStore from 'expo-secure-store';
-import { Notification } from '../types/notification_types';
 import {useQuery,useMutation,useQueryClient, UseMutationResult} from "@tanstack/react-query";
 import axios from 'axios';
 
@@ -21,7 +24,11 @@ const BASE_URL = `http://${SERVERIP}:${PORT}`;
 2.kidInfo
 3.*/
 
-
+interface AllEvents {
+    created: Event[],
+    participating: Event[],
+    applied: Event[]
+};
 
 interface ServerData {
     notifications: Notification[];
@@ -170,6 +177,10 @@ const useInfoCache = () => {
 const useServerData = (): ServerData => {
     const queryClient = useQueryClient();
     const { userInfoCache, kidInfoCache, setUserInfoCache, setKidInfoCache, isCacheValid } = useInfoCache();
+
+    useEffect(()=>{
+        queryClient.setQueryData(['Events'], []);
+    },[]);
 
     const userDataQuery = useDelayedQuery(['userData'], async () => {
         const token = await getToken();
@@ -507,6 +518,7 @@ const useServerData = (): ServerData => {
                 storeToken(data.token);
                 setLoginState({ logined: true, error: '' });
                 queryClient.setQueryData(['userData'], data.userData);
+                queryClient.setQueryData(['Events'], data.userData.userAllEvents);
             } else {
                 console.warn("Login failed:", data.message);
                 setLoginState({ logined: false, error: data.message });
@@ -937,6 +949,43 @@ const useServerData = (): ServerData => {
         }
     }   
 
+    useEffect(() => {
+        queryClient.setQueryData(['Events'], []);
+
+        // Use onSuccess in the query configuration instead
+        const unsubscribe = queryClient.getQueryCache().subscribe(({ type, query }) => {
+            if (query.queryKey[0] === 'Events' && query.state.status === 'success') {
+                const events = query.state.data as Event[];
+                if (!Array.isArray(events)) return;
+
+                const userInfo = queryClient.getQueryData(['userData']) as UserDataResponse['data'] | undefined;
+                if (!userInfo?.userInfo) return;
+
+                // Rest of your event filtering logic...
+                const userCreatedEvents = events.filter(event => event.userId === userInfo.userInfo.id);
+                
+                const userKidsIds = userInfo.userInfo.kidinfo.map(kid => kid.id) || [];
+                const kidsParticipatingEvents = events.filter(event => 
+                    event.kidIds?.some(kidId => userKidsIds.includes(kidId))
+                );
+
+                const userAppliedEvents = events.filter(event => 
+                    event.pendingSignUps?.some(signup => signup.kidIds?.some(kidId => userKidsIds.includes(kidId)))
+                );
+
+                // Update the categorized events in the query cache
+                queryClient.setQueryData(['categorizedEvents'], {
+                    created: userCreatedEvents,
+                    participating: kidsParticipatingEvents,
+                    applied: userAppliedEvents
+                });
+            }
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, [queryClient]);
 
     return ({
         notifications: userDataQuery.data?.notifications || [],

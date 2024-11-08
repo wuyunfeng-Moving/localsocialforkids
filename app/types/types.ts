@@ -1,15 +1,50 @@
-import {Notification,isNotification} from "./notification_types"
-import {WebSocketMessageFromServer,isWebSocketMessageFromServer} from "./serverDataTypes"
-import {UserInfo,isUserInfo,Event,isEvent,KidInfo,isKidInfo} from "./baseType"
-import {} from "./serverDataTypes"
+export type{
+    WebSocketMessageFromServer,
+    ChatMessage,
+    LoginState,
+} from "./serverDataTypes";
 
+export {
+    BaseResponse,
+    LoginResponse,
+    SearchEventsResponse,
+    ChangeEventResponse,
+    NotificationResponse,
+    KidInfoResponse,
+    UserDataResponse,
+    isWebSocketMessageFromServer,
+    isBaseResponse,
+    isLoginResponse,
+    isSearchEventsResponse,
+    isChangeEventResponse,
+    isNotificationResponse,
+    isKidInfoResponse,
+    isUserDataResponse
+} from "./serverDataTypes";
 
-export interface MessageFromServer extends WebSocketMessageFromServer{}
-export const isMessageFromServer = (message: WebSocketMessageFromServer): message is MessageFromServer => {
-    return isWebSocketMessageFromServer(message);
-};
+export type{
+    UserInfo,
+    Event,
+    KidInfo,
+    Comment,
 
-export 
+} from "./baseType";
+
+export {
+    isUserInfo,
+    isEvent,
+    isKidInfo,
+    isComment
+} from "./baseType";
+
+export type{
+    Notification,
+} from "./notification_types";
+
+export {
+    isNotification
+} from "./notification_types";
+
 
 export type RecommendEvent={
     event:Event,
@@ -26,9 +61,6 @@ export interface AuthenticationMessage {
     userEvents: any[];
     kidEvents: any[];
 }
-
-
-
 
 
 

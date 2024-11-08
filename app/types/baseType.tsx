@@ -1,6 +1,3 @@
-import {Notification} from "./notification_types"
-
-
 export type Comment = {
     id: number;
     content: string;
@@ -69,15 +66,27 @@ export type KidInfo ={
 }
 
 export const isKidInfo = (kidInfo: any): kidInfo is KidInfo => {
-    return typeof kidInfo.id === 'number' &&
-        typeof kidInfo.name === 'string' &&
-        (kidInfo.gender === 'male' || kidInfo.gender === 'female') &&
-        typeof kidInfo.photoPath === 'string' &&
-        typeof kidInfo.description === 'string' &&
-        typeof kidInfo.personalSpaceUrl === 'string' &&
-        typeof kidInfo.birthDate === 'string' &&
-        Array.isArray(kidInfo.guardians) &&
-        kidInfo.guardians.every((guardian: any) => typeof guardian.userId === 'number' && typeof guardian.relationship === 'string');
+    console.log('开始验证 KidInfo:', kidInfo);
+    
+    const validations = {
+        id: typeof kidInfo.id === 'number',
+        name: typeof kidInfo.name === 'string',
+        gender: kidInfo.gender === 'male' || kidInfo.gender === 'female',
+        photoPath: typeof kidInfo.photoPath === 'string',
+        description: typeof kidInfo.description === 'string',
+        personalSpaceUrl: typeof kidInfo.personalSpaceUrl === 'string',
+        birthDate: typeof kidInfo.birthDate === 'string',
+        guardians: kidInfo.guardians === undefined || Array.isArray(kidInfo.guardians) && kidInfo.guardians.every(
+            (guardian: any) => typeof guardian.userId === 'number' && typeof guardian.relationship === 'string'
+        )
+    };
+
+    console.log('验证结果:', validations);
+
+    const isValid = Object.values(validations).every(v => v);
+    console.log('最终验证结果:', isValid);
+
+    return isValid;
 };
 
 export type UserInfo = {
@@ -92,17 +101,25 @@ export type UserInfo = {
 };
 
 export const isUserInfo = (userInfo: any): userInfo is UserInfo => {
-    return typeof userInfo.email === 'string' &&
-        typeof userInfo.username === 'string' &&
-        typeof userInfo.id === 'number' &&
-        Array.isArray(userInfo.kidinfo) &&
-        userInfo.kidinfo.every((kid: any) => isKidInfo(kid)) &&
-        Array.isArray(userInfo.following) &&
-        userInfo.following.every((following: any) => typeof following === 'number') &&
-        Array.isArray(userInfo.followers) &&
-        userInfo.followers.every((follower: any) => typeof follower === 'number') &&
-        (userInfo.introduction === undefined || typeof userInfo.introduction === 'string') &&
-        (userInfo.avatar === undefined || typeof userInfo.avatar === 'string');
+    console.log('开始验证 UserInfo:', userInfo);
+    
+    const validations = {
+        email: typeof userInfo.email === 'string',
+        username: typeof userInfo.username === 'string',
+        id: typeof userInfo.id === 'number',
+        kidinfo: Array.isArray(userInfo.kidinfo) && userInfo.kidinfo.every((kid: any) => isKidInfo(kid)),
+        following: Array.isArray(userInfo.following) && userInfo.following.every((following: any) => typeof following === 'number'),
+        followers: Array.isArray(userInfo.followers) && userInfo.followers.every((follower: any) => typeof follower === 'number'),
+        introduction: userInfo.introduction === undefined || typeof userInfo.introduction === 'string',
+        avatar: userInfo.avatar === undefined || typeof userInfo.avatar === 'string'
+    };
+
+    console.log('验证结果:', validations);
+
+    const isValid = Object.values(validations).every(v => v);
+    console.log('最终验证结果:', isValid);
+
+    return isValid;
 };
 
 export type Events = Event[];
