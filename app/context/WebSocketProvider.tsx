@@ -22,9 +22,10 @@ interface WebSocketContextValue {
   refreshUserData: () => void,
   login: (credentials: { email: string; password: string }) => void,
   logout: () => void,
+  getEventsById: (eventIds: number[], callback: (events: Event[]) => void) => Promise<void>,
   isUserDataLoading: boolean,
   isParticipateEvent: (event:Event) => boolean,
-  getUserInfo: (userId: number,callback: (userInfo: UserInfo,kidEvents: KidInfo[],userEvents: Event[]) => void) => Promise<UserInfo>,
+  getUserInfo: (userId: number,callback: (userInfo: UserInfo) => void) => Promise<UserInfo>,
   getKidInfo: (kidId: number, callback: (kidInfo: KidInfo) => void, forceUpdate: boolean) => Promise<void>,
   searchEvents: {
     search: (searchParams: {
@@ -66,18 +67,9 @@ interface WebSocketContextValue {
     }) => Promise<void>;
   };
   update: {
-    updateUserInfo: UseMutationResult<any, Error, {
-      type: "addKidInfo" | "deleteKidInfo" | "updateKidInfo" | "deleteEvent" | "addEvent";
-      newUserInfo: any;
-    }>;
-    addkidinfo: (
-      newKidInfo: Partial<KidInfo>,
-      callback: (success: boolean, message: string) => void
-    ) => Promise<void>;
-    deletekidinfo: (
-      kidId:number,
-      callback: (success: boolean, message: string) => void
-    ) => Promise<void>;
+    updateUserInfo: UseMutationResult<any, Error, any, unknown>;
+    addkidinfo: (newKidInfo: Partial<KidInfo>, callback: (success: boolean, message: string) => void) => void;
+    deletekidinfo: (kidId: number, callback: (success: boolean, message: string) => void) => void;
   };
   followActions: {
     followUser: (params: { 
@@ -146,6 +138,7 @@ export const WebSocketProvider = ({ children }) => {
     refreshUserData,
     getUserInfo,
     getKidInfo,
+    getEventsById,
     isUserDataLoading,
     changeEvent,
     searchEvents,
@@ -316,6 +309,7 @@ export const WebSocketProvider = ({ children }) => {
       appliedEvents,
       getMatchEvents,
       isParticipateEvent,
+      getEventsById,
       login,
       logout,
       refreshUserData,

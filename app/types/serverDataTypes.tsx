@@ -83,6 +83,14 @@ export const isLoginResponse = (response: LoginResponse): response is LoginRespo
     return isBaseResponseValid && isTokenValid && isUserInfoValid;
 };
 
+export interface GetEventsResponse extends BaseResponse {
+    events?: Event[];
+}
+
+export const isGetEventsResponse = (response: GetEventsResponse): response is GetEventsResponse => {
+    return isBaseResponse(response) && (!response.success || (Array.isArray(response.events)));
+};
+
 export interface SearchEventsResponse extends BaseResponse {
     events?: Event[];
 }
@@ -122,12 +130,36 @@ export const isKidInfoResponse = (response: KidInfoResponse): response is KidInf
 };
 
 export interface UserDataResponse extends BaseResponse {
-    data: UserData;
+    userInfo: UserInfo;
+    userAllEvents: Event[];
+    notifications: Notification[];
 }
 
-export const isUserDataResponse = (response: UserDataResponse): response is UserDataResponse => {
-    return isBaseResponse(response) && 
-        (!response.success || isUserData(response.data));
+export const isUserDataResponse = (response: any): response is UserDataResponse => {
+    console.log('Validating UserDataResponse:', response);
+    
+    if (!isBaseResponse(response)) {
+        console.log('Failed: not a valid base response');
+        return false;
+    }
+
+    if (!response.userInfo || !isUserInfo(response.userInfo)) {
+        console.log('Failed: invalid userInfo');
+        return false;
+    }
+
+    if (!Array.isArray(response.userAllEvents)) {
+        console.log('Failed: userAllEvents is not an array');
+        return false;
+    }
+
+    if (!Array.isArray(response.notifications)) {
+        console.log('Failed: notifications is not an array');
+        return false;
+    }
+
+    console.log('UserDataResponse validation passed');
+    return true;
 };
 
 

@@ -8,6 +8,16 @@ import { router } from 'expo-router';
 const MyEventDisplay: React.FC = () => {
     const { userEvents, kidEvents, appliedEvents } = useWebSocket();
 
+    const sortEventsByStartTime = (events: Event[]) => {
+        return [...events].sort((a, b) => {
+            return new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime();
+        });
+    };
+
+    const sortedUserEvents = sortEventsByStartTime(userEvents);
+    const sortedKidEvents = sortEventsByStartTime(kidEvents);
+    const sortedAppliedEvents = sortEventsByStartTime(appliedEvents);
+
     const handleEventPress = (event: Event) => {
       console.log("handleEventPress", event);
       router.push({
@@ -18,8 +28,8 @@ const MyEventDisplay: React.FC = () => {
 
     return (
         <View style={styles.container}>
-          {userEvents.length > 0 ? (
-            userEvents.map((event) => (
+          {sortedUserEvents.length > 0 ? (
+            sortedUserEvents.map((event) => (
               <TouchableOpacity 
                 key={event.id}
                 onPress={() => handleEventPress(event)}>
@@ -27,8 +37,8 @@ const MyEventDisplay: React.FC = () => {
               </TouchableOpacity>
             ))
           ) : 
-          kidEvents.length > 0 ? (
-            kidEvents.map((event) => (
+          sortedKidEvents.length > 0 ? (
+            sortedKidEvents.map((event) => (
               <TouchableOpacity 
                 key={event.id}
                 onPress={() => handleEventPress(event)}>
@@ -36,8 +46,8 @@ const MyEventDisplay: React.FC = () => {
               </TouchableOpacity>
             ))
           ) :
-          appliedEvents.length > 0 ? (
-            appliedEvents.map((event) => (
+          sortedAppliedEvents.length > 0 ? (
+            sortedAppliedEvents.map((event) => (
               <TouchableOpacity 
                 key={event.id}
                 onPress={() => handleEventPress(event)}>
