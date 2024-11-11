@@ -25,6 +25,7 @@ const API_ENDPOINTS = {
     userInfo: `${BASE_URL}/userInfo`,//getmyown info
     verifyToken: `${BASE_URL}/verifyToken`,
     login: `${BASE_URL}/login`,
+    register: `${BASE_URL}/register`,
     logout: `${BASE_URL}/logout`,
     searchEvents: `${BASE_URL}/searchEvents`,
     changeEvent: `${BASE_URL}/changeEvent`,
@@ -65,6 +66,11 @@ interface ServerData {
     isUserDataLoading: boolean;
     isError: boolean;
     error: Error | null;
+    registerMutation: UseMutationResult<BaseResponse, Error, {
+        username: string;
+        email: string;
+        password: string;
+    }>;
     websocketMessageHandle: (message: MessageFromServer) => Promise<void>;
     updateUserInfo: UseMutationResult<BaseResponse, Error, {
         type: 'addKidInfo'|'deleteKidInfo'|'updateKidInfo'|'deleteEvent'|'addEvent';
@@ -142,7 +148,9 @@ interface ServerData {
     };
     setNotificationsRead: (notificationId: number, callback: (success: boolean, message: string) => void) => Promise<void>;
     getEventsById: (eventIds: number[], callback: (events: Event[]) => void) => Promise<void>;
+    
 }
+
 
 
 
@@ -1069,6 +1077,18 @@ const useServerData = (): ServerData => {
         };
     }, [queryClient, userDataQuery.data]);
 
+    const registerMutation = useMutation({
+        mutationFn: async (credentials: { username: string; email: string; password: string }) => {
+            const response = await axios.post(API_ENDPOINTS.register, credentials);
+
+            if (!isBaseResponse(response.data)) {
+                throw new Error('Invalid response format from server');
+            }
+
+            return response.data;
+        },
+    });
+
     return ({
         
         notifications: userDataQuery.data?.notifications ?? [],
@@ -1117,6 +1137,7 @@ const useServerData = (): ServerData => {
             sendMessage
         },
         setNotificationsRead,
+        registerMutation,
     });
 };
 

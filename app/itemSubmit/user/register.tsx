@@ -10,7 +10,7 @@ const RegisterScreen = ({ closeModal }) => {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  const { send } = useWebSocket();
+  const { registerMutation } = useWebSocket();
 
   const handleMessages = (message) => {
     console.log("get message from register:", message);
@@ -29,7 +29,12 @@ const RegisterScreen = ({ closeModal }) => {
   };
 
   const handleRegister = async () => {
-    send({ type: 'register', username, email, password });
+    console.log("registerMutation:", registerMutation);
+    registerMutation.mutate({ username, email, password }, {
+      onSuccess: (data) => {
+        handleMessages(data);
+      }
+    });
   };
 
   return (
