@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useServerData } from './serverData';
+import { useServerData, SERVERIP } from './serverData';
 import { MatchEvents, MatchEvent, ChatMessagesArray, ChatMessage, LoginState } from '../types/types';
 import { Event,UserInfo,KidInfo } from '../types/types';
 import { UseMutationResult } from '@tanstack/react-query';
@@ -98,7 +98,7 @@ interface WebSocketContextValue {
 // Create the context with the defined type
 const WebSocketContext = createContext<WebSocketContextValue | null>(null);
 
-const SERVERIP = "121.196.198.126"
+// const SERVERIP = "121.196.198.126"
 const PORT = "8080"
 
 export const useWebSocket = (): WebSocketContextValue => {

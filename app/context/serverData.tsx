@@ -14,7 +14,7 @@ import {useQuery,useMutation,useQueryClient, UseMutationResult} from "@tanstack/
 import axios from 'axios';
 
 
-const SERVERIP = "121.196.198.126";
+export const SERVERIP = "114.55.64.28"
 const PORT = 3000; // 更新为服务器实际使用的端口
 const BASE_URL = `http://${SERVERIP}:${PORT}`;
 
