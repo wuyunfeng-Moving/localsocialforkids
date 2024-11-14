@@ -88,6 +88,11 @@ interface WebSocketContextValue {
     createChat: (params: { eventId: number, callback: (success: boolean, message: string,chatId:number) => void }) => Promise<void>;
   };
   setNotificationsRead: (notificationId: number, callback: (success: boolean, message: string) => void) => Promise<void>;
+  registerMutation: UseMutationResult<BaseResponse, Error, {
+    username: string;
+    email: string;
+    password: string;
+  }>;
 }
 
 // Create the context with the defined type
@@ -144,6 +149,7 @@ export const WebSocketProvider = ({ children }) => {
     searchEvents,
     followActions,
     setNotificationsRead,
+    registerMutation
   } = useServerData();
 
   useEffect(() => {
@@ -338,7 +344,8 @@ export const WebSocketProvider = ({ children }) => {
         sendMessage: chat.sendMessage,
         createChat: chat.createChat
       },
-      setNotificationsRead: setNotificationsRead
+      setNotificationsRead: setNotificationsRead,
+      registerMutation
     }}>
       {children}
     </WebSocketContext.Provider>
