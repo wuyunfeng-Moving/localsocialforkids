@@ -66,7 +66,7 @@ export type KidInfo ={
 }
 
 export const isKidInfo = (kidInfo: any): kidInfo is KidInfo => {
-    console.log('开始验证 KidInfo:', kidInfo);
+    // console.log('开始验证 KidInfo:', kidInfo);
     
     const validations = {
         id: typeof kidInfo.id === 'number',
@@ -101,7 +101,7 @@ export type UserInfo = {
 };
 
 export const isUserInfo = (userInfo: any): userInfo is UserInfo => {
-    console.log('开始验证 UserInfo:', userInfo);
+    // console.log('开始验证 UserInfo:', userInfo);
     
     const validations = {
         email: typeof userInfo.email === 'string',

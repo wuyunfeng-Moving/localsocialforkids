@@ -9,15 +9,14 @@ import { router } from 'expo-router';
 export default function UserScreen() {
     const [isAddingKid, setIsAddingKid] = useState(false);
 
-    const { loginState, send, userEvents, kidEvents,logout,userInfo } = useWebSocket();
+    const { loginState, send, userEvents,logout,userInfo } = useWebSocket();
 
     useEffect(() => {
         if (!loginState.logined) {
-            console.log("User logged out");
         } else {
             console.log("User logged in");
             console.log("User events:", userEvents);
-            console.log("Kid events:", kidEvents);
+            // console.log("Kid events:", kidEvents);
         }
     }, [loginState]);
 

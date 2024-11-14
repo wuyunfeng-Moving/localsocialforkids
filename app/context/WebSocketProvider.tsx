@@ -15,13 +15,17 @@ export interface AllEvents {
 interface WebSocketContextValue {
   userInfo: UserInfo | null,
   userEvents: Event[],
-  kidEvents: KidInfo[],
+  kidEvents: Event[],
+  appliedEvents: Event[],
   loginState: LoginState,
   notifications: Notification[],
   refreshUserData: () => void,
+  login: (credentials: { email: string; password: string }) => void,
+  logout: () => void,
+  getEventsById: (eventIds: number[], callback: (events: Event[]) => void) => Promise<void>,
   isUserDataLoading: boolean,
   isParticipateEvent: (event:Event) => boolean,
-  getUserInfo: (userId: number,callback: (userInfo: UserInfo,kidEvents: KidInfo[],userEvents: Event[]) => void) => Promise<UserInfo>,
+  getUserInfo: (userId: number,callback: (userInfo: UserInfo) => void) => Promise<UserInfo>,
   getKidInfo: (kidId: number, callback: (kidInfo: KidInfo) => void, forceUpdate: boolean) => Promise<void>,
   searchEvents: {
     search: (searchParams: {
@@ -63,18 +67,9 @@ interface WebSocketContextValue {
     }) => Promise<void>;
   };
   update: {
-    updateUserInfo: UseMutationResult<any, Error, {
-      type: "addKidInfo" | "deleteKidInfo" | "updateKidInfo" | "deleteEvent" | "addEvent";
-      newUserInfo: any;
-    }>;
-    addkidinfo: (
-      newKidInfo: Partial<KidInfo>,
-      callback: (success: boolean, message: string) => void
-    ) => Promise<void>;
-    deletekidinfo: (
-      kidId:number,
-      callback: (success: boolean, message: string) => void
-    ) => Promise<void>;
+    updateUserInfo: UseMutationResult<any, Error, any, unknown>;
+    addkidinfo: (newKidInfo: Partial<KidInfo>, callback: (success: boolean, message: string) => void) => void;
+    deletekidinfo: (kidId: number, callback: (success: boolean, message: string) => void) => void;
   };
   followActions: {
     followUser: (params: { 
@@ -127,6 +122,7 @@ export const WebSocketProvider = ({ children }) => {
     notifications,
     userEvents,
     kidEvents,
+    appliedEvents,
     recommendEvents,
     matchedEvents,
     loginState,
@@ -142,20 +138,13 @@ export const WebSocketProvider = ({ children }) => {
     refreshUserData,
     getUserInfo,
     getKidInfo,
+    getEventsById,
     isUserDataLoading,
     changeEvent,
     searchEvents,
     followActions,
     setNotificationsRead,
   } = useServerData();
-
-  // 将 userInfo 的类型明确声明为 UserInfo | null
-  const [typedUserInfo, setTypedUserInfo] = useState<UserInfo | null>(null);
-
-  // 使用 useEffect 来更新 typedUserInfo
-  useEffect(() => {
-    setTypedUserInfo(userInfo as UserInfo | null);
-  }, [userInfo]);    
 
   useEffect(() => {
     messageHandlers.forEach((handler) => {
@@ -175,13 +164,9 @@ export const WebSocketProvider = ({ children }) => {
       ...data,
       token: token
     };
-
-    console.log("Sending data:", JSON.stringify(messageWithToken, null, 2));
-    console.log("WebSocket readyState:", ws.readyState);
     
     try {
       ws.send(JSON.stringify(messageWithToken));
-      console.log("Data sent successfully");
     } catch (error) {
       console.error("Error sending data:", error);
       setMessageQueue(prevQueue => [...prevQueue, data]);
@@ -191,6 +176,23 @@ export const WebSocketProvider = ({ children }) => {
   async function handleMessages(event) {
     const message = JSON.parse(event.data);
     setMessageFromServer(message);
+    
+    // Handle specific message types
+    switch (message.type) {
+      case 'error':
+        if (message.message === '无效的token') {
+          // Invalid token - trigger logout
+          logout();
+        }
+        break;
+      case 'token':
+        // Token validation successful
+        if (message.success) {
+          console.log('WebSocket authentication successful');
+        }
+        break;
+    }
+    
     await websocketMessageHandle(message);
   }
 
@@ -246,10 +248,13 @@ export const WebSocketProvider = ({ children }) => {
     };
     socket.onclose = (event) => {
       console.log('WebSocket disconnected', event.reason);
-      setTimeout(() => {
-        console.log('Attempting to reconnect...');
-        connectWebSocket();
-      }, 3000);
+      // Only attempt reconnection if still logged in
+      if (loginState.logined && token) {
+        setTimeout(() => {
+          console.log('Attempting to reconnect...');
+          connectWebSocket();
+        }, 3000);
+      }
     };
 
     socket.onerror = (error) => {
@@ -266,20 +271,22 @@ export const WebSocketProvider = ({ children }) => {
 
     if (loginState.logined && token) {
       console.log('User is logged in with valid token, connecting WebSocket...');
-      cleanup = connectWebSocket();
-    } else {
-      // Close existing connection if user logs out or token becomes invalid
+      // Clear any existing connection first
       if (ws) {
-        console.log('User logged out or token invalid, closing WebSocket connection');
         ws.close();
         setWs(null);
       }
+      cleanup = connectWebSocket();
+    } else if (ws) {
+      console.log('Closing WebSocket connection - user logged out or invalid token',loginState.logined,token);
+      ws.close();
+      setWs(null);
     }
 
     return () => {
       if (cleanup) cleanup();
     };
-  }, [loginState.logined, token, connectWebSocket]);
+  }, [loginState.logined, token]);
 
   useEffect(() => {
     if (ws && ws.readyState === WebSocket.OPEN && messageQueue.length > 0) {
@@ -292,15 +299,17 @@ export const WebSocketProvider = ({ children }) => {
   return (
     <WebSocketContext.Provider value={{
       send,
-      userInfo: typedUserInfo,
+      userInfo: userInfo as UserInfo | null,
       loginState,
       getUserInfo:getUserInfo,
       getKidInfo:getKidInfo,
       // events,
       userEvents,
       kidEvents,
+      appliedEvents,
       getMatchEvents,
       isParticipateEvent,
+      getEventsById,
       login,
       logout,
       refreshUserData,

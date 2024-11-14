@@ -10,18 +10,26 @@ const LoginScreen = ({ closeModal, isModal = false }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);  // 添加模态窗口的状态
+  const [modalVisible, setModalVisible] = useState(false);
 
-  const { login, loginState,userInfo } = useWebSocket();
+  const { login, loginState, userInfo } = useWebSocket();
   const router = useRouter();
 
   useEffect(() => {
-    console.log('loginState:', loginState,userInfo);
-
-    if (loginState.logined&&userInfo&&userInfo.email) {
-       handleClose();
+    console.log("loginState and userInfo changed:", {
+      loginState,
+      userInfo,
+      userInfoEmail: userInfo?.email
+    });
+    
+    if (loginState.logined && userInfo && Object.keys(userInfo).length > 0) {
+      console.log("Login successful, closing modal");
+      handleClose();
+    } else if (loginState.error) {
+      console.log("Login error:", loginState.error);
+      setError(loginState.error);
     }
-  }, [loginState,userInfo]);
+  }, [loginState, userInfo]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -29,11 +37,13 @@ const LoginScreen = ({ closeModal, isModal = false }) => {
       return;
     }
 
+    setError('');
+    console.log("Attempting login with:", { email });
+    
     try {
-      console.log("start")
       await login({ email, password });
-      console.log("end")
     } catch (error) {
+      console.error("Login error:", error);
       setError('An error occurred. Please try again.');
     }
   };

@@ -1,18 +1,22 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useWebSocket ,AllEvents} from '../../context/WebSocketProvider';
+import { useWebSocket} from '../../context/WebSocketProvider';
 import { Event } from "@/app/types/types";
 import { SingleEventDisplay } from './singleEventDisplay';
 import { router } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
 
-interface MyEventDisplayProps {
-  kidEvents: Event[];
-  userEvents: Event[];
-}
+const MyEventDisplay: React.FC = () => {
+    const { userEvents, kidEvents, appliedEvents } = useWebSocket();
 
-const MyEventDisplay: React.FC<MyEventDisplayProps> = ({ kidEvents, userEvents }) => {
-    const AllEvents = useQueryClient().getQueryData(['categorizedEvents']) as AllEvents;
+    const sortEventsByStartTime = (events: Event[]) => {
+        return [...events].sort((a, b) => {
+            return new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime();
+        });
+    };
+
+    const sortedUserEvents = sortEventsByStartTime(userEvents);
+    const sortedKidEvents = sortEventsByStartTime(kidEvents);
+    const sortedAppliedEvents = sortEventsByStartTime(appliedEvents);
 
     const handleEventPress = (event: Event) => {
       console.log("handleEventPress", event);
@@ -24,8 +28,8 @@ const MyEventDisplay: React.FC<MyEventDisplayProps> = ({ kidEvents, userEvents }
 
     return (
         <View style={styles.container}>
-          {AllEvents.created.length > 0 ? (
-            AllEvents.created.map((event) => (
+          {sortedUserEvents.length > 0 ? (
+            sortedUserEvents.map((event) => (
               <TouchableOpacity 
                 key={event.id}
                 onPress={() => handleEventPress(event)}>
@@ -33,8 +37,8 @@ const MyEventDisplay: React.FC<MyEventDisplayProps> = ({ kidEvents, userEvents }
               </TouchableOpacity>
             ))
           ) : 
-          AllEvents.participating.length > 0 ? (
-            AllEvents.participating.map((event) => (
+          sortedKidEvents.length > 0 ? (
+            sortedKidEvents.map((event) => (
               <TouchableOpacity 
                 key={event.id}
                 onPress={() => handleEventPress(event)}>
@@ -42,8 +46,8 @@ const MyEventDisplay: React.FC<MyEventDisplayProps> = ({ kidEvents, userEvents }
               </TouchableOpacity>
             ))
           ) :
-          AllEvents.applied.length > 0 ? (
-            AllEvents.applied.map((event) => (
+          sortedAppliedEvents.length > 0 ? (
+            sortedAppliedEvents.map((event) => (
               <TouchableOpacity 
                 key={event.id}
                 onPress={() => handleEventPress(event)}>
