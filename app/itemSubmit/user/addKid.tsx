@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, ScrollView, Platform } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
 import { useWebSocket } from '../../context/WebSocketProvider';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -29,6 +29,10 @@ const AddKidScreen = () => {
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showRelationshipModal, setShowRelationshipModal] = useState(false);
+  const [tempDate, setTempDate] = useState(new Date());
+  const [showGenderModal, setShowGenderModal] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const descriptionInputRef = useRef<View>(null);
 
   const relationships = [
     { label: '爸爸', value: 'father' },
@@ -71,11 +75,16 @@ const AddKidScreen = () => {
       setShowDatePicker(false);
     }
     if (selectedDate) {
-      setNewKid(prev => ({
-        ...prev,
-        birthDate: selectedDate.toISOString().split('T')[0]
-      }));
+      setTempDate(selectedDate);
     }
+  };
+
+  const handleDateConfirm = () => {
+    setNewKid(prev => ({
+      ...prev,
+      birthDate: tempDate.toISOString().split('T')[0]
+    }));
+    setShowDatePicker(false);
   };
 
   const handleAddKid = () => {
@@ -105,134 +114,212 @@ const AddKidScreen = () => {
     );
   };
 
+  const handleInputFocus = (y: number, inputRef?: React.RefObject<View>) => {
+    if (inputRef?.current) {
+      inputRef.current.measure((x, y, width, height, pageX, pageY) => {
+        scrollViewRef.current?.scrollTo({
+          y: pageY,
+          animated: true
+        });
+      });
+    } else {
+      scrollViewRef.current?.scrollTo({
+        y: y,
+        animated: true
+      });
+    }
+  };
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
-          {newKid.photoPath ? (
-            <Image source={{ uri: newKid.photoPath }} style={styles.photoPreview} />
-          ) : (
-            <Text style={styles.photoButtonText}>选择照片</Text>
-          )}
-        </TouchableOpacity>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView 
+        ref={scrollViewRef}
+        style={styles.container}
+      >
+        <View style={styles.content}>
+          <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
+            {newKid.photoPath ? (
+              <Image source={{ uri: newKid.photoPath }} style={styles.photoPreview} />
+            ) : (
+              <Text style={styles.photoButtonText}>选择照片</Text>
+            )}
+          </TouchableOpacity>
 
-        <TextInput
-          style={styles.input}
-          placeholder="孩子姓名"
-          value={newKid.name}
-          onChangeText={(text) => setNewKid(prev => ({ ...prev, name: text }))}
-        />
-        
-        <TouchableOpacity 
-          style={styles.input} 
-          onPress={() => setShowDatePicker(true)}
-        >
-          <Text style={styles.labelText}>出生日期</Text>
-          <Text style={styles.dateText}>{newKid.birthDate}</Text>
-        </TouchableOpacity>
-
-        {(showDatePicker || Platform.OS === 'ios') && (
-          <DateTimePicker
-            value={new Date(newKid.birthDate)}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={handleDateChange}
-            maximumDate={new Date()}
-            style={Platform.OS === 'ios' ? styles.iosDatePicker : undefined}
+          <TextInput
+            style={styles.input}
+            placeholder="孩子姓名"
+            value={newKid.name}
+            onChangeText={(text) => setNewKid(prev => ({ ...prev, name: text }))}
+            onFocus={() => handleInputFocus(0)}
           />
-        )}
-
-        <View style={styles.genderContainer}>
+          
           <TouchableOpacity 
-            style={[
-              styles.genderButton,
-              newKid.gender === 'male' && styles.genderButtonSelected
-            ]}
-            onPress={() => setNewKid(prev => ({ ...prev, gender: 'male' }))}
+            style={styles.input} 
+            onPress={() => setShowDatePicker(true)}
           >
-            <Text style={newKid.gender === 'male' ? styles.genderTextSelected : styles.genderText}>
-              男孩
+            <Text style={styles.labelText}>出生日期</Text>
+            <Text style={styles.dateText}>{newKid.birthDate}</Text>
+          </TouchableOpacity>
+
+          {showDatePicker && (
+            <View style={styles.datePickerContainer}>
+              <DateTimePicker
+                value={tempDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleDateChange}
+                maximumDate={new Date()}
+                style={Platform.OS === 'ios' ? styles.iosDatePicker : undefined}
+              />
+              {Platform.OS === 'ios' && (
+                <View style={styles.dateButtonContainer}>
+                  <TouchableOpacity 
+                    style={[styles.dateButton, styles.cancelButton]}
+                    onPress={() => setShowDatePicker(false)}
+                  >
+                    <Text style={styles.buttonText}>取消</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.dateButton, styles.confirmButton]}
+                    onPress={handleDateConfirm}
+                  >
+                    <Text style={styles.buttonText}>确认</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+
+          <TouchableOpacity 
+            style={styles.input}
+            onPress={() => setShowGenderModal(true)}
+          >
+            <Text style={styles.labelText}>性别</Text>
+            <Text style={styles.valueText}>
+              {newKid.gender === 'male' ? '男孩' : '女孩'}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[
-              styles.genderButton,
-              newKid.gender === 'female' && styles.genderButtonSelected
-            ]}
-            onPress={() => setNewKid(prev => ({ ...prev, gender: 'female' }))}
-          >
-            <Text style={newKid.gender === 'female' ? styles.genderTextSelected : styles.genderText}>
-              女孩
-            </Text>
-          </TouchableOpacity>
-        </View>
 
-        <TouchableOpacity 
-          style={styles.input}
-          onPress={() => setShowRelationshipModal(true)}
-        >
-          <Text style={styles.labelText}>与孩子的关系</Text>
-          <Text style={styles.valueText}>{getRelationshipLabel(newKid.relationship)}</Text>
-        </TouchableOpacity>
-
-        {showRelationshipModal && (
-          <View style={styles.modalOverlay}>
-            <View style={styles.relationshipModal}>
-              {relationships.map((item) => (
+          {showGenderModal && (
+            <View style={styles.modalOverlay}>
+              <View style={styles.relationshipModal}>
                 <TouchableOpacity
-                  key={item.value}
                   style={[
                     styles.relationshipItem,
-                    newKid.relationship === item.value && styles.relationshipItemSelected
+                    newKid.gender === 'male' && styles.relationshipItemSelected
                   ]}
                   onPress={() => {
-                    setNewKid(prev => ({ ...prev, relationship: item.value }));
-                    setShowRelationshipModal(false);
+                    setNewKid(prev => ({ ...prev, gender: 'male' }));
+                    setShowGenderModal(false);
                   }}
                 >
                   <Text style={[
                     styles.relationshipText,
-                    newKid.relationship === item.value && styles.relationshipTextSelected
+                    newKid.gender === 'male' && styles.relationshipTextSelected
                   ]}>
-                    {item.label}
+                    男孩
                   </Text>
                 </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowRelationshipModal(false)}
-              >
-                <Text style={styles.closeButtonText}>取消</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.relationshipItem,
+                    newKid.gender === 'female' && styles.relationshipItemSelected
+                  ]}
+                  onPress={() => {
+                    setNewKid(prev => ({ ...prev, gender: 'female' }));
+                    setShowGenderModal(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.relationshipText,
+                    newKid.gender === 'female' && styles.relationshipTextSelected
+                  ]}>
+                    女孩
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowGenderModal(false)}
+                >
+                  <Text style={styles.closeButtonText}>取消</Text>
+                </TouchableOpacity>
+              </View>
             </View>
+          )}
+
+          <TouchableOpacity 
+            style={styles.input}
+            onPress={() => setShowRelationshipModal(true)}
+          >
+            <Text style={styles.labelText}>与孩子的关系</Text>
+            <Text style={styles.valueText}>{getRelationshipLabel(newKid.relationship)}</Text>
+          </TouchableOpacity>
+
+          {showRelationshipModal && (
+            <View style={styles.modalOverlay}>
+              <View style={styles.relationshipModal}>
+                {relationships.map((item) => (
+                  <TouchableOpacity
+                    key={item.value}
+                    style={[
+                      styles.relationshipItem,
+                      newKid.relationship === item.value && styles.relationshipItemSelected
+                    ]}
+                    onPress={() => {
+                      setNewKid(prev => ({ ...prev, relationship: item.value }));
+                      setShowRelationshipModal(false);
+                    }}
+                  >
+                    <Text style={[
+                      styles.relationshipText,
+                      newKid.relationship === item.value && styles.relationshipTextSelected
+                    ]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowRelationshipModal(false)}
+                >
+                  <Text style={styles.closeButtonText}>取消</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          <TextInput
+            ref={descriptionInputRef}
+            style={[styles.input, styles.descriptionInput]}
+            placeholder="描述"
+            value={newKid.description}
+            onChangeText={(text) => setNewKid(prev => ({ ...prev, description: text }))}
+            multiline
+            onFocus={() => handleInputFocus(0, descriptionInputRef)}
+          />
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              style={[styles.button, styles.cancelButton]}
+              onPress={() => router.back()}
+            >
+              <Text style={styles.buttonText}>取消</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.button, styles.confirmButton]}
+              onPress={handleAddKid}
+            >
+              <Text style={styles.buttonText}>确认</Text>
+            </TouchableOpacity>
           </View>
-        )}
-
-        <TextInput
-          style={[styles.input, styles.descriptionInput]}
-          placeholder="描述"
-          value={newKid.description}
-          onChangeText={(text) => setNewKid(prev => ({ ...prev, description: text }))}
-          multiline
-        />
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity 
-            style={[styles.button, styles.cancelButton]}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.buttonText}>取消</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.button, styles.confirmButton]}
-            onPress={handleAddKid}
-          >
-            <Text style={styles.buttonText}>确认</Text>
-          </TouchableOpacity>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -355,6 +442,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1000,
   },
   relationshipModal: {
     backgroundColor: 'white',
@@ -394,6 +482,24 @@ const styles = StyleSheet.create({
   iosDatePicker: {
     backgroundColor: 'white',
     height: 200,
+  },
+  datePickerContainer: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  dateButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+  },
+  dateButton: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 8,
+    marginHorizontal: 8,
   },
 });
 

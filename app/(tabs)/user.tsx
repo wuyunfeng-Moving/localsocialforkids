@@ -9,14 +9,10 @@ import { router } from 'expo-router';
 export default function UserScreen() {
     const [isAddingKid, setIsAddingKid] = useState(false);
 
-    const { loginState, send, userEvents,logout,userInfo } = useWebSocket();
+    const { loginState, userEvents,logout,userInfo } = useWebSocket();
 
     useEffect(() => {
         if (!loginState.logined) {
-        } else {
-            console.log("User logged in");
-            console.log("User events:", userEvents);
-            // console.log("Kid events:", kidEvents);
         }
     }, [loginState]);
 
@@ -52,7 +48,6 @@ export default function UserScreen() {
             {userInfo && userInfo.email? (
                 <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                     {renderUserInfoWithPhoto()}
-                    {/* {renderMyChildrenSection()} */}
                     {renderFollowingSection()}
                     <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                         <Text style={styles.logoutButtonText}>登出</Text>

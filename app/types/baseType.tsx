@@ -51,19 +51,36 @@ export const isEvent = (event: any): event is Event => {
         event.chatIds?.every((chatId: any) => typeof chatId === 'number');
 };
 
-export type KidInfo ={
+// 添加自定义类型
+type DateString = string & { _type?: 'DateString' }; // 类型标记，不影响运行时
+
+export type KidInfo = {
     id: number;
     name: string;
     gender: 'male' | 'female';
     photoPath: string;
     description: string;
     personalSpaceUrl: string;
-    birthDate: string;
+    birthDate: DateString; // 使用自定义类型
     guardians: Array<{
         userId: number;
         relationship: string;
     }>;
 }
+
+export const isValidBirthDate = (date: string): date is DateString => {
+    // 检查格式 YYYY-MM-DD
+    const dateRegex = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+    if (!dateRegex.test(date)) return false;
+
+    // 检查是否为有效日期
+    const [year, month, day] = date.split('-').map(Number);
+    const parsedDate = new Date(year, month - 1, day);
+    
+    return parsedDate.getFullYear() === year &&
+           parsedDate.getMonth() === month - 1 &&
+           parsedDate.getDate() === day;
+};
 
 export const isKidInfo = (kidInfo: any): kidInfo is KidInfo => {
     // console.log('开始验证 KidInfo:', kidInfo);
@@ -75,7 +92,7 @@ export const isKidInfo = (kidInfo: any): kidInfo is KidInfo => {
         photoPath: typeof kidInfo.photoPath === 'string',
         description: typeof kidInfo.description === 'string',
         personalSpaceUrl: typeof kidInfo.personalSpaceUrl === 'string',
-        birthDate: typeof kidInfo.birthDate === 'string',
+        birthDate: typeof kidInfo.birthDate === 'string' && isValidBirthDate(kidInfo.birthDate),
         guardians: kidInfo.guardians === undefined || Array.isArray(kidInfo.guardians) && kidInfo.guardians.every(
             (guardian: any) => typeof guardian.userId === 'number' && typeof guardian.relationship === 'string'
         )
@@ -123,4 +140,11 @@ export const isUserInfo = (userInfo: any): userInfo is UserInfo => {
 };
 
 export type Events = Event[];
+
+export const formatDateString = (date: Date): DateString => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}` as DateString;
+};
 

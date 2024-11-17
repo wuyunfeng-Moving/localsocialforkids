@@ -73,7 +73,7 @@ interface ServerData {
     }>;
     websocketMessageHandle: (message: MessageFromServer) => Promise<void>;
     updateUserInfo: UseMutationResult<BaseResponse, Error, {
-        type: 'addKidInfo'|'deleteKidInfo'|'updateKidInfo'|'deleteEvent'|'addEvent';
+        type: 'addKidInfo'|'deleteKidInfo'|'updateUserInfo'|'deleteEvent'|'addEvent';
         newUserInfo: any;
     }>;
     addkidinfo: (newKidInfo: Partial<KidInfo>, callback: (success: boolean, message: string) => void) => void;
@@ -526,9 +526,15 @@ const useServerData = (): ServerData => {
             type,
             newUserInfo
         }: {
-            type: 'addKidInfo'|'deleteKidInfo'|'updateKidInfo'|'deleteEvent'|'addEvent';
+            type: 'addKidInfo'|'deleteKidInfo'|'updateUserInfo'|'deleteEvent'|'addEvent';
             newUserInfo: any;  // Changed from Partial<UserInfo> since it could be different types
         }) => {
+
+            if(type === 'updateUserInfo'){
+                if(!isUserInfo(newUserInfo)){
+                    throw new Error('Invalid user info format');
+                }
+            }
             const token = await getToken();
             if (!token) throw new Error('No token');
 
@@ -546,34 +552,6 @@ const useServerData = (): ServerData => {
         onSuccess: (data) => {
             // console.log("get response.data userInfo",data);
             userDataQuery.refetch();
-            
-            // Update caches when userInfo is updated
-            // if (data.data.userInfo) {
-            //     setUserInfoCache(prev => ({
-            //         ...prev,
-            //         [data.data.userInfo.id]: {
-            //             userInfo: data.data.userInfo,
-            //             kidEvents: data.data.kidEvents || [],
-            //             userEvents: data.data.userEvents || [],
-            //             timestamp: Date.now()
-            //         }
-            //     }));
-
-            //     // Update kidInfo cache if kidEvents are present
-            //     if (data.data.kidEvents) {
-            //         data.data.kidEvents.forEach(kidEvent => {
-            //             if (isKidInfo(kidEvent)) {
-            //                 setKidInfoCache(prev => ({
-            //                     ...prev,
-            //                     [kidEvent.id]: {
-            //                         kidInfo: kidEvent,
-            //                         timestamp: Date.now()
-            //                     }
-            //                 }));
-            //             }
-            //         });
-            //     }
-            // }
         },
         onError: (error) => {
             console.error('Failed to update user info:', error);

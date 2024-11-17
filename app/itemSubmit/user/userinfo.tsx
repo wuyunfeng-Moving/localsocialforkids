@@ -8,16 +8,24 @@ import { KidInfo } from '@/app/types/types';
 const UserInfoScreen = () => {
   const { userInfo, loginState } = useWebSocket();
 
+
+  const calculateAge = (birthDate: KidInfo['birthDate']) => {
+    const today = new Date();
+    const dateBirthDate = new Date(birthDate);
+    const age = today.getFullYear() - dateBirthDate.getFullYear();
+    return age;
+  };
+
   const renderKidItem = ({ item }: { item: KidInfo }) => (
     <View style={styles.kidItem}>
       <View style={styles.kidPhotoContainer}>
-        <Image
+        {item.photoPath && <Image
           source={{ uri: item.photoPath }}
           style={styles.kidPhoto}
-        />
+        />}
       </View>
       <Text style={styles.kidName}>{item.name}</Text>
-      <Text style={styles.kidAge}>{`${item.birthDate}岁`}</Text>
+      <Text style={styles.kidAge}>{`${calculateAge(item.birthDate)}岁`}</Text>
     </View>
   );
 

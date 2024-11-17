@@ -4,11 +4,11 @@ import { View, Text, TextInput, Button, StyleSheet, Image, TouchableOpacity, Scr
 import { KidInfo } from '@/app/types/types';
 import { useWebSocket } from '@/app/context/WebSocketProvider';
 import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 export default function KidPage() {
   const { id } = useLocalSearchParams();
   const { update, userInfo } = useWebSocket();
-  const [isEditing, setIsEditing] = useState(false);
   const [kid, setKid] = useState<KidInfo | null>(null);
   const router = useRouter();
 
@@ -23,14 +23,37 @@ export default function KidPage() {
   }, [id, userInfo]);
 
   const handleSubmit = async () => {
-    // 实现添加或更新孩子信息的逻辑
-    // 如果是编辑模式,则更新现有数据
-    // 如果是新增模式,则创建新数据
-    // 示例: await fetch(`/api/kids/${id ? id : ''}`, {
-    //   method: id ? 'PUT' : 'POST',
-    //   body: JSON.stringify(kid),
-    // });
-    setIsEditing(false);
+    if (kid && userInfo) {
+      // Find the original kid info
+      const originalKid = userInfo.kidinfo?.find(k => k.id === kid.id);
+      
+      // Check if there are any changes by comparing the objects
+      const hasChanges = !originalKid || Object.keys(kid).some(key => 
+        kid[key as keyof KidInfo] !== originalKid[key as keyof KidInfo]
+      );
+
+      if (hasChanges) {
+        const newUserInfo = {
+          ...userInfo,
+          kidinfo: userInfo.kidinfo.map(k => 
+            k.id === kid.id ? kid : k
+          )
+        }
+
+        console.log('newUserInfo', newUserInfo);
+
+        update.updateUserInfo.mutate({
+          type: 'updateUserInfo',
+          newUserInfo: newUserInfo
+        }, {
+          onSuccess: () => router.back(),
+          onError: (error) => console.error(error)
+        });
+      } else {
+        // No changes were made
+        router.back();
+      }
+    }
   };
 
   const handleDelete = async () => {
@@ -47,7 +70,7 @@ export default function KidPage() {
   };
 
   const handleInputChange = (name: string, value: string) => {
-    setKid(prevKid => ({ ...prevKid, [name]: value }));
+    setKid(prevKid => prevKid ? { ...prevKid, [name]: value } : null);
   };
 
   const pickImage = async () => {
@@ -58,12 +81,21 @@ export default function KidPage() {
       quality: 1,
     });
 
-    if (!result.canceled && result.assets[0]) {
-      handleInputChange('photoPath', result.assets[0].uri);
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const manipulatedImage = await manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 500 } }],
+        { compress: 0.7, format: SaveFormat.JPEG, base64: true }
+      );
+
+      setKid(prevKid => prevKid ? {
+        ...prevKid,
+        photoPath: `data:image/jpeg;base64,${manipulatedImage.base64}`
+      } : null);
     }
   };
 
-  if (!kid && !isEditing) return <View style={styles.loadingContainer}><Text>Loading...</Text></View>;
+  if (!kid) return <View style={styles.loadingContainer}><Text>加载中...</Text></View>;
 
   return (
     <KeyboardAvoidingView 
@@ -83,31 +115,31 @@ export default function KidPage() {
                   source={kid?.photoPath ? { uri: kid.photoPath } : require('@/assets/images/people.jpg')}
                   style={styles.photo}
                 />
-                <Text style={styles.photoText}>Tap to change photo</Text>
+                <Text style={styles.photoText}>点击更换照片</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Name:</Text>
+              <Text style={styles.label}>姓名:</Text>
               <TextInput
                 style={styles.input}
                 value={kid?.name || ''}
                 onChangeText={(value) => handleInputChange('name', value)}
-                placeholder="Enter kid's name"
+                placeholder="请输入孩子的姓名"
               />
             </View>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Description:</Text>
+              <Text style={styles.label}>描述:</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 value={kid?.description || ''}
                 onChangeText={(value) => handleInputChange('description', value)}
                 multiline
                 numberOfLines={4}
-                placeholder="Enter kid's description"
+                placeholder="请输入孩子的描述"
               />
             </View>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Birth Date:</Text>
+              <Text style={styles.label}>出生日期:</Text>
               <TextInput
                 style={styles.input}
                 value={kid?.birthDate || ''}
@@ -116,33 +148,26 @@ export default function KidPage() {
               />
             </View>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Label:</Text>
+              <Text style={styles.label}>标签:</Text>
               <TextInput
                 style={styles.input}
                 value={kid?.label || ''}
                 onChangeText={(value) => handleInputChange('label', value)}
-                placeholder="Enter kid's label"
+                placeholder="请输入孩子的标签"
               />
             </View>
           </View>
           <View style={styles.buttonContainer}>
             <Button
-              title={id ? 'Update' : 'Add'}
+              title={id ? '更新' : '添加'}
               onPress={handleSubmit}
               color="#4CAF50"
             />
             <Button
-              title="Delete"
+              title="删除"
               onPress={handleDelete}
               color="red"
             />
-            {id && !isEditing && (
-              <Button
-                title="Edit"
-                onPress={() => setIsEditing(true)}
-                color="#2196F3"
-              />
-            )}
           </View>
         </View>
       </ScrollView>
