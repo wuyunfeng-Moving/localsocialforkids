@@ -11,7 +11,7 @@ const FollowingUserPage: React.FC = () => {
   const [isFollowing,setIsFollowing] = useState(false);
   useEffect(() => {
     const userId = typeof id === 'string' ? parseInt(id) : 0;
-    getUserInfo(userId,(userInfo,kidEvents,userEvents) => {
+    getUserInfo(userId,(userInfo) => {
       setCurrentUserInfo(userInfo);
       setIsFollowing(myUserInfo?.following?.includes(userInfo.id) || false);
     });

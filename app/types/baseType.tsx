@@ -120,6 +120,11 @@ export type UserInfo = {
 export const isUserInfo = (userInfo: any): userInfo is UserInfo => {
     // console.log('开始验证 UserInfo:', userInfo);
     
+    //如果userInfo.kidinfo为空，则返回false
+    if(userInfo.kidinfo.length === 0){
+        return false;
+    }
+
     const validations = {
         email: typeof userInfo.email === 'string',
         username: typeof userInfo.username === 'string',

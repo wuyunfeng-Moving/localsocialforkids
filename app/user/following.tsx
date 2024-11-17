@@ -16,14 +16,16 @@ const FollowingPage: React.FC = () => {
 
   useEffect(() => {
     const fetchFollowedUsers = async () => {
+      console.log('userInfo following',userInfo?.following);
       if (userInfo?.following) {
         const usersPromises = userInfo.following.map(async (userId) => {
           return new Promise<FollowedUser>((resolve) => {
             getUserInfo(userId, (userInfo) => {
+              console.log('userInfo in GetUserInfo',userInfo);
               resolve({
                 id: userInfo.id.toString(),
                 name: userInfo.username,
-                introduction: userInfo.introduction
+                introduction: userInfo.introduction || ''
               });
             });
           });

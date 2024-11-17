@@ -9,7 +9,7 @@ import { Event, UserInfo, Events, AuthenticationMessage,
     UserDataResponse,
     LoginResponse,isLoginResponse,
     GetEventsResponse,isGetEventsResponse,
-    BaseResponse
+    BaseResponse,OtherUserInfoResponse,isOtherUserInfoResponse
 } from '../types/types';
 import * as SecureStore from 'expo-secure-store';
 import {useQuery,useMutation,useQueryClient, UseMutationResult} from "@tanstack/react-query";
@@ -799,7 +799,7 @@ const useServerData = (): ServerData => {
         forceUpdate: boolean = false
     ): Promise<UserInfo> => {
         // Check cache first
-        const cachedData = queryClient.getQueryData<{id:number,userInfo:UserInfo,kidEvents:Event[],userEvents:Event[]}>(['userInfos'])?.find(item => item.id === userId);
+        const cachedData = queryClient.getQueryData<Array<{id:number,userInfo:UserInfo,kidEvents:Event[],userEvents:Event[]}>>(['userInfos'])?.find(item => item.id === userId);
         if (!forceUpdate && cachedData) {
             callback(cachedData.userInfo);
             return cachedData.userInfo;
@@ -812,14 +812,19 @@ const useServerData = (): ServerData => {
         const response = await axios.get(API_ENDPOINTS.getUserInfo(userId), {
             headers: { Authorization: `Bearer ${token}` }
         });
+        console.log("getUserInfo response...",response.data);
 
-        if (!isUserDataResponse(response.data)) {
-            console.log("getUserInfo response.data",response.data);
+        if (!isOtherUserInfoResponse(response.data)) {
+            console.log("getUserInfo response.data!!!!!!!!!!!",response.data);
             throw new Error('Invalid response format from server');
         }
 
+        console.log("!!!!!!");
+        
         if (response.data.success) {
+            console.log("!!!!!!")
             updateCacheUserInfo(response.data.userInfo);
+            console.log("!!!!!!!!!!!!")
             callback(response.data.userInfo);
             return response.data.userInfo;
         }

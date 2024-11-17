@@ -21,6 +21,8 @@ export {
     isKidInfoResponse,
     isUserDataResponse,
     isGetEventsResponse,
+    OtherUserInfoResponse,
+    isOtherUserInfoResponse,
 } from "./serverDataTypes";
 
 export type{

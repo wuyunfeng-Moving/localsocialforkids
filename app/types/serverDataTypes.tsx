@@ -135,7 +135,7 @@ export interface UserDataResponse extends BaseResponse {
     notifications: Notification[];
 }
 
-export const isUserDataResponse = (response: any): response is UserDataResponse => {
+export const isUserDataResponse = (response: UserDataResponse): response is UserDataResponse => {
     console.log('Validating UserDataResponse:', response);
     
     if (!isBaseResponse(response)) {
@@ -161,5 +161,18 @@ export const isUserDataResponse = (response: any): response is UserDataResponse 
     console.log('UserDataResponse validation passed');
     return true;
 };
+
+export interface OtherUserInfoResponse extends BaseResponse {
+    userInfo: UserInfo;
+}
+
+export const isOtherUserInfoResponse = (response: OtherUserInfoResponse): response is OtherUserInfoResponse => {
+    
+    const result = isBaseResponse(response) && isUserInfo(response.userInfo);
+
+    return result;
+};
+
+
 
 
