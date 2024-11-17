@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Button, ScrollView, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Button, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useWebSocket } from '@/app/context/WebSocketProvider';
 import FullScreenModal from '../commonItem/FullScreenModal';
 import { Event, Events, MatchEvent, MatchEvents, UserInfo } from '@/app/types/types';
 import { useRouter } from 'expo-router';
+import { Menu, Provider } from 'react-native-paper';
 
 export type SingleEventDisplayElementType = {
     currentEvent: Event,
@@ -28,6 +29,7 @@ export const SingleEventDisplay = ({
     const [internalCurrentEvent, setInternalCurrentEvent] = useState(currentEvent);
     const [kidNames, setKidNames] = useState<{[key: number]: string}>({});
     const [creatorName, setCreatorName] = useState<string>('');
+    const [menuVisible, setMenuVisible] = useState(false);
 
     useEffect(() => {
         const updateTimeRemaining = () => {
@@ -218,9 +220,10 @@ export const SingleEventDisplay = ({
                         setComment(''); // Clear input
                         await searchEvents.search({
                             eventId: internalCurrentEvent.id,
-                            callback: (events) => {
-                                console.log("searchEvents",events);
-                                setInternalCurrentEvent(events[0]);
+                            callback: (success,message,events) => {
+                                if(success && events.length > 0){
+                                    setInternalCurrentEvent(events[0]);
+                                }
                             }
                         });
                     } else {
@@ -277,181 +280,202 @@ export const SingleEventDisplay = ({
     };
 
     return (
-        <ScrollView>
-            <View style={getContainerStyle()}>
-                <View style={styles.headerContainer}>
-                    <Text style={styles.title}>{internalCurrentEvent.topic}</Text>
-                    {getEventState(internalCurrentEvent) === 'owned' ? (
-                        <Ionicons name="person" size={24} color="#666" />
-                    ) : getEventState(internalCurrentEvent) === 'joined' ? (
-                        <Ionicons name="people" size={24} color="#666" />
-                    ) : null}
-                </View>
+        <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
+        >
+            <ScrollView>
+                <View style={getContainerStyle()}>
+                    <View style={styles.headerContainer}>
+                        <Text style={styles.title}>{internalCurrentEvent.topic}</Text>
+                        <View style={styles.headerRightContainer}>
+                            {getEventState(internalCurrentEvent) === 'owned' && (
+                                <Menu
+                                    visible={menuVisible}
+                                    onDismiss={() => setMenuVisible(false)}
+                                    anchor={
+                                        <TouchableOpacity onPress={() => setMenuVisible(true)}>
+                                            <Ionicons name="ellipsis-vertical" size={24} color="#666" />
+                                        </TouchableOpacity>
+                                    }
+                                >
+                                    <Menu.Item 
+                                        onPress={() => {
+                                            setMenuVisible(false);
+                                            // Add edit logic here
+                                        }} 
+                                        title="修改" 
+                                    />
+                                    <Menu.Item 
+                                        onPress={() => {
+                                            setMenuVisible(false);
+                                            handleDeleteEvent();
+                                        }} 
+                                        title="删除"
+                                        titleStyle={{ color: '#FF3B30' }}
+                                    />
+                                </Menu>
+                            )}
+                            {getEventState(internalCurrentEvent) === 'owned' ? (
+                                <Ionicons name="person" size={24} color="#666" />
+                            ) : getEventState(internalCurrentEvent) === 'joined' ? (
+                                <Ionicons name="people" size={24} color="#666" />
+                            ) : null}
+                        </View>
+                    </View>
 
-                {/* 基本信息 - 在列表和详情视图中都显示 */}
-                <View style={styles.infoRow}>
-                    <Ionicons name="flag-outline" size={20} color="#666" />
-                    <Text style={styles.infoText}>状态: {getStatusText(internalCurrentEvent.status)}</Text>
-                    {timeRemaining && (
-                        <Text style={styles.timeRemainingText}>
-                            {internalCurrentEvent.status === 'preparing' ? '距离开始还有: ' : '距离结束还有: '}
-                            {timeRemaining}
+                    {/* 基本信息 - 在列表和详情视图中都显示 */}
+                    <View style={styles.infoRow}>
+                        <Ionicons name="flag-outline" size={20} color="#666" />
+                        <Text style={styles.infoText}>状态: {getStatusText(internalCurrentEvent.status)}</Text>
+                        {timeRemaining && (
+                            <Text style={styles.timeRemainingText}>
+                                {internalCurrentEvent.status === 'preparing' ? '距离开始还有: ' : '距离结束还有: '}
+                                {timeRemaining}
+                            </Text>
+                        )}
+                    </View>
+
+                    <View style={styles.infoRow}>
+                        <Ionicons name="time-outline" size={20} color="#666" />
+                        <Text style={styles.infoText}>
+                            {formatDateTime(internalCurrentEvent.dateTime)} (持续 {internalCurrentEvent.duration} 小时)
                         </Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                        <Ionicons name="location-outline" size={20} color="#666" />
+                        <Text style={styles.infoText}>
+                            经度: {internalCurrentEvent.place.location[0]}, 纬度: {internalCurrentEvent.place.location[1]}
+                        </Text>
+                    </View>
+
+                    {/* 详细信息 - 仅在详情视图中显示 */}
+                    {list === 0 && (
+                        <>
+                            <View style={styles.infoRow}>
+                                <Ionicons name="people-outline" size={20} color="#666" />
+                                <Text style={styles.infoText}>最多参与人数: {internalCurrentEvent.place.maxNumber}</Text>
+                            </View>
+
+                            {internalCurrentEvent.description && (
+                                <View style={styles.infoRow}>
+                                    <Ionicons name="information-circle-outline" size={20} color="#666" />
+                                    <Text style={styles.infoText}>{internalCurrentEvent.description}</Text>
+                                </View>
+                            )}
+
+                            {internalCurrentEvent.kidIds && internalCurrentEvent.kidIds.length > 0 && (
+                                <View style={styles.infoRow}>
+                                    <Ionicons name="people-circle-outline" size={20} color="#666" />
+                                    <Text style={styles.infoText}>参与的孩子: </Text>
+                                    {internalCurrentEvent.kidIds.map((kidId, index) => (
+                                        <Text key={kidId} style={styles.kidText}>
+                                            {kidNames[kidId] || kidId}
+                                            {index < internalCurrentEvent.kidIds.length - 1 ? ', ' : ''}
+                                        </Text>
+                                    ))}
+                                </View>
+                            )}
+
+                            {internalCurrentEvent.userId && (
+                                <View style={styles.infoRow}>
+                                    <Ionicons name="person-outline" size={20} color="#666" />
+                                    <Text style={styles.infoText}>创建人: </Text>
+                                    <TouchableOpacity 
+                                        onPress={handleUserPress}
+                                        disabled={internalCurrentEvent.userId === userInfo?.id}
+                                    >
+                                        <Text style={[  
+                                            styles.infoText,
+                                            internalCurrentEvent.userId !== userInfo?.id && styles.clickableText
+                                        ]}>{creatorName}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+
+                            {match && (
+                                <View style={styles.infoRow}>
+                                    <Ionicons name="star-outline" size={20} color="#666" />
+                                    <Text style={styles.infoText}>匹配分数: {match.score}</Text>
+                                </View>
+                            )}
+
+                            {/* 待处理申请部分 */}
+                            {internalCurrentEvent.pendingSignUps && internalCurrentEvent.pendingSignUps.length > 0 && (
+                                <View style={styles.pendingSignUpsContainer}>
+                                    <Text style={styles.pendingSignUpsTitle}>待处理申请:</Text>
+                                    {internalCurrentEvent.pendingSignUps.map((signup, index) => (
+                                        <View key={index} style={styles.pendingSignUpItem}>
+                                            <Text>
+                                                {signup.type === 'kid' ? '孩子ID: ' : '事件ID: '}
+                                                <Text style={styles.idText}>
+                                                    {signup.type === 'kid' ? signup.kidIds.join(', ') : signup.sourceEventId}
+                                                </Text>
+                                            </Text>
+                                            <Text>申请类型: {signup.type === 'kid' ? '孩子' : '事件'}</Text>
+                                            <Text>原因: {signup.reason}</Text>
+                                            <View style={styles.signUpButtonContainer}>
+                                                <TouchableOpacity
+                                                    style={[styles.signUpButton, styles.rejectButton]}
+                                                    onPress={() => handleRejectSignUp(signup.id)}
+                                                    disabled={isDeleting}
+                                                >
+                                                    <Text style={styles.buttonText}>拒绝</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.signUpButton, styles.acceptButton]}
+                                                    onPress={() => handleAcceptSignUp(signup.id)}
+                                                    disabled={isDeleting}
+                                                >
+                                                    <Text style={styles.buttonText}>通过</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                            {isDeleting && <ActivityIndicator style={styles.loader} />}
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+
+                            {/* 评论部分 */}
+                            <View style={styles.commentSection}>
+                                <Text style={styles.commentTitle}>评论</Text>
+                                <View style={styles.existingComments}>
+                                    {renderComments()}
+                                </View>
+                            </View>
+                        </>
                     )}
                 </View>
-
-                <View style={styles.infoRow}>
-                    <Ionicons name="time-outline" size={20} color="#666" />
-                    <Text style={styles.infoText}>
-                        {formatDateTime(internalCurrentEvent.dateTime)} (持续 {internalCurrentEvent.duration} 小时)
-                    </Text>
+            </ScrollView>
+            {list === 0 && (
+                <View style={styles.commentInputWrapper}>
+                    <View style={styles.commentInputContainer}>
+                        <TextInput
+                            style={styles.commentInput}
+                            value={comment}
+                            onChangeText={setComment}
+                            placeholder="输入您的评论..."
+                            multiline
+                        />
+                        <TouchableOpacity
+                            style={[
+                                styles.commentButton,
+                                (!comment.trim() || isSubmittingComment) && styles.disabledButton
+                            ]}
+                            onPress={handleSubmitComment}
+                            disabled={!comment.trim() || isSubmittingComment}
+                        >
+                            {isSubmittingComment ? (
+                                <ActivityIndicator color="#fff" size="small" />
+                            ) : (
+                                <Text style={styles.commentButtonText}>提交</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
                 </View>
-
-                <View style={styles.infoRow}>
-                    <Ionicons name="location-outline" size={20} color="#666" />
-                    <Text style={styles.infoText}>
-                        经度: {internalCurrentEvent.place.location[0]}, 纬度: {internalCurrentEvent.place.location[1]}
-                    </Text>
-                </View>
-
-                {/* 详细信息 - 仅在详情视图中显示 */}
-                {list === 0 && (
-                    <>
-                        <View style={styles.infoRow}>
-                            <Ionicons name="people-outline" size={20} color="#666" />
-                            <Text style={styles.infoText}>最多参与人数: {internalCurrentEvent.place.maxNumber}</Text>
-                        </View>
-
-                        {internalCurrentEvent.description && (
-                            <View style={styles.infoRow}>
-                                <Ionicons name="information-circle-outline" size={20} color="#666" />
-                                <Text style={styles.infoText}>{internalCurrentEvent.description}</Text>
-                            </View>
-                        )}
-
-                        {internalCurrentEvent.kidIds && internalCurrentEvent.kidIds.length > 0 && (
-                            <View style={styles.infoRow}>
-                                <Ionicons name="people-circle-outline" size={20} color="#666" />
-                                <Text style={styles.infoText}>参与的孩子: </Text>
-                                {internalCurrentEvent.kidIds.map((kidId, index) => (
-                                    <Text key={kidId} style={styles.kidText}>
-                                        {kidNames[kidId] || kidId}
-                                        {index < internalCurrentEvent.kidIds.length - 1 ? ', ' : ''}
-                                    </Text>
-                                ))}
-                            </View>
-                        )}
-
-                        {internalCurrentEvent.userId && (
-                            <View style={styles.infoRow}>
-                                <Ionicons name="person-outline" size={20} color="#666" />
-                                <Text style={styles.infoText}>创建人: </Text>
-                                <TouchableOpacity 
-                                    onPress={handleUserPress}
-                                    disabled={internalCurrentEvent.userId === userInfo?.id}
-                                >
-                                    <Text style={[  
-                                        styles.infoText,
-                                        internalCurrentEvent.userId !== userInfo?.id && styles.clickableText
-                                    ]}>{creatorName}</Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-
-                        {match && (
-                            <View style={styles.infoRow}>
-                                <Ionicons name="star-outline" size={20} color="#666" />
-                                <Text style={styles.infoText}>匹配分数: {match.score}</Text>
-                            </View>
-                        )}
-
-                        {/* 待处理申请部分 */}
-                        {internalCurrentEvent.pendingSignUps && internalCurrentEvent.pendingSignUps.length > 0 && (
-                            <View style={styles.pendingSignUpsContainer}>
-                                <Text style={styles.pendingSignUpsTitle}>待处理申请:</Text>
-                                {internalCurrentEvent.pendingSignUps.map((signup, index) => (
-                                    <View key={index} style={styles.pendingSignUpItem}>
-                                        <Text>
-                                            {signup.type === 'kid' ? '孩子ID: ' : '事件ID: '}
-                                            <Text style={styles.idText}>
-                                                {signup.type === 'kid' ? signup.kidIds.join(', ') : signup.sourceEventId}
-                                            </Text>
-                                        </Text>
-                                        <Text>申请类型: {signup.type === 'kid' ? '孩子' : '事件'}</Text>
-                                        <Text>原因: {signup.reason}</Text>
-                                        <View style={styles.signUpButtonContainer}>
-                                            <TouchableOpacity
-                                                style={[styles.signUpButton, styles.rejectButton]}
-                                                onPress={() => handleRejectSignUp(signup.id)}
-                                                disabled={isDeleting}
-                                            >
-                                                <Text style={styles.buttonText}>拒绝</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={[styles.signUpButton, styles.acceptButton]}
-                                                onPress={() => handleAcceptSignUp(signup.id)}
-                                                disabled={isDeleting}
-                                            >
-                                                <Text style={styles.buttonText}>通过</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                        {isDeleting && <ActivityIndicator style={styles.loader} />}
-                                    </View>
-                                ))}
-                            </View>
-                        )}
-
-                        {/* 评论部分 */}
-                        <View style={styles.commentSection}>
-                            <Text style={styles.commentTitle}>评论</Text>
-                            <View style={styles.existingComments}>
-                                {renderComments()}
-                            </View>
-                            <View style={styles.commentInputContainer}>
-                                <TextInput
-                                    style={styles.commentInput}
-                                    value={comment}
-                                    onChangeText={setComment}
-                                    placeholder="输入您的评论..."
-                                    multiline
-                                />
-                                <TouchableOpacity
-                                    style={[
-                                        styles.commentButton,
-                                        (!comment.trim() || isSubmittingComment) && styles.disabledButton
-                                    ]}
-                                    onPress={handleSubmitComment}
-                                    disabled={!comment.trim() || isSubmittingComment}
-                                >
-                                    {isSubmittingComment ? (
-                                        <ActivityIndicator color="#fff" size="small" />
-                                    ) : (
-                                        <Text style={styles.commentButtonText}>提交</Text>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        {/* 删除按钮 */}
-                        {getEventState(internalCurrentEvent) === 'owned' && (
-                            <View style={styles.actionButtonsContainer}>
-                                <TouchableOpacity
-                                    style={[styles.actionButton, styles.deleteButton]}
-                                    onPress={handleDeleteEvent}
-                                    disabled={isDeleting}
-                                >
-                                    {isDeleting ? (
-                                        <ActivityIndicator color="#fff" size="small" />
-                                    ) : (
-                                        <Text style={styles.actionButtonText}>删除事件</Text>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-                        )}
-                    </>
-                )}
-            </View>
-        </ScrollView>
+            )}
+        </KeyboardAvoidingView>
     );
 };
 
@@ -681,5 +705,31 @@ const styles = StyleSheet.create({
         color: '#333',
         flex: 1,
         marginRight: 8,
+    },
+    commentInputWrapper: {
+        backgroundColor: '#fff',
+        borderTopWidth: 1,
+        borderTopColor: '#ccc',
+        padding: 8,
+    },
+    commentInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    commentInput: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 8,
+        padding: 12,
+        marginRight: 8,
+        minHeight: 40,
+        maxHeight: 100,
+        backgroundColor: '#fff',
+    },
+    headerRightContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
 });

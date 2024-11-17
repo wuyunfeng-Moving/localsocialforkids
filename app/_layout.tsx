@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { WebSocketProvider } from './context/WebSocketProvider';
 import { LocationProvider } from './context/LocationContext';
+import { Provider as PaperProvider } from 'react-native-paper';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -56,6 +57,7 @@ function RootLayoutNav() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <PaperProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <WebSocketProvider>
         <LocationProvider>
@@ -69,6 +71,7 @@ function RootLayoutNav() {
           </LocationProvider>
         </WebSocketProvider>
       </ThemeProvider>
+      </PaperProvider>
     </QueryClientProvider>
   );
 }
