@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useServerData, SERVERIP } from './serverData';
-import { MatchEvents, MatchEvent, ChatMessagesArray, ChatMessage, LoginState } from '../types/types';
+import { MatchEvents, MatchEvent, ChatMessagesArray, ChatMessage, LoginState, BaseResponse } from '../types/types';
 import { Event,UserInfo,KidInfo } from '../types/types';
 import { UseMutationResult } from '@tanstack/react-query';
 import { Notification } from '../types/notification_types';
@@ -73,10 +73,6 @@ interface WebSocketContextValue {
   };
   followActions: {
     followUser: (params: { 
-      userId: number; 
-      callback: (success: boolean, message: string) => void 
-    }) => Promise<void>;
-    unfollowUser: (params: { 
       userId: number; 
       callback: (success: boolean, message: string) => void 
     }) => Promise<void>;
@@ -304,7 +300,6 @@ export const WebSocketProvider = ({ children }) => {
 
   return (
     <WebSocketContext.Provider value={{
-      send,
       userInfo: userInfo as UserInfo | null,
       loginState,
       getUserInfo:getUserInfo,

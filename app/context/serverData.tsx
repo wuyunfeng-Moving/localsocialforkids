@@ -128,10 +128,6 @@ interface ServerData {
             userId: number;
             callback: (success: boolean, message: string) => void;
         }) => Promise<void>;
-        unfollowUser: (params: {
-            userId: number;
-            callback: (success: boolean, message: string) => void;
-        }) => Promise<void>;
     };
     chat: {
         chatMessages: ChatMessagesArray;
@@ -532,6 +528,7 @@ const useServerData = (): ServerData => {
 
             if(type === 'updateUserInfo'){
                 if(!isUserInfo(newUserInfo)){
+                    console.log("newUserInfo",newUserInfo);
                     throw new Error('Invalid user info format');
                 }
             }
@@ -870,38 +867,6 @@ const useServerData = (): ServerData => {
         }
     };
 
-    const unfollowUser = async (params: {
-        userId: number,
-        callback: (success: boolean, message: string) => void
-    }) => {
-        try {
-            const token = await getToken();
-            if (!token) throw new Error('No token');
-
-            const response = await axios.post(API_ENDPOINTS.userInfo, {
-                targetUserId: params.userId,
-                type: 'unfollow'
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (response.data.success) {
-                setFollowing(prev => prev.filter(id => id !== params.userId));
-                userDataQuery.refetch();
-                params.callback(true, "Successfully unfollowed user");
-            } else {
-                params.callback(false, response.data.message || "Failed to unfollow user");
-            }
-        } catch (error) {
-            console.error('Error unfollowing user:', error);
-            let errorMessage = "An error occurred while unfollowing the user";
-            if (axios.isAxiosError(error) && error.response) {
-                errorMessage = error.response.data.message || errorMessage;
-            }
-            params.callback(false, errorMessage);
-        }
-    };
-
     const addComment = async (params: {
         eventId: number,
         comment: string,
@@ -1113,8 +1078,7 @@ const useServerData = (): ServerData => {
         getUserInfo,  // Add this to the returned object
         getKidInfo,
         followActions: {
-            followUser,
-            unfollowUser
+            followUser
         },
         chat: {
             chatMessages,
