@@ -43,9 +43,15 @@ export const SingleEventDisplay = ({
             }
 
             if (timeDiff !== undefined) {
-                const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+                const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                 const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-                setTimeRemaining(`${hours}小时${minutes}分钟`);
+                
+                if (days > 0) {
+                    setTimeRemaining(`${days}天${hours}小时`);
+                } else {
+                    setTimeRemaining(`${hours}小时${minutes}分钟`);
+                }
             } else {
                 setTimeRemaining('');
             }
@@ -72,7 +78,7 @@ export const SingleEventDisplay = ({
 
     useEffect(() => {
         if (internalCurrentEvent.userId) {
-            getUserInfo(internalCurrentEvent.userId, (user, kidEvents, userEvents) => {
+            getUserInfo(internalCurrentEvent.userId, (user) => {
                 setCreatorName(user.username);
             });
         }
