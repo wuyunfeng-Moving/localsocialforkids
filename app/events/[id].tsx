@@ -6,12 +6,14 @@ import { useWebSocket } from '../context/WebSocketProvider';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Event } from '../types/types';
+import { navigateToAddKid } from '../navigation/routeHelper';
 
 const EventDetailsPage = () => {
   const params = useLocalSearchParams();
   const { id, eventData } = params;
-  const { changeEvent, userInfo,getKidInfo} = useWebSocket(); // 假设 user 对象包含孩子信息
+  const { changeEvent, userInfo} = useWebSocket(); // 假设 user 对象包含孩子信息
   const [showKidSelection, setShowKidSelection] = useState(false);
+  const [showAddKidInfo, setShowAddKidInfo] = useState(false);
   const [selectedKidIds, setSelectedKidIds] = useState<number[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
@@ -39,8 +41,9 @@ const EventDetailsPage = () => {
   }, [event]); // 空依赖数组，确保效果只运行一次
 
   const handleJoinRequest = () => {
-    if (userInfo.kidinfo.length === 0) {
-      console.error('No kids available');
+    if (userInfo?.kidinfo.length === 0) {
+      console.log("no kid info");
+      setShowAddKidInfo(true);
       return;
     }
     if (userInfo.kidinfo.length === 1) {
@@ -49,6 +52,15 @@ const EventDetailsPage = () => {
       setShowKidSelection(true);
     }
   };
+
+
+  const handleAddKidInfo = (add: boolean) => {
+    setShowAddKidInfo(false);
+    if (add) {
+      navigateToAddKid();
+    }
+  };
+
 
   const submitJoinRequest = (kidIds: number[]) => {
     changeEvent.signupEvent({
@@ -179,6 +191,31 @@ const EventDetailsPage = () => {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={showAddKidInfo}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={styles.addKidInfoModalContainer}>
+          <View style={styles.addKidInfoModalContent}>
+            <Text style={styles.modalTitle}>添加孩子信息</Text>
+            <Text style={styles.modalDescription}>您需要先添加孩子信息才能报名活动</Text>
+            <TouchableOpacity 
+              style={styles.submitButton} 
+              onPress={() => handleAddKidInfo(true)}
+            >
+              <Text style={styles.buttonText}>去添加</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.closeButton} 
+              onPress={() => handleAddKidInfo(false)}
+            >
+              <Text style={styles.buttonText}>取消</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -186,7 +223,7 @@ const EventDetailsPage = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    padding: 16,
     backgroundColor: '#f0f4f8',
   },
   title: {
@@ -224,9 +261,14 @@ const styles = StyleSheet.create({
   joinButton: {
     backgroundColor: '#007AFF',
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 12,
     flex: 1,
     marginRight: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   joinButtonText: {
     color: '#FFFFFF',
@@ -236,10 +278,16 @@ const styles = StyleSheet.create({
   chatButton: {
     backgroundColor: '#007AFF',
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 10,
+    width: 50,
+    height: 50,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   chatButtonText: {
     color: '#FFFFFF',
@@ -247,42 +295,47 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
     backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 10,
-    width: '80%',
+    padding: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    width: '100%',
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 15,
+    marginBottom: 20,
+    textAlign: 'center',
   },
   kidOption: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#f5f5f5',
   },
   selectedKidOption: {
-    backgroundColor: '#e6f3ff',
+    backgroundColor: '#e3f2fd',
+    borderColor: '#2196F3',
+    borderWidth: 1,
   },
   closeButton: {
-    marginTop: 15,
-    padding: 10,
-    backgroundColor: '#eee',
+    marginTop: 12,
+    padding: 16,
+    backgroundColor: '#f5f5f5',
     alignItems: 'center',
-    borderRadius: 5,
+    borderRadius: 12,
   },
   submitButton: {
-    marginTop: 15,
-    padding: 10,
+    marginTop: 20,
+    padding: 16,
     backgroundColor: '#007AFF',
     alignItems: 'center',
-    borderRadius: 5,
+    borderRadius: 12,
+    elevation: 2,
   },
   successModalContainer: {
     flex: 1,
@@ -291,20 +344,54 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   successModalContent: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: '#4CAF50',
     padding: 20,
-    borderRadius: 10,
+    borderRadius: 16,
+    minWidth: 200,
+    alignItems: 'center',
   },
   successModalText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   actionButtonsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 20,
+    paddingHorizontal: 16,
   },
   chatButtonsContainer: {
     marginTop: 10,
+  },
+  addKidInfoModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  addKidInfoModalContent: {
+    backgroundColor: 'white',
+    padding: 24,
+    borderRadius: 20,
+    width: '80%',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  modalDescription: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

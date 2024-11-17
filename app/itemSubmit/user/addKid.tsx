@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, ScrollView, Platform } from 'react-native';
 import { useWebSocket } from '../../context/WebSocketProvider';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface NewKidForm {
   name: string;
@@ -12,10 +13,11 @@ interface NewKidForm {
   description: string;
   photoPath?: string;
   photoBase64?: string;
+  relationship: string;
 }
 
 const AddKidScreen = () => {
-  const { update } = useWebSocket();
+  const { update, userInfo } = useWebSocket();
   const [newKid, setNewKid] = useState<NewKidForm>({
     name: '新的宝宝',
     birthDate: new Date().toISOString().split('T')[0],
@@ -23,7 +25,23 @@ const AddKidScreen = () => {
     description: '这是一个可爱的宝宝',
     photoPath: '',
     photoBase64: '',
+    relationship: 'father',
   });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showRelationshipModal, setShowRelationshipModal] = useState(false);
+
+  const relationships = [
+    { label: '爸爸', value: 'father' },
+    { label: '妈妈', value: 'mother' },
+    { label: '爷爷', value: 'grandfather' },
+    { label: '奶奶', value: 'grandmother' },
+    { label: '外公', value: 'maternal_grandfather' },
+    { label: '外婆', value: 'maternal_grandmother' },
+  ];
+
+  const getRelationshipLabel = (value: string) => {
+    return relationships.find(r => r.value === value)?.label || '';
+  };
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -48,6 +66,18 @@ const AddKidScreen = () => {
     }
   };
 
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    if (selectedDate) {
+      setNewKid(prev => ({
+        ...prev,
+        birthDate: selectedDate.toISOString().split('T')[0]
+      }));
+    }
+  };
+
   const handleAddKid = () => {
     update.addkidinfo(
       {
@@ -58,7 +88,12 @@ const AddKidScreen = () => {
         description: newKid.description,
         photoPath: newKid.photoBase64 || '',
         personalSpaceUrl: '',
-        guardians: []
+        guardians: [
+          {
+            userId: userInfo?.id || 0,
+            relationship: newKid.relationship
+          }
+        ]
       },
       (success, message) => {
         if (success) {
@@ -88,12 +123,24 @@ const AddKidScreen = () => {
           onChangeText={(text) => setNewKid(prev => ({ ...prev, name: text }))}
         />
         
-        <TextInput
-          style={styles.input}
-          placeholder="出生日期 (YYYY-MM-DD)"
-          value={newKid.birthDate}
-          onChangeText={(text) => setNewKid(prev => ({ ...prev, birthDate: text }))}
-        />
+        <TouchableOpacity 
+          style={styles.input} 
+          onPress={() => setShowDatePicker(true)}
+        >
+          <Text style={styles.labelText}>出生日期</Text>
+          <Text style={styles.dateText}>{newKid.birthDate}</Text>
+        </TouchableOpacity>
+
+        {(showDatePicker || Platform.OS === 'ios') && (
+          <DateTimePicker
+            value={new Date(newKid.birthDate)}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleDateChange}
+            maximumDate={new Date()}
+            style={Platform.OS === 'ios' ? styles.iosDatePicker : undefined}
+          />
+        )}
 
         <View style={styles.genderContainer}>
           <TouchableOpacity 
@@ -119,6 +166,47 @@ const AddKidScreen = () => {
             </Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity 
+          style={styles.input}
+          onPress={() => setShowRelationshipModal(true)}
+        >
+          <Text style={styles.labelText}>与孩子的关系</Text>
+          <Text style={styles.valueText}>{getRelationshipLabel(newKid.relationship)}</Text>
+        </TouchableOpacity>
+
+        {showRelationshipModal && (
+          <View style={styles.modalOverlay}>
+            <View style={styles.relationshipModal}>
+              {relationships.map((item) => (
+                <TouchableOpacity
+                  key={item.value}
+                  style={[
+                    styles.relationshipItem,
+                    newKid.relationship === item.value && styles.relationshipItemSelected
+                  ]}
+                  onPress={() => {
+                    setNewKid(prev => ({ ...prev, relationship: item.value }));
+                    setShowRelationshipModal(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.relationshipText,
+                    newKid.relationship === item.value && styles.relationshipTextSelected
+                  ]}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowRelationshipModal(false)}
+              >
+                <Text style={styles.closeButtonText}>取消</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         <TextInput
           style={[styles.input, styles.descriptionInput]}
@@ -233,6 +321,79 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  dateText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  pickerContainer: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+  },
+  labelText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  valueText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  relationshipModal: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    width: '80%',
+  },
+  relationshipItem: {
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: '#f0f0f0',
+  },
+  relationshipItemSelected: {
+    backgroundColor: '#007AFF',
+  },
+  relationshipText: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+  },
+  relationshipTextSelected: {
+    color: 'white',
+  },
+  closeButton: {
+    marginTop: 10,
+    padding: 15,
+    backgroundColor: '#ff6b6b',
+    borderRadius: 8,
+  },
+  closeButtonText: {
+    color: 'white',
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  iosDatePicker: {
+    backgroundColor: 'white',
+    height: 200,
   },
 });
 

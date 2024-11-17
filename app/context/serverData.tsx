@@ -16,9 +16,9 @@ import {useQuery,useMutation,useQueryClient, UseMutationResult} from "@tanstack/
 import axios from 'axios';
 
 
-const SERVERIP = "121.196.198.126";
-const PORT = 3000;
-const BASE_URL = `http://${SERVERIP}:${PORT}`;
+export const SERVERIP = "121.196.198.126";
+export const PORT = 3000;
+export const BASE_URL = `http://${SERVERIP}:${PORT}`;
 
 // Add new API endpoints configuration
 const API_ENDPOINTS = {
@@ -666,6 +666,7 @@ const useServerData = (): ServerData => {
 
     const [isSearching, setIsSearching] = useState(false);
     const [searchError, setSearchError] = useState<Error | null>(null);
+    const [searchResults, setSearchResults] = useState<Event[]>([]);
 
     // 更新搜索事件函数
     const searchEvents = async (searchParams: {
@@ -692,6 +693,7 @@ const useServerData = (): ServerData => {
             }
 
             if (response.data.success) {
+                setSearchResults(response.data.events || []);
                 searchParams.callback?.(true, "", response.data.events || []);
             } else {
                 searchParams.callback?.(false, response.data.message || "", []);
@@ -1117,7 +1119,8 @@ const useServerData = (): ServerData => {
         searchEvents: {
             search: searchEvents,
             isSearching,
-            searchError
+            searchError,
+            results: searchResults
         },
         getEventsById,
         changeEvent: {
