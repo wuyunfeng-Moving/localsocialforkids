@@ -145,7 +145,7 @@ const EventDetailsPage = () => {
         <SingleEventDisplay currentEvent={event} depth={0} list={0}/>
       )}
       <View style={styles.actionButtonsContainer}>
-        {event.userId !== userInfo?.id && (
+        {event.userId !== userInfo?.id && event.status !== 'completed' && (
           <TouchableOpacity style={styles.joinButton} onPress={handleJoinRequest}>
             <Text style={styles.joinButtonText}>申请加入</Text>
           </TouchableOpacity>

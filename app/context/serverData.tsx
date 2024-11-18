@@ -730,30 +730,51 @@ const useServerData = (): ServerData => {
         callback: (kidInfo: KidInfo) => void,
         forceUpdate: boolean = false
     ): Promise<void> => {
-        const cachedData = queryClient.getQueryData<{id:number,kidInfo:KidInfo}[]>(['kidInfos'])?.find(item => item.id === kidId);
-        if (!forceUpdate && cachedData) {
-            callback(cachedData.kidInfo);
-            return;
+        try {
+            const cachedData = queryClient.getQueryData<{id:number,kidInfo:KidInfo}[]>(['kidInfos'])?.find(item => item.id === kidId);
+            if (!forceUpdate && cachedData) {
+                callback(cachedData.kidInfo);
+                return;
+            }
+
+            const token = await getToken();
+            if (!token) throw new Error('No token');
+
+            const response = await axios.get(API_ENDPOINTS.getKidInfo(kidId), {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!isBaseResponse(response.data)) {
+                console.error('Invalid response format:', response.data);
+                throw new Error('Invalid response format from server');
+            }
+
+            if (response.data.success) {
+                if(isKidInfoResponse(response.data.kidInfo)){
+                    updateCacheKidInfo(response.data.kidInfo);
+                    callback(response.data.kidInfo);
+                    return;
+                }
+                throw new Error('Invalid kid info format in response');
+            }
+            
+            // Handle unsuccessful response
+            console.warn('Failed to fetch kid info:', response.data.message);
+            throw new Error(response.data.message || 'Failed to fetch kid info');
+            
+        } catch (error) {
+            // Log the error for debugging
+            console.error('Error in getKidInfo:', error);
+            
+            // If it's an axios error, we can get more specific error details
+            if (axios.isAxiosError(error)) {
+                const message = error.response?.data?.message || error.message;
+                throw new Error(`Failed to fetch kid info: ${message}`);
+            }
+            
+            // Re-throw the error to be handled by the caller
+            throw error;
         }
-
-        const token = await getToken();
-        if (!token) throw new Error('No token');
-
-        const response = await axios.get(API_ENDPOINTS.getKidInfo(kidId), {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (!isKidInfoResponse(response.data)) {
-            throw new Error('Invalid response format from server');
-        }
-
-        if (response.data.success && response.data.kidInfo) {
-            updateCacheKidInfo(response.data.kidInfo);
-
-            callback(response.data.kidInfo);
-            return;
-        }
-        throw new Error(response.data.message || 'Failed to fetch kid info');
     };
 
     // 更新通知相关函数
@@ -812,16 +833,11 @@ const useServerData = (): ServerData => {
         console.log("getUserInfo response...",response.data);
 
         if (!isOtherUserInfoResponse(response.data)) {
-            console.log("getUserInfo response.data!!!!!!!!!!!",response.data);
             throw new Error('Invalid response format from server');
         }
-
-        console.log("!!!!!!");
         
         if (response.data.success) {
-            console.log("!!!!!!")
             updateCacheUserInfo(response.data.userInfo);
-            console.log("!!!!!!!!!!!!")
             callback(response.data.userInfo);
             return response.data.userInfo;
         }
