@@ -1,0 +1,3 @@
+[submodule "app/types"]
+	path = app/types
+	url = git@github.com:wuyunfeng-Moving/helpkids_types.git
