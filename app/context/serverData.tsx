@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Event, UserInfo, Events, AuthenticationMessage, 
+import { Event, UserInfo, Events, AuthenticationMessage,
     MessageFromServer, MatchEvents,MatchEvent,RecommendEvents
     ,KidInfo,ChatMessage,ChatMessagesArray,LoginState,isUserInfo,isKidInfo,isEvent,isComment,isChatMessage,isUserDataResponse,
     isBaseResponse,isSearchEventsResponse,isChangeEventResponse,isNotificationResponse,isKidInfoResponse,
@@ -744,18 +744,16 @@ const useServerData = (): ServerData => {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            if (!isBaseResponse(response.data)) {
+            if (!isKidInfoResponse(response.data)) {
                 console.error('Invalid response format:', response.data);
                 throw new Error('Invalid response format from server');
             }
+            // debugger;
 
-            if (response.data.success) {
-                if(isKidInfoResponse(response.data.kidInfo)){
-                    updateCacheKidInfo(response.data.kidInfo);
-                    callback(response.data.kidInfo);
-                    return;
-                }
-                throw new Error('Invalid kid info format in response');
+            if (response.data.success && isKidInfo(response.data.kidInfo)) {
+                updateCacheKidInfo(response.data.kidInfo);
+                callback(response.data.kidInfo);
+                return;
             }
             
             // Handle unsuccessful response

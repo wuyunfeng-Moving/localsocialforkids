@@ -30,6 +30,7 @@ export const SingleEventDisplay = ({
     const [kidNames, setKidNames] = useState<{[key: number]: string}>({});
     const [creatorName, setCreatorName] = useState<string>('');
     const [menuVisible, setMenuVisible] = useState(false);
+    const [commentUsernames, setCommentUsernames] = useState<{[key: number]: string}>({});
 
     useEffect(() => {
         const updateTimeRemaining = () => {
@@ -85,6 +86,18 @@ export const SingleEventDisplay = ({
             });
         }
     }, [internalCurrentEvent.userId]);
+
+    useEffect(() => {
+        if (internalCurrentEvent.comments) {
+            internalCurrentEvent.comments.forEach(async (comment) => {
+                if (comment.userId) {
+                    getUserInfo(comment.userId, (user) => {
+                        setCommentUsernames(prev => ({ ...prev, [comment.userId]: user.username }));
+                    });
+                }
+            });
+        }
+    }, [internalCurrentEvent.comments]);
 
     const formatDateTime = (dateTimeString: string) => {
         const date = new Date(dateTimeString);
@@ -243,14 +256,15 @@ export const SingleEventDisplay = ({
             return <Text style={styles.noCommentsText}>暂无评论</Text>;
         }
 
-        // Sort comments by timestamp in descending order (newest first)
         const sortedComments = [...internalCurrentEvent.comments].sort((a, b) => 
             new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()
         );
 
         return sortedComments.map((comment, index) => (
             <View key={index} style={styles.commentItem}>
-                <Text style={styles.commentUser}>{comment.userId}</Text>
+                <Text style={styles.commentUser}>
+                    {commentUsernames[comment.userId] || '加载中...'}
+                </Text>
                 <Text style={styles.commentText}>{comment.content}</Text>
                 <Text style={styles.commentTime}>
                     {formatDateTime(comment.timestamp)}

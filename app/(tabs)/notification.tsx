@@ -76,11 +76,20 @@ const NotificationScreen = () => {
     }
   };
 
+  const sortedNotifications = [...notifications].sort((a, b) => {
+    // First sort by read status (unread first)
+    if (!a.read && b.read) return -1;
+    if (a.read && !b.read) return 1;
+    
+    // Then sort by date (newest first)
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.listContainer}>
-        {notifications.length > 0 ? (
-          notifications.map((item, index) => (
+        {sortedNotifications.length > 0 ? (
+          sortedNotifications.map((item, index) => (
             item && (
               <TouchableOpacity
                 key={`notification-${index}`}
