@@ -8,19 +8,17 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 export default function KidPage() {
   const { id } = useLocalSearchParams();
-  const { update, userInfo } = useWebSocket();
+  const { update, userInfo, getKidInfo } = useWebSocket();
   const [kid, setKid] = useState<KidInfo | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    if (id && userInfo) {
-      // Extract kid info from userInfo
-      const kidInfo = userInfo.kidinfo?.find(k => k.id === parseInt(id));
-      if (kidInfo) {
+    if (id) {
+      getKidInfo(parseInt(id as string), (kidInfo) => {
         setKid(kidInfo);
-      }
+      }, false);
     }
-  }, [id, userInfo]);
+  }, [id]);
 
   const handleSubmit = async () => {
     if (kid && userInfo) {

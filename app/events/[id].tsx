@@ -77,8 +77,11 @@ const EventDetailsPage = () => {
 
   const getKidNameLink = (kidId: number) => {
     const kidname = getKidName(kidId);
+    
     return (
-      <Link href={`/kid/${kidId}`} key={kidId}>{kidname}</Link>
+      <Link href={`/user/kidsDetail/${kidId}`} key={kidId}>
+        <Text style={styles.kidLink}>{kidname}</Text>
+      </Link>
     );
   };
 
@@ -502,6 +505,10 @@ const styles = StyleSheet.create({
   noApplicantsText: {
     color: '#666',
     fontStyle: 'italic',
+  },
+  kidLink: {
+    color: '#007AFF',
+    textDecorationLine: 'underline',
   },
 });
 
