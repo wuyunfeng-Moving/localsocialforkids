@@ -6,6 +6,7 @@ import FullScreenModal from '../commonItem/FullScreenModal';
 import { Event, Events, MatchEvent, MatchEvents, UserInfo } from '@/app/types/types';
 import { useRouter } from 'expo-router';
 import { Menu, Provider } from 'react-native-paper';
+import { useCurrentLocation } from '@/app/context/LocationContext';
 
 export type SingleEventDisplayElementType = {
     currentEvent: Event,
@@ -31,6 +32,7 @@ export const SingleEventDisplay = ({
     const [creatorName, setCreatorName] = useState<string>('');
     const [menuVisible, setMenuVisible] = useState(false);
     const [commentUsernames, setCommentUsernames] = useState<{[key: number]: string}>({});
+    const { currentRegion } = useCurrentLocation();
 
     useEffect(() => {
         const updateTimeRemaining = () => {
@@ -293,6 +295,56 @@ export const SingleEventDisplay = ({
         setIsDeleting(false);
     };
 
+    // Add this helper function to calculate distance
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+        const R = 6371; // Earth's radius in kilometers
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    };
+
+    // Update the formatDistance function
+    const formatDistance = (distance: number): string => {
+        if (distance < 0.5) {  // 小于500米
+            return `${Math.round(distance * 1000)}米`;
+        } else if (distance < 3) {  // 小于3公里
+            return `${distance.toFixed(1)}公里`;
+        } else if (distance < 10) {  // 小于10公里
+            return `${Math.round(distance)}公里`;
+        } else {  // 大于等于10公里
+            return `${Math.round(distance)}公里以外`;
+        }
+    };
+
+    // Replace the location info row in the render section
+    const renderLocationInfo = () => {
+        if (!currentRegion || !internalCurrentEvent.place.location) {
+            return (
+                <Text style={styles.infoText}>
+                    无法获取位置信息
+                </Text>
+            );
+        }
+
+        const distance = calculateDistance(
+            currentRegion.latitude,
+            currentRegion.longitude,
+            internalCurrentEvent.place.location[1],
+            internalCurrentEvent.place.location[0]
+        );
+
+        return (
+            <Text style={styles.infoText}>
+                距离当前位置: {formatDistance(distance)}
+            </Text>
+        );
+    };
+
     return (
         <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -359,9 +411,7 @@ export const SingleEventDisplay = ({
 
                     <View style={styles.infoRow}>
                         <Ionicons name="location-outline" size={20} color="#666" />
-                        <Text style={styles.infoText}>
-                            经度: {internalCurrentEvent.place.location[0]}, 纬度: {internalCurrentEvent.place.location[1]}
-                        </Text>
+                        {renderLocationInfo()}
                     </View>
 
                     {/* 详细信息 - 仅在详情视图中显示 */}
