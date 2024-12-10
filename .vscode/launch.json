@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Expo (Device)",
+            "request": "launch",
+            "type": "reactnative",
+            "cwd": "${workspaceFolder}",
+            "platform": "ios",
+            "target": "device",
+            "skipFiles": [
+                "<node_internals>/**"
+            ]
+        }
+    ]
+}

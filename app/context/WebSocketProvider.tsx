@@ -60,7 +60,7 @@ interface WebSocketContextValue {
       eventId: number,
       callback: (success: boolean, message: string) => void
     }) => Promise<void>;
-    submitComment: (params: {
+    addComment: (params: {
       eventId: number;
       comment: string;
       callback: (success: boolean, message: string) => void;
@@ -304,7 +304,6 @@ export const WebSocketProvider = ({ children }) => {
       loginState,
       getUserInfo:getUserInfo,
       getKidInfo:getKidInfo,
-      // events,
       userEvents,
       kidEvents,
       appliedEvents,
@@ -330,7 +329,7 @@ export const WebSocketProvider = ({ children }) => {
         signupEvent: changeEvent.signupEvent,
         approveSignupRequest: changeEvent.approveSignupRequest,
         deleteEvent: changeEvent.deleteEvent,
-        submitComment: changeEvent.addComment,
+        addComment: changeEvent.addComment,
       },
       followActions,
       chat:{

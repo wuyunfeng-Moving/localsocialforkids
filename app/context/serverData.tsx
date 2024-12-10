@@ -9,7 +9,8 @@ import { Event, UserInfo, Events, AuthenticationMessage,
     UserDataResponse,
     LoginResponse,isLoginResponse,
     GetEventsResponse,isGetEventsResponse,
-    BaseResponse,OtherUserInfoResponse,isOtherUserInfoResponse
+    BaseResponse,OtherUserInfoResponse,isOtherUserInfoResponse,
+    ApproveSignupRequestMessage
 } from '../types/types';
 import * as SecureStore from 'expo-secure-store';
 import {useQuery,useMutation,useQueryClient, UseMutationResult} from "@tanstack/react-query";
@@ -17,7 +18,6 @@ import axios from 'axios';
 
 
 export const SERVERIP = "121.196.198.126";
-// export const SERVERIP = "52.195.205.174";
 export const PORT = 3000;
 export const BASE_URL = `http://${SERVERIP}:${PORT}`;
 
@@ -533,6 +533,14 @@ const useServerData = (): ServerData => {
                     throw new Error('Invalid user info format');
                 }
             }
+            else if(type === 'addEvent'){
+                if(!isEvent(newUserInfo)){
+                    console.log("newUserInfo",newUserInfo);
+                    throw new Error('Invalid event format');
+                }
+            }
+
+
             const token = await getToken();
             if (!token) throw new Error('No token');
 
@@ -682,6 +690,33 @@ const useServerData = (): ServerData => {
             setIsSearching(false);
         }
     };
+
+    const approveSignupRequest = async (params: {
+        eventId: number,
+        signupId: number,
+        approved: boolean,
+        rejectionReason?: string,
+        callback: (success: boolean, message: string) => void,
+    }) => {
+        try{
+            const token = await getToken();
+            if (!token) throw new Error('No token');
+
+            const message: ApproveSignupRequestMessage = {
+                eventId: params.eventId,
+                signupId: params.signupId,
+                approved: params.approved,
+                rejectionReason: params.rejectionReason,
+                type: 'approveSignupRequest'
+            };
+
+            const response = await axios.post(API_ENDPOINTS.changeEvent, message, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+        }catch(error){
+            console.error('Error approving signup request:', error);
+        }
+    }
 
     // 更新事件相关函数
     const signupEvent = async (signEventParams: {
@@ -1089,6 +1124,7 @@ const useServerData = (): ServerData => {
         changeEvent: {
             signupEvent,
             addComment,
+            approveSignupRequest,
         },
         getUserInfo,  // Add this to the returned object
         getKidInfo,

@@ -1,3 +1,4 @@
+import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
@@ -11,6 +12,7 @@ import { Provider as PaperProvider } from 'react-native-paper';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import TestPanel from './test/TestPanel';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -68,6 +70,7 @@ function RootLayoutNav() {
             <Stack.Screen name='events/[id]' options={{headerShown:true}}/>
             {/* <Stack.Screen name="itemSubmit" options={{}}/> */}
           </Stack>
+
           </LocationProvider>
         </WebSocketProvider>
       </ThemeProvider>

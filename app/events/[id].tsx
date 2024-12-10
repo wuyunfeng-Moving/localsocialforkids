@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, TextInput } from 'react-native';
 import { Link, useLocalSearchParams } from 'expo-router';
 import { useWebSocket } from '../context/WebSocketProvider';
 import { router } from 'expo-router';
@@ -18,6 +18,9 @@ const EventDetailsPage = () => {
   const [creatorName, setCreatorName] = useState<string>('');
   const [kidNames, setKidNames] = useState<{[key: number]: string}>({});
   const [applicantNames, setApplicantNames] = useState<{[key: number]: string}>({});
+  const [comment, setComment] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [usernames, setUsernames] = useState<{[key: number]: string}>({});
   // 使用 useMemo 来解析事件数据，避免不必要的重复解析
   const event: Event | null = useMemo(() => {
     if (eventData) {
@@ -84,6 +87,23 @@ const EventDetailsPage = () => {
       </Link>
     );
   };
+
+  const getUserNameLink = (userId: number) => {
+    if (!usernames[userId]) {
+      getUserInfo(userId, (userInfo) => {
+        setUsernames(prev => ({
+          ...prev,
+          [userId]: userInfo.username
+        }));
+      });
+    }
+    
+    return (
+      <Link href={`/user/followingDetail/${userId}`} key={userId}>
+        <Text style={styles.kidLink}>{usernames[userId] || '加载中...'}</Text>
+      </Link>
+    );
+  }
 
   const handleJoinRequest = () => {
     if (userInfo?.kidinfo.length === 0) {
@@ -178,6 +198,106 @@ const EventDetailsPage = () => {
     </Modal>
   );
 
+  const handleApproval = (signupId: number, approved: boolean) => {
+    const message = approved ? '确认接受申请？' : '确认拒绝申请？';
+    Alert.alert(
+      '确认操作',
+      message,
+      [
+        {
+          text: '取消',
+          style: 'cancel'
+        },
+        {
+          text: '确定',
+          onPress: () => {
+            changeEvent.approveSignupRequest({
+              eventId: Number(id),
+              signupId: signupId,
+              approved: approved,
+              rejectionReason: approved ? undefined : '申请被拒绝',
+              callback: (success, message) => {
+                if (success) {
+                  Alert.alert('成功', approved ? '已接受申请' : '已拒绝申请');
+                } else {
+                  Alert.alert('失败', message);
+                }
+              }
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  const renderApplicantItem = (applicant: any) => (
+    <View key={applicant.id} style={styles.applicantItem}>
+      <Text>申请人: {getUserNameLink(applicant.userId)}</Text>
+      <Text>申请理由: {applicant.reason}</Text>
+      <Text>申请孩子: 
+        {applicant.kidIds.map((kid: number, index: number) => (
+          <React.Fragment key={kid}>
+            {index > 0 && ', '}
+            {getKidNameLink(kid)}
+          </React.Fragment>
+        ))}
+      </Text>
+      <View style={styles.approvalButtons}>
+        <TouchableOpacity 
+          style={[styles.approvalButton, styles.acceptButton]}
+          onPress={() => handleApproval(applicant.id, true)}
+        >
+          <Text style={styles.approvalButtonText}>接受</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.approvalButton, styles.rejectButton]}
+          onPress={() => handleApproval(applicant.id, false)}
+        >
+          <Text style={styles.approvalButtonText}>拒绝</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // Add these helper functions to check user status
+  const isEventCreator = useMemo(() => {
+    return event?.userId === userInfo?.id;
+  }, [event, userInfo]);
+
+  const isParticipant = useMemo(() => {
+    return event?.kidIds.some(kidId => 
+      userInfo?.kidinfo.some(kid => kid.id === kidId)
+    );
+  }, [event, userInfo]);
+
+  const isApplicant = useMemo(() => {
+    return event?.pendingSignUps?.some(signup => 
+      signup.userId === userInfo?.id
+    );
+  }, [event, userInfo]);
+
+  const handleSubmitComment = () => {
+    if (!comment.trim()) {
+      Alert.alert('提示', '请输入评论内容');
+      return;
+    }
+
+    setIsSubmittingComment(true);
+    changeEvent.addComment({
+      eventId: Number(id),
+      comment: comment.trim(),
+      callback: (success, message) => {
+        setIsSubmittingComment(false);
+        if (success) {
+          setComment(''); // Clear input
+          Alert.alert('成功', '评论已发布');
+        } else {
+          Alert.alert('失败', message || '评论发布失败');
+        }
+      }
+    });
+  };
+
   if (!event) {
     return <Text>Loading event details...</Text>;
   } 
@@ -188,7 +308,7 @@ const EventDetailsPage = () => {
     <View style={styles.pageContainer}>
       <View style={styles.headerContainer}>
         <Text>活动主题：{event.topic}</Text>
-        <Text>创建人：{creatorName}</Text>
+        <Text>创建人：{getUserNameLink(event.userId)}</Text>
         <Text>状态：{event.status}</Text>
         <Text>时间：{event.dateTime}</Text>
         <Text>地点：{event.place.location}</Text>
@@ -203,31 +323,18 @@ const EventDetailsPage = () => {
         </Text>
       </View>
       <ScrollView style={styles.scrollContainer}>
-        {event.userId === userInfo?.id && (
+        {isEventCreator && (
           <View style={styles.applicantsSection}>
             <Text style={styles.sectionTitle}>申请者列表</Text>
             {event.pendingSignUps && event.pendingSignUps.length > 0 ? (
-              event.pendingSignUps.map((applicant) => (
-                <View key={applicant.id} style={styles.applicantItem}>
-                  <Text>申请人: {applicantNames[applicant.userId] || '加载中...'}</Text>
-                  <Text>申请理由: {applicant.reason}</Text>
-                  <Text>申请孩子: 
-                    {applicant.kidIds.map((kid, index) => (
-                      <React.Fragment key={kid}>
-                        {index > 0 && ', '}
-                        {getKidNameLink(kid)}
-                      </React.Fragment>
-                    ))}
-                  </Text>
-                </View>
-              ))
+              event.pendingSignUps.map(applicant => renderApplicantItem(applicant))
             ) : (
               <Text style={styles.noApplicantsText}>暂无申请者</Text>
             )}
           </View>
         )}
         <View style={styles.actionButtonsContainer}>
-          {event.userId !== userInfo?.id && event.status !== 'ended' && (
+          {!isEventCreator && !isParticipant && !isApplicant && event.status !== 'ended' && (
             <TouchableOpacity style={styles.joinButton} onPress={handleJoinRequest}>
               <Text style={styles.joinButtonText}>申请加入</Text>
             </TouchableOpacity>
@@ -298,6 +405,48 @@ const EventDetailsPage = () => {
             </View>
           </View>
         </Modal>
+
+        <View style={styles.commentSection}>
+          <Text style={styles.sectionTitle}>评论</Text>
+          <View style={styles.commentInputContainer}>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="写下你的评论..."
+              value={comment}
+              onChangeText={setComment}
+              multiline
+            />
+            <TouchableOpacity 
+              style={[
+                styles.commentSubmitButton,
+                isSubmittingComment && styles.disabledButton
+              ]}
+              onPress={handleSubmitComment}
+              disabled={isSubmittingComment}
+            >
+              <Text style={styles.commentSubmitText}>
+                {isSubmittingComment ? '发送中...' : '发送'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          {/* Display comments */}
+          {event.comments && event.comments.length > 0 ? (
+            <View style={styles.commentsList}>
+              {event.comments.map((comment, index) => (
+                <View key={index} style={styles.commentItem}>
+                  <View style={styles.commentHeader}>
+                    <Text style={styles.commentAuthor}>{getUserNameLink(comment.userId)}</Text>
+                    <Text style={styles.commentTime}>{new Date(comment.timestamp).toLocaleString()}</Text>
+                  </View>
+                  <Text style={styles.commentText}>{comment.content}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.noCommentsText}>暂无评论</Text>
+          )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -509,6 +658,99 @@ const styles = StyleSheet.create({
   kidLink: {
     color: '#007AFF',
     textDecorationLine: 'underline',
+  },
+  approvalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 10,
+    gap: 10,
+  },
+  approvalButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 6,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  acceptButton: {
+    backgroundColor: '#4CAF50',
+  },
+  rejectButton: {
+    backgroundColor: '#f44336',
+  },
+  approvalButtonText: {
+    color: 'white',
+    fontWeight: '500',
+  },
+  commentSection: {
+    padding: 16,
+    backgroundColor: '#fff',
+    marginTop: 16,
+    borderRadius: 12,
+    marginHorizontal: 16,
+  },
+  commentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    gap: 8,
+  },
+  commentInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    minHeight: 80,
+    maxHeight: 120,
+    backgroundColor: '#f9f9f9',
+  },
+  commentSubmitButton: {
+    backgroundColor: '#007AFF',
+    padding: 12,
+    borderRadius: 8,
+    justifyContent: 'center',
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+  },
+  commentSubmitText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  commentsList: {
+    marginTop: 16,
+  },
+  commentItem: {
+    padding: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  commentAuthor: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    color: '#333',
+  },
+  commentTime: {
+    fontSize: 12,
+    color: '#666',
+  },
+  commentText: {
+    fontSize: 14,
+    color: '#444',
+    lineHeight: 20,
+  },
+  noCommentsText: {
+    textAlign: 'center',
+    color: '#666',
+    marginTop: 16,
   },
 });
 

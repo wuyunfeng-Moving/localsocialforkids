@@ -11,6 +11,9 @@ import LoginStatus from '../itemSubmit/user/loginStateDisplay';
 import LoginScreen from '../itemSubmit/user/login';
 import InputTopic from '../itemSubmit/addEvent/InputTopic';
 import { router } from 'expo-router';
+import { Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 
 const INITIAL_INPUTS = [
   { title: 'childOrder', label: '孩子姓名', value: '' },
@@ -20,6 +23,7 @@ const INITIAL_INPUTS = [
   { title: 'topic', label: '主题', value: '户外活动' },
   { title: 'description', label: '活动描述', value: '一起玩' },
   { title: 'maxNumber', label: '最大参与人数', value: 10 },
+  { title: 'images', label: '活动图片（最多3张）', value: [] },
 ];
 
 interface NewEventData {
@@ -29,8 +33,22 @@ interface NewEventData {
   duration?: number;
   topic?: string;
   description?: string;
+  images?: string[];
   [key: string]: any;
 }
+
+const compressAndConvertImage = async (uri: string): Promise<string> => {
+    try {
+        // 读取图片文件并转换为base64
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+            encoding: FileSystem.EncodingType.Base64
+        });
+        return base64;
+    } catch (error) {
+        console.error('Error compressing image:', error);
+        throw error;
+    }
+};
 
 export default function TabTwoScreen() {
   const [inputs, setInputs] = useState(INITIAL_INPUTS);
@@ -91,72 +109,81 @@ export default function TabTwoScreen() {
     setInputs(prevInputs => prevInputs.filter(input => input.title !== title));
   }, []);
 
-  const addItem = () => {
-    const newItems: NewEventData = inputs.reduce((acc, item) => {
-      switch (item.title) {
-        case 'childOrder':
-          const selectedKid = userInfo.kidinfo.find(kid => kid.name === item.value);
-          if (selectedKid) {
-            acc.kidIds = [selectedKid.id]; // Store as a number, not a string
-          } else {
-            console.error('Selected child not found in userInfo');
-          }
-          break;
-        case 'dateTime':
-          if (item.value instanceof Date) {
-            acc.dateTime = item.value.toISOString();
-          }
-          break;
-        case 'duration':
-          acc.duration = parseInt(item.value, 10);
-          break;
-        case 'location':
-          if (Array.isArray(item.value) && item.value.length === 2) {
-            acc.place = {
-              location: item.value,
-              maxNumber: parseInt(inputs.find(input => input.title === 'maxNumber')?.value || '10', 10)
-            };
-          }
-          break;
-        case 'topic':
-          acc.topic = item.value;
-          break;
-        case 'description':
-          acc.description = item.value;
-          break;
-      }
-      return acc;
-    }, {} as NewEventData);
-
-    // Check if all required fields are present
-    const requiredFields = ['kidIds', 'place', 'dateTime', 'duration', 'topic', 'description'];
-    const missingFields = requiredFields.filter(field => !newItems[field]);
-
-    if (missingFields.length > 0) {
-      alert(`请填写以下字段: ${missingFields.join(', ')}`);
-      return;
-    }
-
-    setIsSubmitting(true);
-    update.updateUserInfo.mutate({type: 'addNewEvent', newUserInfo: newItems}, {
-      onSuccess: () => {
-        setIsSubmitting(false);
-        Alert.alert(
-          "提交成功",
-          "事件已成功添加",
-          [
-            {
-              text: "确认",
-              onPress: () => router.push("/(tabs)/")
-            }
-          ]
+  const addItem = async () => {
+    try {
+        // 处理图片
+        const imagesInput = inputs.find(input => input.title === 'images')?.value || [];
+        const processedImages = await Promise.all(
+            imagesInput.map(async (uri: string, index: number) => ({
+                id: index,
+                imagePath: await compressAndConvertImage(uri)
+            }))
         );
-      },
-      onError: (error) => {
+
+        // 构建事件数据
+        const eventData: Event = {
+            id: -1,
+            place: {
+                location: inputs.find(input => input.title === 'location')?.value || [0, 0],
+                maxNumber: parseInt(inputs.find(input => input.title === 'maxNumber')?.value || '10', 10)
+            },
+            dateTime: inputs.find(input => input.title === 'dateTime')?.value.toISOString() || new Date().toISOString(),
+            duration: parseInt(inputs.find(input => input.title === 'duration')?.value || '1', 10),
+            topic: inputs.find(input => input.title === 'topic')?.value || '',
+            description: inputs.find(input => input.title === 'description')?.value || '',
+            kidIds: [],
+            userId: userInfo?.id,
+            status: 'preparing',
+            images: processedImages
+        };
+
+        // 添加kidIds
+        const selectedKid = userInfo?.kidinfo.find(kid => 
+            kid.name === inputs.find(input => input.title === 'childOrder')?.value
+        );
+        if (selectedKid) {
+            eventData.kidIds = [selectedKid.id];
+        }
+
+        // 检查必填字段
+        if (!eventData.kidIds.length || 
+            !eventData.place.location.length || 
+            !eventData.topic || 
+            !eventData.description) {
+            Alert.alert('提示', '请填写所有必填字段');
+            return;
+        }
+
+        setIsSubmitting(true);
+        update.updateUserInfo.mutate(
+            { 
+                type: 'addNewEvent', 
+                newUserInfo: eventData 
+            },
+            {
+                onSuccess: () => {
+                    setIsSubmitting(false);
+                    Alert.alert(
+                        "提交成功",
+                        "事件已成功添加",
+                        [
+                            {
+                                text: "确认",
+                                onPress: () => router.push("/(tabs)/")
+                            }
+                        ]
+                    );
+                },
+                onError: (error) => {
+                    setIsSubmitting(false);
+                    Alert.alert('错误', '提交失败: ' + error.message);
+                }
+            }
+        );
+    } catch (error) {
         setIsSubmitting(false);
-        alert('提交失败: ' + error.message);
-      }
-    });
+        Alert.alert('错误', '提交失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    }
   };
 
   const renderSelector = useMemo(() => (title, value, options, isSelecting, setIsSelecting) => (
@@ -264,6 +291,59 @@ export default function TabTwoScreen() {
             }}
             keyboardType="numeric"
           />
+        );
+      case 'images':
+        return (
+          <View style={styles.imageContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {input.value.map((image, index) => (
+                <View key={index} style={styles.imageWrapper}>
+                  <Image 
+                    source={{ uri: image }} 
+                    style={styles.imagePreview} 
+                  />
+                  <TouchableOpacity 
+                    style={styles.removeImageButton}
+                    onPress={() => {
+                      const newImages = [...input.value];
+                      newImages.splice(index, 1);
+                      handleInputChange(newImages, 'images', 'value');
+                    }}
+                  >
+                    <Text style={styles.removeImageButtonText}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {input.value.length < 3 && (
+                <TouchableOpacity 
+                  style={styles.addImageButton}
+                  onPress={async () => {
+                    try {
+                      const result = await ImagePicker.launchImageLibraryAsync({
+                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                        allowsEditing: true,
+                        aspect: [4, 3],
+                        quality: 0.8, // 稍微压缩图片质量以减少上传大小
+                      });
+                      
+                      if (!result.canceled) {
+                        const newImages = [...input.value, result.assets[0].uri];
+                        handleInputChange(newImages, 'images', 'value');
+                      }
+                    } catch (error) {
+                      console.error('Error picking image:', error);
+                      Alert.alert('错误', '选择图片时出现错误');
+                    }
+                  }}
+                >
+                  <Text style={styles.addImageButtonText}>+</Text>
+                  <Text style={styles.addImageHintText}>
+                    {input.value.length === 0 ? '添加图片' : `还可添加${3 - input.value.length}张`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+          </View>
         );
       default:
         return (
@@ -508,5 +588,52 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     alignItems: 'center',
+  },
+  imageContainer: {
+    marginVertical: 10,
+  },
+  imageWrapper: {
+    marginRight: 10,
+    position: 'relative',
+  },
+  imagePreview: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    right: -5,
+    top: -5,
+    backgroundColor: 'rgba(255, 0, 0, 0.8)',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeImageButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  addImageButton: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addImageButtonText: {
+    fontSize: 32,
+    color: '#ccc',
+  },
+  addImageHintText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
   },
 });
