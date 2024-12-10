@@ -17,6 +17,7 @@ import axios from 'axios';
 
 
 export const SERVERIP = "121.196.198.126";
+// export const SERVERIP = "52.195.205.174";
 export const PORT = 3000;
 export const BASE_URL = `http://${SERVERIP}:${PORT}`;
 
