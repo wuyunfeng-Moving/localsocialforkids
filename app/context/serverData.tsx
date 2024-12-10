@@ -10,7 +10,9 @@ import { Event, UserInfo, Events, AuthenticationMessage,
     LoginResponse,isLoginResponse,
     GetEventsResponse,isGetEventsResponse,
     BaseResponse,OtherUserInfoResponse,isOtherUserInfoResponse,
-    ApproveSignupRequestMessage
+    ApproveSignupRequestMessage,
+    isRegisterResponse,
+    RegisterResponse
 } from '../types/types';
 import * as SecureStore from 'expo-secure-store';
 import {useQuery,useMutation,useQueryClient, UseMutationResult} from "@tanstack/react-query";
@@ -54,35 +56,35 @@ interface AllEvents {
 };
 
 interface ServerData {
-    notifications: Notification[];
-    userEvents: Event[];
-    kidEvents: Event[];
-    appliedEvents: Event[];
-    recommendEvents: RecommendEvents;
-    matchedEvents: MatchEvents;
-    loginState: LoginState;
-    userInfo: UserInfo | undefined;
-    refreshUserData: () => void;
-    token: string | null;
-    isUserDataLoading: boolean;
-    isError: boolean;
-    error: Error | null;
-    registerMutation: UseMutationResult<BaseResponse, Error, {
+    notifications: Notification[]; // 当前账号所有的通知
+    userEvents: Event[]; // 当前账号所有的活动
+    kidEvents: Event[]; //当前账号的孩子所参与的活动
+    appliedEvents: Event[]; //当前账号所申请的活动
+    recommendEvents: RecommendEvents; // 推荐的活动
+    matchedEvents: MatchEvents; // 匹配的活动
+    loginState: LoginState; // 登录状态
+    userInfo: UserInfo | undefined; // 当前账号的信息
+    refreshUserData: () => void; // 刷新当前账号的信息
+    token: string | null; // 当前账号的token
+    isUserDataLoading: boolean; // 当前账号的信息是否正在加载
+    isError: boolean; // 当前账号的信息是否加载失败
+    error: Error | null; // 当前账号的信息加载失败的原因
+    registerMutation: UseMutationResult<RegisterResponse, Error, {
         username: string;
         email: string;
         password: string;
     }>;
-    websocketMessageHandle: (message: MessageFromServer) => Promise<void>;
+    websocketMessageHandle: (message: WebSocketMessageFromServer) => Promise<void>; // 处理websocket消息
     updateUserInfo: UseMutationResult<BaseResponse, Error, {
         type: 'addKidInfo'|'deleteKidInfo'|'updateUserInfo'|'deleteEvent'|'addEvent';
         newUserInfo: any;
-    }>;
-    addkidinfo: (newKidInfo: Partial<KidInfo>, callback: (success: boolean, message: string) => void) => void;
-    deletekidinfo: (kidId: number, callback: (success: boolean, message: string) => void) => void;
-    login: (credentials: { email: string; password: string }) => void;
-    logout: () => void;
-    isLoggingIn: boolean;
-    loginError: Error | null;
+    }>; // 更新当前账号的信息
+    addkidinfo: (newKidInfo: Partial<KidInfo>, callback: (success: boolean, message: string) => void) => void; // 添加孩子信息
+    deletekidinfo: (kidId: number, callback: (success: boolean, message: string) => void) => void; // 删除孩子信息
+    login: (credentials: { email: string; password: string }) => void; // 登录
+    logout: () => void; // 登出
+    isLoggingIn: boolean; // 是否正在登录
+    loginError: Error | null; // 登录失败的原因
     searchEvents: {
         search: (searchParams: {
             keyword?: string;
@@ -523,7 +525,7 @@ const useServerData = (): ServerData => {
             type,
             newUserInfo
         }: {
-            type: 'addKidInfo'|'deleteKidInfo'|'updateUserInfo'|'deleteEvent'|'addEvent';
+            type: 'addKidInfo'|'deleteKidInfo'|'updateUserInfo'|'deleteEvent'|'addNewEvent';
             newUserInfo: any;  // Changed from Partial<UserInfo> since it could be different types
         }) => {
 
@@ -533,7 +535,7 @@ const useServerData = (): ServerData => {
                     throw new Error('Invalid user info format');
                 }
             }
-            else if(type === 'addEvent'){
+            else if(type === 'addNewEvent'){
                 if(!isEvent(newUserInfo)){
                     console.log("newUserInfo",newUserInfo);
                     throw new Error('Invalid event format');
@@ -1077,15 +1079,19 @@ const useServerData = (): ServerData => {
         };
     }, [queryClient, userDataQuery.data]);
 
-    const registerMutation = useMutation({
+    const registerMutation = useMutation<RegisterResponse, Error, { username: string; email: string; password: string }>({
         mutationFn: async (credentials: { username: string; email: string; password: string }) => {
             const response = await axios.post(API_ENDPOINTS.register, credentials);
 
-            if (!isBaseResponse(response.data)) {
+            if (!isRegisterResponse(response.data)) {
                 throw new Error('Invalid response format from server');
             }
 
-            return response.data;
+            if(response.data.success){
+                return response.data;
+            }else{
+                throw new Error(response.data.message || "Failed to register");
+            }
         },
     });
 
