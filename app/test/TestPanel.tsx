@@ -42,21 +42,7 @@ const TestPanel = () => {
     setTestResults([]);
 
     try {
-      console.log('Creating test users...');
-      const result = await testUser.createUser(1);
-      console.log('Test users created:', result);
-
-      const users = testUser.getTestUsers();
-      // console.log('Retrieved test users:', users);
-
-      console.log('Testing login for user 1...');
-      await testUser.testLogin(users[0].userId);
-      console.log('User 1 login complete');
-
-      console.log('Testing logout for user 1...');
-      // await testUser.testLogout(users[0].userId);
-      console.log('User 1 logout complete');
-      
+      await testUser.testUser();      
       // console.log('Testing login for user 2...');
       // await testUser.testLogin(users[1].id);
       // console.log('User 2 login complete');
@@ -65,8 +51,8 @@ const TestPanel = () => {
       // await testUser.testLogout(users[1].id);
       // console.log('User 2 logout complete');
 
-      console.log('Deleting user 1...');
-      await testUser.deleteUser(users[0].userId);
+      // console.log('Deleting user 1...');
+      // await testUser.deleteUser(users[0].userId);
 
       // await testUser.deleteUser(users[1].id);
     } catch (error) {
@@ -124,7 +110,7 @@ const TestPanel = () => {
     }
   };
 
-  // 测试搜索事件���能
+  // 测试搜索事件功能
   const testSearchEvents = async () => {
     // 添加待处理状态的测试结果
     addTestResult({
@@ -133,7 +119,7 @@ const TestPanel = () => {
     });
 
     try {
-      // 使用正确��searchEvents方法
+      // 使用正确的searchEvents方法
       await searchEvents.search({
         keyword: 'test',
         callback: (success, message, events) => {

@@ -21,7 +21,7 @@ interface WebSocketContextValue {
   notifications: Notification[],
   refreshUserData: () => void,
   login: (credentials: { email: string; password: string }) => void,
-  logout: () => void,
+  logout: () => Promise<void>,
   getEventsById: (eventIds: number[], callback: (events: Event[]) => void) => Promise<void>,
   isUserDataLoading: boolean,
   isParticipateEvent: (event:Event) => boolean,
@@ -301,7 +301,10 @@ export const WebSocketProvider = ({ children }) => {
   return (
     <WebSocketContext.Provider value={{
       userInfo: userInfo as UserInfo | null,
-      loginState,
+      loginState: {
+        logined: loginState.logined,
+        error: loginState.error
+      },
       getUserInfo:getUserInfo,
       getKidInfo:getKidInfo,
       userEvents,
