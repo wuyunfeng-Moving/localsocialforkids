@@ -19,7 +19,8 @@ import {useQuery,useMutation,useQueryClient, UseMutationResult} from "@tanstack/
 import axios from 'axios';
 
 
-export const SERVERIP = "121.196.198.126";
+// export const SERVERIP = "121.196.198.126";
+export const SERVERIP = "192.168.1.4";
 export const PORT = 3000;
 export const BASE_URL = `http://${SERVERIP}:${PORT}`;
 
