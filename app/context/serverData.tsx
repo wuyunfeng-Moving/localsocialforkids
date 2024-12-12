@@ -12,14 +12,17 @@ import { Event, UserInfo, Events, AuthenticationMessage,
     BaseResponse,OtherUserInfoResponse,isOtherUserInfoResponse,
     ApproveSignupRequestMessage,
     isRegisterResponse,
-    RegisterResponse
+    RegisterResponse,
+    updateUserInfoType,
+    isUpdateUserInfoType
 } from '../types/types';
 import * as SecureStore from 'expo-secure-store';
 import {useQuery,useMutation,useQueryClient, UseMutationResult} from "@tanstack/react-query";
 import axios from 'axios';
 
 
-export const SERVERIP = "121.196.198.126";
+// export const SERVERIP = "121.196.198.126";
+export const SERVERIP = "172.20.10.2";
 export const PORT = 3000;
 export const BASE_URL = `http://${SERVERIP}:${PORT}`;
 
@@ -82,7 +85,7 @@ interface ServerData {
     addkidinfo: (newKidInfo: Partial<KidInfo>, callback: (success: boolean, message: string) => void) => void; // 添加孩子信息
     deletekidinfo: (kidId: number, callback: (success: boolean, message: string) => void) => void; // 删除孩子信息
     login: (credentials: { email: string; password: string }) => void; // 登录
-    logout: () => void; // 登出
+    logout: () => Promise<void>; // 登出
     isLoggingIn: boolean; // 是否正在登录
     loginError: Error | null; // 登录失败的原因
     searchEvents: {
@@ -270,42 +273,42 @@ const useServerData = (): ServerData => {
         }
     };
 
-    const userDataQuery = useDelayedQuery(['userData'], async () => {
-        console.log('Starting userDataQuery execution');
-        const token = await getToken();
-        console.log('Token retrieved:', token ? 'exists' : 'null');
-        
-        if (!token) throw new Error('no token');
-        
-        try {
-            console.log('Making API request to userInfo endpoint');
-            const response = await axios.get(API_ENDPOINTS.userInfo, {
-                headers: {Authorization: `Bearer ${token}`}
-            });
+    const userDataQuery = useQuery({
+        queryKey: ['userData'],
+        queryFn: async () => {
+            console.log('Starting userDataQuery execution');
+            const token = await getToken();
+            console.log('Token retrieved:', token ? 'exists' : 'null');
             
-            console.log('API response received:', response.data);
+            if (!token) throw new Error('no1 token');
             
-            if (!isUserDataResponse(response.data)) {
-                console.error('Invalid response format:', response.data);
-                throw new Error('Invalid response format from server');
-            }
-            
-            if (response.data.success) {
-                console.log("userDataQuery success", response.data.userAllEvents);
-                updateCacheEvents(response.data.userAllEvents);
-                updateCacheUserInfo(response.data.userInfo);
-                response.data.userInfo.kidinfo.forEach(kidInfo => {
-                    updateCacheKidInfo(kidInfo);
+            try {
+                console.log('Making API request to userInfo endpoint');
+                const response = await axios.get(API_ENDPOINTS.userInfo, {
+                    headers: {Authorization: `Bearer ${token}`}
                 });
-                updateCacheNotifications(response.data.notifications);
-                return response.data;
+                
+                if (!isUserDataResponse(response.data)) {
+                    console.error('Invalid response format:', response.data);
+                    throw new Error('Invalid response format from server');
+                }
+                
+                if (response.data.success) {
+                    updateCacheEvents(response.data.userAllEvents);
+                    updateCacheUserInfo(response.data.userInfo);
+                    response.data.userInfo.kidinfo.forEach(kidInfo => {
+                        updateCacheKidInfo(kidInfo);
+                    });
+                    updateCacheNotifications(response.data.notifications);
+                    return response.data;
+                }
+                throw new Error('Failed to fetch user data');
+            } catch (error) {
+                console.error('userDataQuery error:', error);
+                throw error;
             }
-            throw new Error('Failed to fetch user data');
-        } catch (error) {
-            console.error('userDataQuery error:', error);
-            throw error;
         }
-    }, 2000);  // 2000ms delay
+    });
 
     useEffect(() => {
         console.log('userDataQuery state changed:', {
@@ -389,6 +392,10 @@ const useServerData = (): ServerData => {
     });
     const [token, setToken] = useState<string | null>(null);
 
+    useEffect(()=>{
+        console.log("loginState.logined in serverData",loginState.logined,loginState.error);
+    },[loginState.logined]);
+
     useEffect(() => {
         const fetchTokenAndVerify = async () => {
             const tempToken = await getToken();
@@ -430,7 +437,9 @@ const useServerData = (): ServerData => {
 
     const getToken = async () => {
         try {
-            return await SecureStore.getItemAsync('userToken');
+            const token = await SecureStore.getItemAsync('userToken');
+            console.log('getToken called, current token:', token);
+            return token;
         } catch (e) {
             console.error('Error reading token:', e);
             return null;
@@ -528,7 +537,10 @@ const useServerData = (): ServerData => {
             type: 'addKidInfo'|'deleteKidInfo'|'updateUserInfo'|'deleteEvent'|'addNewEvent';
             newUserInfo: any;  // Changed from Partial<UserInfo> since it could be different types
         }) => {
-
+            if(!isUpdateUserInfoType(type)){
+                throw new Error('Invalid updateUserInfo type');
+            }
+            
             if(type === 'updateUserInfo'){
                 if(!isUserInfo(newUserInfo)){
                     console.log("newUserInfo",newUserInfo);
@@ -611,6 +623,8 @@ const useServerData = (): ServerData => {
 
     const loginMutation = useMutation<LoginResponse,Error, { email: string; password: string }>({
         mutationFn: async (credentials: { email: string; password: string }) => {
+
+            setLoginState({logined:false,error:''});
             const response = await axios.post(API_ENDPOINTS.login, credentials);
 
             console.log("login response",response.data);
