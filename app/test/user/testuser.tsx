@@ -27,6 +27,46 @@ interface TestUserMethods {
   getTestUser: (userId: number) => TestUserInstance | undefined;
 }
 
+enum TestState{
+  Idle = "idle",
+  CheckLogoutBeforeTest = "checklogoutbeforetest",
+  CreateUser = "createuser",
+  LoginIn = "loginin",
+  Logout = "logout",
+  LoginInAgain = "logininagain",
+  DeleteUser = "deleteuser"
+}
+
+enum TestAction{
+  CheckLogoutBeforeTest = "checklogoutbeforetest",
+  CreateUser = "createuser",
+  LoginIn_First = "loginin_first",
+  CreateKid = "createkid",
+  CreateEvent = "createevent",
+  Logout_First = "logout_first",
+  LoginIn_Second = "loginin_second",
+  CreateKid_Second = "createkid_second",
+  SearchEvent = "searchevent",
+  SignEvent = "signevent",
+  AddComment = "addcomment",
+  Logout_Second = "logout_second",
+  Login_First_Again = "login_first_again",
+  CheckNotification = "checknotification",
+  ApproveEvent = "approveevent",
+  AddComment_byFirst = "addcomment_byfirst",
+  Logout_First_Second = "logout_first_second",
+  Login_Second_Again = "login_second_again",
+  CheckParticipate = "checkparticipate",
+  CheckComment = "checkcomment",
+  CheckNotification_Second = "checknotification_second",
+  QuitEvent = "quitevent",
+  DeleteUser = "deleteuser",
+  Login_First_Third = "login_first_third",
+  DeleteUser_Second = "deleteuser_second"
+}
+
+
+
 export const TestUser = (): TestUserMethods => {
   const {
     registerMutation,
@@ -36,12 +76,11 @@ export const TestUser = (): TestUserMethods => {
     update: { updateUserInfo }
   } = useWebSocket();
 
-  const [testResults, setTestResults] = useState<TestResult[]>([]);
+  const [testActions_State, setTestActions_State] = useState<TestAction>(TestAction.CheckLogoutBeforeTest);
+  const [testAction_true, setTestAction_true] = useState(false);
   const [testUsers, setTestUsers] = useState<TestUserInstance[]>([]);
-  const [isTestLogin, setIsTestLogin] = useState(false);
-  const [isTestLogout, setIsTestLogout] = useState(false);
-  const [isTestDelete, setIsTestDelete] = useState(false);
-  const [isFinish, setIsFinish] = useState(false);
+
+  const [testResults, setTestResults] = useState<TestResult[]>([]);
 
   const addTestResult = useCallback((result: TestResult) => {
     setTestResults(prev => [...prev, result]);
@@ -54,122 +93,115 @@ export const TestUser = (): TestUserMethods => {
     username: `TestUser${Date.now()}_${index}`
   }), []);
 
-  // useEffect(() => { 
-  //   const testLoginResult =async () => {
-  //     console.log("start to test login");
-  //     const testLoginResult =await testLogin(testUsers[0].userId);
-
-  //     console.log("testLoginResult",testLoginResult);
-  //     if(testLoginResult.success){
-  //       console.log("testLoginResult success");
-  //       setIsTestLogin(false);
-  //       setIsTestLogout(true);
-  //     }
-  //   }
-
-
-  //   const testLogoutResult =async () => {
-  //     console.log("start to test logout");
-  //     const testLogoutResult =await testLogout(testUsers[0].userId);
-  //     if(testLogoutResult.success){
-  //       setIsTestLogout(false);
-  //       setIsTestDelete(true);
-  //     }
-  //   }
-
-  //   const testDeleteResult =async () => {
-  //     console.log("start to test delete");
-  //     await testLogin(testUsers[0].userId);
-  //     const testDeleteResult =await deleteUser(testUsers[0].userId);
-  //     if(testDeleteResult.success){
-  //       setIsTestDelete(false);
-  //       setIsFinish(true);
-  //     }
-  //   }
-
-  //   if(isTestLogin){
-  //     testLoginResult();
-  //   }
-  //   if(isTestLogout){
-  //     testLogoutResult();
-  //   }
-  //   if(isTestDelete){
-  //     testDeleteResult();
-  //   }
-  // },[isTestLogin,isTestLogout,isTestDelete,isFinish,isLoginout,isDelete]);
 
   const [testStart,setTestStart] = useState(false);
-  const [testState,setTestState] = useState(0);
+  const [testState,setTestState] = useState(TestState.Idle);
+
 
   useEffect(()=>{
-    const testUser =async () => {
-      console.log("testState===============> ",testState);
-    switch(testState){
-      case 0:
-        if(testStart){
-          
-          if(loginState.logined){
-            await logout();
-          }
-          setTestStart(false);
-          setTestUsers([]);
-          setTestState(1);
-        }
-        break;
-      case 1:
-        if(!loginState.logined){
-          console.log("start to create user");
-          const createUserResult = await createUser(1);
-          if(createUserResult.success){
-            setTestState(2);
-          }
-          else{
-            console.log("create user failed");
-            setTestState(0);
-          }
-        }
-        break;
-      case 2:
-        if(testUsers.length>0){
-          const testLoginResult =await testLogin(testUsers[0].userId);
-            setTestState(3);
-          
-        }
-        break;
-      case 3:
-        if(loginState.logined){
-          await testLogout(testUsers[0].userId);
-          setTestState(4);
-        }
-        break;
-      case 4:
-        if(!loginState.logined){
-          await testLogin(testUsers[0].userId);
-          setTestState(5);
-        }
-        break;
-      case 5:
-        if(loginState.logined){
-          await deleteUser(testUsers[0].userId);
-          setTestState(6);
-        }
-        break;
-      case 6:
-        if(!loginState.logined){
-          setIsFinish(true);
-        }
-        break;
+
+    if(!testAction_true){
+      return;
     }
+
+    const testAction = async () => {
+
+    switch(testActions_State)
+    {
+      case TestAction.CheckLogoutBeforeTest:
+        if(loginState.logined){
+          logout();
+        }
+        setTestActions_State(TestAction.CreateUser);
+        break;
+      case TestAction.CreateUser:
+        if(!loginState.logined)
+        {
+          const result =await createUser(2);
+          if(result.success){
+            setTestActions_State(TestAction.LoginIn_First);
+          }
+        }
+        break;
+      case TestAction.LoginIn_First:
+        if(!loginState.logined)
+        {
+          const result =await testLogin(testUsers[0].userId);
+          if(result.success){
+            setTestActions_State(TestAction.DeleteUser);
+          }
+        }
+        break;
+      case TestAction.CreateKid:
+        if(loginState.logined)
+        {
+          const result =await createKid(testUsers[0].userId);
+        }
+      
+    };
+
+    console.log("testAction state: ====>>>",testActions_State);
+    await testAction();
   }
-  testUser();
-  },[loginState.logined,testState,testStart,testUsers]);
+
+  },[testAction_true,testActions_State]);
+
+  // 测试用户流程
+  useEffect(()=>{
+    if(testStart){
+      const testActionResult =async () => {
+        switch(testState){
+        case TestState.CheckLogoutBeforeTest:
+          if(loginState.logined){
+            logout();
+            setTestState(TestState.CreateUser);
+          }
+          break;
+        case TestState.CreateUser:
+          if(!loginState.logined)
+          {
+            const result =await createUser(1);
+            if(result.success){
+              setTestState(TestState.LoginIn);
+            } 
+          }
+          break;
+        case TestState.LoginIn:
+          if(!loginState.logined)
+          {
+            const result =await testLogin(testUsers[0].userId);
+            if(result.success){
+              setTestState(TestState.DeleteUser);
+            }
+          }
+          break;
+        case TestState.DeleteUser:
+          if(loginState.logined)
+          {
+            const result =await deleteUser(testUsers[0].userId);
+            if(result.success){
+              console.log("user test finish,success~");
+              setTestState(TestState.Idle);
+              setTestStart(false);
+            }
+          }
+          break;
+        }
+      }
+      testActionResult();
+    }
+  },[testState,testStart,loginState.logined]);
     
   const testUser = useCallback(async (): Promise<void> => {
-        setTestStart(true);
-        setTestState(0);
+    setTestStart(true);
+    setTestState(TestState.CheckLogoutBeforeTest);
   }, []);
 
-  const createUser = useCallback(async (num: number) => {
+  const startAction_Test = useCallback(() => {
+    setTestAction_true(true);
+  }, []);
+
+  const createUser = useCallback(async (num: number):Promise<{ success: boolean, usersIds: number[], users: TestUserInstance[] }> => {
     const createdUsersIds: number[] = [];
     const newUsers: TestUserInstance[] = [];
 
@@ -236,6 +268,8 @@ export const TestUser = (): TestUserMethods => {
         email: targetUser.credentials.email,
         password: targetUser.credentials.password
       });
+      
+      return { success: true, message: '登录成功' };
 
     } catch (error) {
       return { 
@@ -243,7 +277,7 @@ export const TestUser = (): TestUserMethods => {
         message: error instanceof Error ? error.message : 'Login failed' 
       };
     }
-  }, [loginState.logined, loginState.error, login, testUsers]);
+  }, [loginState.logined, login, testUsers]);
 
   const testLogout = useCallback(async (userId: number) => {
     const targetUser = userId 
@@ -260,7 +294,6 @@ export const TestUser = (): TestUserMethods => {
     });
 
     try {
-      // await logout();
       await new Promise<void>((resolve, reject) => {
         logout().then(() => resolve()).catch((error) => reject(error));
       });

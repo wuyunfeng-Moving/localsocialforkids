@@ -23,6 +23,7 @@ import axios from 'axios';
 
 // export const SERVERIP = "121.196.198.126";
 export const SERVERIP = "172.20.10.2";
+// export const SERVERIP = "192.168.1.7";
 export const PORT = 3000;
 export const BASE_URL = `http://${SERVERIP}:${PORT}`;
 
@@ -59,6 +60,7 @@ interface AllEvents {
 };
 
 interface ServerData {
+    setWebSocketConnected: (connected: boolean) => void;
     notifications: Notification[]; // 当前账号所有的通知
     userEvents: Event[]; // 当前账号所有的活动
     kidEvents: Event[]; //当前账号的孩子所参与的活动
@@ -182,6 +184,70 @@ function useDelayedQuery<TData>(
 
 // Inside useServerData, add these modified functions:
 const useServerData = (): ServerData => {
+
+    const [recommendEvents, setRecommendEvents] = useState<RecommendEvents>([
+        {
+            event: {
+                id: 1,
+                place: {
+                    location: [0, 0],
+                    maxNumber: 10
+                },
+                dateTime: '2021-01-01T12:00:00Z',
+                duration: 60,
+                topic: 'Event 1',
+                description: 'Description 1',
+                kidIds: [1],
+                userId: 1,
+                status: 'preparing'
+            },
+            reason: 'Reason 1'
+        },
+        {
+            event: {
+                id: 2,
+                place: {
+                    location: [0, 0],
+                    maxNumber: 15
+                },
+                dateTime: '2021-01-02T13:00:00Z',
+                duration: 90,
+                topic: 'Event 2',
+                description: 'Description 2',
+                kidIds: [2],
+                userId: 2,
+                status: 'preparing'
+            },
+            reason: 'Reason 2'
+        },
+        {
+            event: {
+                id: 3,
+                place: {
+                    location: [0, 0],
+                    maxNumber: 20
+                },
+                dateTime: '2021-01-03T14:00:00Z',
+                duration: 120,
+                topic: 'Event 3',
+                description: 'Description 3',
+                kidIds: [3],
+                userId: 3,
+                status: 'preparing'
+            },
+            reason: 'Reason 3'
+        }
+    ]);
+    const [matchedEvents, setMatchedEvents] = useState<MatchEvents>([]);
+    const [loginState, setLoginState] = useState<{
+        logined:boolean;
+        error:'No token' | 'Token expired' | string;
+    }>({
+        logined: false,
+        error: ''
+    });
+    const [webSocketConnected,setWebSocketConnected] = useState(false);
+    const [token, setToken] = useState<string | null>(null);
     const queryClient = useQueryClient();
 
     useEffect(()=>{
@@ -310,91 +376,15 @@ const useServerData = (): ServerData => {
         }
     });
 
-    useEffect(() => {
-        console.log('userDataQuery state changed:', {
-            isSuccess: userDataQuery.isSuccess,
-            isError: userDataQuery.isError,
-            error: userDataQuery.error,
-            data: userDataQuery.data
-        });
-        
-        if (userDataQuery.isSuccess) {
-            console.log('Setting login state to success');
-            setLoginState({ logined: true, error: '' });
-        }
-        if (userDataQuery.isError) {
-            console.log('Setting login state to error');
-            setLoginState({ logined: false, error: userDataQuery.error.message });
-            setToken(null);
-        }
-    }, [userDataQuery.isSuccess, userDataQuery.isError, userDataQuery.error]);
-
-    const [recommendEvents, setRecommendEvents] = useState<RecommendEvents>([
-        {
-            event: {
-                id: 1,
-                place: {
-                    location: [0, 0],
-                    maxNumber: 10
-                },
-                dateTime: '2021-01-01T12:00:00Z',
-                duration: 60,
-                topic: 'Event 1',
-                description: 'Description 1',
-                kidIds: [1],
-                userId: 1,
-                status: 'preparing'
-            },
-            reason: 'Reason 1'
-        },
-        {
-            event: {
-                id: 2,
-                place: {
-                    location: [0, 0],
-                    maxNumber: 15
-                },
-                dateTime: '2021-01-02T13:00:00Z',
-                duration: 90,
-                topic: 'Event 2',
-                description: 'Description 2',
-                kidIds: [2],
-                userId: 2,
-                status: 'preparing'
-            },
-            reason: 'Reason 2'
-        },
-        {
-            event: {
-                id: 3,
-                place: {
-                    location: [0, 0],
-                    maxNumber: 20
-                },
-                dateTime: '2021-01-03T14:00:00Z',
-                duration: 120,
-                topic: 'Event 3',
-                description: 'Description 3',
-                kidIds: [3],
-                userId: 3,
-                status: 'preparing'
-            },
-            reason: 'Reason 3'
-        }
-    ]);
-    const [matchedEvents, setMatchedEvents] = useState<MatchEvents>([]);
-    const [loginState, setLoginState] = useState<{
-        logined:boolean;
-        error:'No token' | 'Token expired' | string;
-    }>({
-        logined: false,
-        error: ''
-    });
-    const [token, setToken] = useState<string | null>(null);
-
+    // 如果websocket连接成功，且用户信息加载成功，则设置登录状态为成功
     useEffect(()=>{
-        console.log("loginState.logined in serverData",loginState.logined,loginState.error);
-    },[loginState.logined]);
+        if(webSocketConnected && userDataQuery.isSuccess){
+            setLoginState({logined:true,error:''});
+        }
+        else{
+            setLoginState({logined:false,error:''});
+        }
+    },[webSocketConnected,userDataQuery.isSuccess]);
 
     useEffect(() => {
         const fetchTokenAndVerify = async () => {
@@ -409,7 +399,6 @@ const useServerData = (): ServerData => {
 
                         userDataQuery.refetch().then(()=>{
                             console.log("userDataQuery refetch success");
-                            setLoginState({ logined: true, error: '' });
                         });
                     } else {
                         throw new Error('Token verification failed');
@@ -438,7 +427,7 @@ const useServerData = (): ServerData => {
     const getToken = async () => {
         try {
             const token = await SecureStore.getItemAsync('userToken');
-            console.log('getToken called, current token:', token);
+            // console.log('getToken called, current token:', token);
             return token;
         } catch (e) {
             console.error('Error reading token:', e);
@@ -491,6 +480,7 @@ const useServerData = (): ServerData => {
                 }
                 break;
             case 'token':
+                setWebSocketConnected(true);
                 break;
             default:
                 console.warn('Unhandled message type:', message.type);
@@ -534,7 +524,7 @@ const useServerData = (): ServerData => {
             type,
             newUserInfo
         }: {
-            type: 'addKidInfo'|'deleteKidInfo'|'updateUserInfo'|'deleteEvent'|'addNewEvent';
+            type: updateUserInfoType;
             newUserInfo: any;  // Changed from Partial<UserInfo> since it could be different types
         }) => {
             if(!isUpdateUserInfoType(type)){
@@ -567,11 +557,12 @@ const useServerData = (): ServerData => {
                 throw new Error('Invalid response format from server');
             }
 
-            return response.data;
+            return type;
         },
         onSuccess: (data) => {
-            // console.log("get response.data userInfo",data);
-            userDataQuery.refetch();
+            if(data !== 'deleteUser'){
+                userDataQuery.refetch();
+            }
         },
         onError: (error) => {
             console.error('Failed to update user info:', error);
@@ -599,7 +590,6 @@ const useServerData = (): ServerData => {
         onSuccess: (data) => {
             if (data.success) {
                 // Clear all data
-                setLoginState({ logined: false, error: '' });
                 setToken(null);
                 SecureStore.deleteItemAsync('userToken');
                 
@@ -624,7 +614,6 @@ const useServerData = (): ServerData => {
     const loginMutation = useMutation<LoginResponse,Error, { email: string; password: string }>({
         mutationFn: async (credentials: { email: string; password: string }) => {
 
-            setLoginState({logined:false,error:''});
             const response = await axios.post(API_ENDPOINTS.login, credentials);
 
             console.log("login response",response.data);
@@ -640,16 +629,13 @@ const useServerData = (): ServerData => {
                 await storeToken(data.token);
                 userDataQuery.refetch().then(()=>{
                     console.log("userDataQuery refetch success");
-                    setLoginState({ logined: true, error: '' });
                 });
             } else {
                 console.warn("Login failed:", data.message);
-                setLoginState({ logined: false, error: data.message });
             }
         },
         onError: (error) => {
             console.error('Login error:', error);
-            setLoginState({ logined: false, error: 'An error occurred during login' });
         }
     });
 
@@ -1066,11 +1052,6 @@ const useServerData = (): ServerData => {
                     return;
                 }
 
-                console.log("Processing events with userInfo:", {
-                    userId: userInfo.id,
-                    events: events
-                });
-
                 const userCreatedEvents = events.filter(event => event.userId === userInfo.id);
                 const userKidsIds = userInfo.kidinfo.map(kid => kid.id) || [];
                 const kidsParticipatingEvents = events.filter(event => 
@@ -1110,7 +1091,7 @@ const useServerData = (): ServerData => {
     });
 
     return ({
-        
+        setWebSocketConnected,
         notifications: userDataQuery.data?.notifications ?? [],
         userEvents: userAllEvents?.created ?? [],
         kidEvents: userAllEvents?.participating ?? [],
