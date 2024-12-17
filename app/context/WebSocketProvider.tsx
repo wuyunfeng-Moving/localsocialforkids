@@ -120,6 +120,7 @@ export const WebSocketProvider = ({ children }) => {
   const [messageQueue, setMessageQueue] = useState([]);
 
   const { 
+    setWebSocketConnected,
     notifications,
     userEvents,
     kidEvents,
@@ -232,12 +233,12 @@ export const WebSocketProvider = ({ children }) => {
       return;
     }
 
-    console.log('Attempting to connect WebSocket...');
+    // console.log('Attempting to connect WebSocket...');
     const wsaddress = `ws://${SERVERIP}:${PORT}`;
     const socket = new WebSocket(wsaddress);
     
     socket.onopen = () => {
-      console.log('WebSocket connected successfully');
+      // console.log('WebSocket connected successfully');
       setWs(socket);
       //send token to server
       send({type:"token",token:token});
@@ -271,7 +272,7 @@ export const WebSocketProvider = ({ children }) => {
   useEffect(() => {
     let cleanup: (() => void) | undefined;
 
-    if (loginState.logined && token) {
+    if (token) {
       console.log('User is logged in with valid token, connecting WebSocket...');
       // Clear any existing connection first
       if (ws) {
@@ -279,16 +280,20 @@ export const WebSocketProvider = ({ children }) => {
         setWs(null);
       }
       cleanup = connectWebSocket();
-    } else if (ws) {
-      console.log('Closing WebSocket connection - user logged out or invalid token',loginState.logined,token);
-      ws.close();
-      setWs(null);
+    } else {
+      // Close WebSocket connection when not logged in
+      console.log('Closing WebSocket connection - user logged out or invalid token');
+      if (ws) {
+        ws.close();
+        setWs(null);
+        setWebSocketConnected(false);
+      }
     }
 
     return () => {
       if (cleanup) cleanup();
     };
-  }, [loginState.logined, token]);
+  }, [token]);
 
   useEffect(() => {
     if (ws && ws.readyState === WebSocket.OPEN && messageQueue.length > 0) {
