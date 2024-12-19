@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 const INITIAL_INPUTS = [
   { title: 'childOrder', label: '孩子姓名', value: '' },
@@ -39,11 +40,14 @@ interface NewEventData {
 
 const compressAndConvertImage = async (uri: string): Promise<string> => {
     try {
-        // 读取图片文件并转换为base64
-        const base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64
-        });
-        return base64;
+        // 使用 image-manipulator 压缩和转换图片
+        const manipulatedImage = await manipulateAsync(
+            uri,
+            [{ resize: { width: 500 } }],
+            { compress: 0.7, format: SaveFormat.JPEG, base64: true }
+        );
+        
+        return `data:image/jpeg;base64,${manipulatedImage.base64}`;
     } catch (error) {
         console.error('Error compressing image:', error);
         throw error;
@@ -323,10 +327,10 @@ export default function TabTwoScreen() {
                         mediaTypes: ImagePicker.MediaTypeOptions.Images,
                         allowsEditing: true,
                         aspect: [4, 3],
-                        quality: 0.8, // 稍微压缩图片质量以减少上传大小
+                        quality: 1, // 设置为1，因为我们会使用 manipulator 来压缩
                       });
                       
-                      if (!result.canceled) {
+                      if (!result.canceled && result.assets && result.assets.length > 0) {
                         const newImages = [...input.value, result.assets[0].uri];
                         handleInputChange(newImages, 'images', 'value');
                       }
