@@ -22,10 +22,10 @@ interface WebSocketContextValue {
   refreshUserData: () => void,
   login: (credentials: { email: string; password: string }) => void,
   logout: () => Promise<void>,
-  getEventsById: (eventIds: number[], callback: (events: Event[]) => void) => Promise<void>,
+  getEventById: (eventId: number, callback: (event: Event) => void) => Promise<void>,
   isUserDataLoading: boolean,
   isParticipateEvent: (event:Event) => boolean,
-  getUserInfo: (userId: number,callback: (userInfo: UserInfo) => void) => Promise<UserInfo>,
+  getUserInfo: (userId: number,callback: (userInfo: UserInfo) => void) => Promise<UserInfo|undefined>,
   getKidInfo: (kidId: number, callback: (kidInfo: KidInfo) => void, forceUpdate: boolean) => Promise<void>,
   searchEvents: {
     search: (searchParams: {
@@ -146,7 +146,8 @@ export const WebSocketProvider = ({ children }) => {
     searchEvents,
     followActions,
     setNotificationsRead,
-    registerMutation
+    registerMutation,
+    getEventById
   } = useServerData();
 
   useEffect(() => {
@@ -317,7 +318,7 @@ export const WebSocketProvider = ({ children }) => {
       appliedEvents,
       getMatchEvents,
       isParticipateEvent,
-      getEventsById,
+      getEventById,
       login,
       logout,
       refreshUserData,

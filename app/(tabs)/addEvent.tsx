@@ -82,30 +82,30 @@ export default function TabTwoScreen() {
     }
   }, [currentRegion]);
 
-  const handleSelectLocation = useCallback((location) => {
+  const handleSelectLocation = useCallback((location:any) => {
     setSelectedLocation(location);
     const data = [location.longitude, location.latitude];
     handleInputChange(data, 'location', 'value');
     console.log('Selected Location:', location);
   }, []);
 
-  const handleInputChange = useCallback((text, title, field) => {
-    setInputs(prevInputs => prevInputs.map(input =>
+  const handleInputChange = useCallback((text:any, title:any, field:any) => {
+    setInputs(prevInputs => prevInputs.map((input:any) =>
       input.title === title ? { ...input, [field]: text } : input
     ));
   }, []);
 
-  const handleDateTimeChange = useCallback((event, selectedDate) => {
+  const handleDateTimeChange = useCallback((event:any, selectedDate:any) => {
     if (selectedDate) {
       handleInputChange(selectedDate, 'dateTime', 'value');
     }
   }, [handleInputChange]);
 
-  const addInputField = useCallback((title_option) => {
+  const addInputField = useCallback((title_option:any) => {
     setInputs(prevInputs => [...prevInputs, { title: title_option, value: '' }]);
   }, []);
 
-  const removeInputField = useCallback((title) => {
+  const removeInputField = useCallback((title:any) => {
     setInputs(prevInputs => prevInputs.filter(input => input.title !== title));
   }, []);
 

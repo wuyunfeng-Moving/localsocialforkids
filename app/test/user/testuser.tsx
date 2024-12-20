@@ -191,7 +191,15 @@ export const TestUser = (): TestUserMethods => {
       testActionResult();
     }
   },[testState,testStart,loginState.logined]);
-    
+
+  const [test_addNewEvent,setTest_addNewEvent] = useState(false);
+
+  const testAddNewEvent = useCallback(async () => {
+    {
+      setTest_addNewEvent(true);
+    }
+  },[]);
+
   const testUser = useCallback(async (): Promise<void> => {
     setTestStart(true);
     setTestState(TestState.CheckLogoutBeforeTest);

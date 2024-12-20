@@ -8,7 +8,7 @@ import { Event, UserInfo, Events, AuthenticationMessage,
     Notification,isNotification,
     UserDataResponse,
     LoginResponse,isLoginResponse,
-    GetEventsResponse,isGetEventsResponse,
+    isGetEventResponse,
     BaseResponse,OtherUserInfoResponse,isOtherUserInfoResponse,
     ApproveSignupRequestMessage,
     isRegisterResponse,
@@ -42,7 +42,7 @@ const API_ENDPOINTS = {
     chats: `${BASE_URL}/chats`,
     getChatHistory: (chatId: number) => `${BASE_URL}/chats/${chatId}`,
     sendMessage: (chatId: number) => `${BASE_URL}/chats/${chatId}`,
-    getEvents: `${BASE_URL}/getEvents`,
+    getEvent: (eventId: number) => `${BASE_URL}/getEvent/${eventId}`,
 };
 
 
@@ -81,7 +81,7 @@ interface ServerData {
     }>;
     websocketMessageHandle: (message: WebSocketMessageFromServer) => Promise<void>; // 处理websocket消息
     updateUserInfo: UseMutationResult<BaseResponse, Error, {
-        type: 'addKidInfo'|'deleteKidInfo'|'updateUserInfo'|'deleteEvent'|'addEvent';
+        type: updateUserInfoType;
         newUserInfo: any;
     }>; // 更新当前账号的信息
     addkidinfo: (newKidInfo: Partial<KidInfo>, callback: (success: boolean, message: string) => void) => void; // 添加孩子信息
@@ -129,7 +129,7 @@ interface ServerData {
             callback?: (success: boolean, message: string) => void;
         }) => Promise<void>;
     };
-    getUserInfo: (userId: number, callback: (userInfo: UserInfo) => void) => Promise<UserInfo>;
+    getUserInfo: (userId: number, callback: (userInfo: UserInfo) => void) => Promise<UserInfo|undefined>;
     getKidInfo: (kidId: number, callback: (kidInfo: KidInfo) => void, forceUpdate: boolean) => Promise<void>;
     followActions: {
         followUser: (params: {
@@ -151,35 +151,9 @@ interface ServerData {
         }) => Promise<void>;
     };
     setNotificationsRead: (notificationId: number, callback: (success: boolean, message: string) => void) => Promise<void>;
-    getEventsById: (eventIds: number[], callback: (events: Event[]) => void) => Promise<void>;
+    getEventsById: (eventIds: number[], callback: (events: Event[] | undefined) => void) => Promise<void>;
+    getEventById: (eventId: number, callback: (event: Event | undefined) => void) => Event | undefined;
     
-}
-
-
-
-
-// Custom hook to add delayed loading state
-function useDelayedQuery<TData>(
-  queryKey: string[],
-  queryFn: () => Promise<TData>,
-  delayMs: number = 2000
-) {
-  const query = useQuery<TData>({ queryKey, queryFn });
-  const [delayedLoading, setDelayedLoading] = useState(true);
-
-  useEffect(() => {
-    if (query.isLoading) {
-      setDelayedLoading(true);
-    } else {
-      const timer = setTimeout(() => setDelayedLoading(false), delayMs);
-      return () => clearTimeout(timer);
-    }
-  }, [query.isLoading, delayMs]);
-
-  return {
-    ...query,
-    isLoading: delayedLoading,
-  };
 }
 
 // Inside useServerData, add these modified functions:
@@ -275,71 +249,7 @@ const useServerData = (): ServerData => {
         queryClient.setQueryData<Notification[]>(['notifications'], notifications);
     }
 
-
-    const updateCacheEvents = (events: Event[]): Event[] => {
-        console.log("Updating cache events:", events);
-        const existingEvents = queryClient.getQueryData<Event[]>(['Events']) || [];
-        console.log("Existing events:", existingEvents);
-        
-        const updatedEvents = [...existingEvents];
-        
-        events.forEach(newEvent => {
-            const index = updatedEvents.findIndex(e => e.id === newEvent.id);
-            if (index !== -1) {
-                updatedEvents[index] = newEvent;
-            } else {
-                updatedEvents.push(newEvent);
-            }
-        });
-        
-        queryClient.setQueryData(['Events'], updatedEvents);
-        return updatedEvents;
-    }
-
-    const getEventsById = async (eventIds: number[], callback: (events: Event[]) => void) => {
-        // First check local cache
-        const events = queryClient.getQueryData<Event[]>(['Events']) || [];
-        const foundEvents = events.filter(event => eventIds.includes(event.id));
-        
-        // If we found all requested events in cache, return them
-        if (foundEvents.length === eventIds.length) {
-            callback(foundEvents);
-            return;
-        }
-        
-        // If some events are missing, fetch from server
-        try {
-            const token = await getToken();
-            if (!token) throw new Error('No token');
-            
-            const response = await axios.post(`${BASE_URL}/getEvents`, {
-                eventIds: eventIds
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (!isGetEventsResponse(response.data)) {
-                throw new Error('Invalid response format from server');
-            }
-
-            if (!response.data.success) {
-                throw new Error(response.data.message || 'Failed to fetch events');
-            }
-
-            const newEvents = response.data.events || [];
-            
-            const updatedEvents = updateCacheEvents(newEvents);
-            // Return requested events
-            const finalEvents = updatedEvents.filter(event => eventIds.includes(event.id));
-            callback(finalEvents);
-            
-        } catch (error) {
-            console.error('Error fetching events:', error);
-            callback([]);
-        }
-    };
-
-    const userDataQuery = useQuery({
+    const userDataQuery = useQuery<{userAllEvents:Event[],userInfo:UserInfo,notifications:Notification[],created:Event[],participating:Event[],applied:Event[]}>({
         queryKey: ['userData'],
         queryFn: async () => {
             console.log('Starting userDataQuery execution');
@@ -349,7 +259,6 @@ const useServerData = (): ServerData => {
             if (!token) throw new Error('no1 token');
             
             try {
-                console.log('Making API request to userInfo endpoint');
                 const response = await axios.get(API_ENDPOINTS.userInfo, {
                     headers: {Authorization: `Bearer ${token}`}
                 });
@@ -360,20 +269,17 @@ const useServerData = (): ServerData => {
                 }
                 
                 if (response.data.success) {
-                    updateCacheEvents(response.data.userAllEvents);
-                    updateCacheUserInfo(response.data.userInfo);
-                    response.data.userInfo.kidinfo.forEach(kidInfo => {
-                        updateCacheKidInfo(kidInfo);
-                    });
-                    updateCacheNotifications(response.data.notifications);
-                    return response.data;
+                    const {userAllEvents,userInfo,notifications} = response.data;
+                    const {created,participating,applied} = analyzeEvents(userAllEvents,userInfo);
+                    return {userAllEvents,userInfo,notifications,created,participating,applied};
                 }
                 throw new Error('Failed to fetch user data');
             } catch (error) {
                 console.error('userDataQuery error:', error);
                 throw error;
             }
-        }
+        },
+        staleTime: 1000 * 60 * 5, // 5 minutes
     });
 
     // 如果websocket连接成功，且用户信息加载成功，则设置登录状态为成功
@@ -528,7 +434,7 @@ const useServerData = (): ServerData => {
             newUserInfo: any;  // Changed from Partial<UserInfo> since it could be different types
         }) => {
             if(!isUpdateUserInfoType(type)){
-                throw new Error('Invalid updateUserInfo type');
+                throw new Error('Invalid updateUserInfo type:'+type);
             }
             
             if(type === 'updateUserInfo'){
@@ -762,6 +668,37 @@ const useServerData = (): ServerData => {
         }
     };
 
+    const deleteEvent = async (params: {
+        eventId: number,
+        callback: (success: boolean, message: string) => void
+    }) => {
+        try {
+            const token = await getToken();
+            if (!token) throw new Error('No token');
+
+            const response = await axios.post(API_ENDPOINTS.changeEvent, {
+                eventId: params.eventId,
+                type: 'deleteEvent'
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!isBaseResponse(response.data)) {
+                throw new Error('Invalid response format from server');
+            }
+
+            if (response.data.success) {
+                userDataQuery.refetch();
+                params.callback(true, "Event deleted successfully");
+            } else {
+                params.callback(false, response.data.message || "Failed to delete event");
+            }
+        } catch (error) {
+            console.error('Error deleting event:', error);
+            params.callback(false, "An error occurred while deleting the event");
+        }
+    }
+
     // 更新获取Kid信息函数
     const getKidInfo = async (
         kidId: number,
@@ -851,33 +788,28 @@ const useServerData = (): ServerData => {
         userId: number,
         callback: (userInfo: UserInfo) => void,
         forceUpdate: boolean = false
-    ): Promise<UserInfo> => {
-        // Check cache first
-        const cachedData = queryClient.getQueryData<Array<{id:number,userInfo:UserInfo,kidEvents:Event[],userEvents:Event[]}>>(['userInfos'])?.find(item => item.id === userId);
-        if (!forceUpdate && cachedData) {
-            callback(cachedData.userInfo);
-            return cachedData.userInfo;
-        }
+    ): Promise<UserInfo|undefined> => {
+        const userinfoquery = useQuery({
+            queryKey: ['userInfo', userId],
+            queryFn: async () => {
+                const token = await getToken();
+                if (!token) throw new Error('No token');
 
-        // If not in cache or force update, fetch from server
-        const token = await getToken();
-        if (!token) throw new Error('No token');
+                const response = await axios.get(API_ENDPOINTS.getUserInfo(userId), {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                console.log("getUserInfo response...",response.data);
 
-        const response = await axios.get(API_ENDPOINTS.getUserInfo(userId), {
-            headers: { Authorization: `Bearer ${token}` }
+                if (!isOtherUserInfoResponse(response.data)) {
+                    throw new Error('Invalid response format from server');
+                }
+
+                return response.data.userInfo;
+            },
+            staleTime: 1000 * 60 * 5, // 5 minutes
         });
-        console.log("getUserInfo response...",response.data);
 
-        if (!isOtherUserInfoResponse(response.data)) {
-            throw new Error('Invalid response format from server');
-        }
-        
-        if (response.data.success) {
-            updateCacheUserInfo(response.data.userInfo);
-            callback(response.data.userInfo);
-            return response.data.userInfo;
-        }
-        throw new Error(response.data.message || 'Failed to fetch user info');
+        return userinfoquery.data;
     };
 
     // Add following state near other state declarations
@@ -1034,45 +966,22 @@ const useServerData = (): ServerData => {
         }
     }   
 
-    const userAllEvents = useQueryClient().getQueryData(['categorizedEvents']) as AllEvents;
-
-    useEffect(() => {
-        const unsubscribe = queryClient.getQueryCache().subscribe(({ type, query }) => {
-            if (query.queryKey[0] === 'Events' && query.state.status === 'success') {
-                const events = query.state.data as Event[];
-                if (!Array.isArray(events)) {
-                    console.log("Events data is not an array:", events);
-                    return;
-                }
-
-                // 修改这里，直接从userDataQuery.data获取userInfo
-                const userInfo = userDataQuery.data?.userInfo;  // 移除.data层级
-                if (!userInfo) {
-                    console.log("No user info available:", userDataQuery.data);
-                    return;
-                }
-
-                const userCreatedEvents = events.filter(event => event.userId === userInfo.id);
-                const userKidsIds = userInfo.kidinfo.map(kid => kid.id) || [];
-                const kidsParticipatingEvents = events.filter(event => 
-                    event.kidIds?.some(kidId => userKidsIds.includes(kidId))
-                );
-                const userAppliedEvents = events.filter(event => 
-                    event.pendingSignUps?.some(signup => signup.kidIds?.some(kidId => userKidsIds.includes(kidId)))
-                );
-
-                queryClient.setQueryData(['categorizedEvents'], {
-                    created: userCreatedEvents,
-                    participating: kidsParticipatingEvents,
-                    applied: userAppliedEvents
-                });
-            }
-        });
-
-        return () => {
-            unsubscribe();
+    const analyzeEvents = (allEvents:Event[],userInfo:UserInfo):{created:Event[],participating:Event[],applied:Event[]} => {
+        const userCreatedEvents = allEvents.filter(event => event.userId === userInfo.id);
+        const userKidsIds = userInfo.kidinfo.map(kid => kid.id) || [];
+        const kidsParticipatingEvents = allEvents.filter(event => 
+            event.kidIds?.some(kidId => userKidsIds.includes(kidId))
+        );
+        const userAppliedEvents = allEvents.filter(event => 
+            event.pendingSignUps?.some(signup => signup.kidIds?.some(kidId => userKidsIds.includes(kidId)))
+        );
+        return {
+            created: userCreatedEvents,
+            participating: kidsParticipatingEvents,
+            applied: userAppliedEvents
         };
-    }, [queryClient, userDataQuery.data]);
+
+    }
 
     const registerMutation = useMutation<RegisterResponse, Error, { username: string; email: string; password: string }>({
         mutationFn: async (credentials: { username: string; email: string; password: string }) => {
@@ -1090,12 +999,52 @@ const useServerData = (): ServerData => {
         },
     });
 
+    const getEventById = async (eventId: number, callback: (event: Event | undefined) => void) => {
+        // 首先检查缓存
+        const cachedEvent = queryClient.getQueryData(['singleEvent', eventId]) as Event | undefined;
+        if (cachedEvent) {
+            callback(cachedEvent);
+            return cachedEvent;
+        }
+
+        // 如果没有缓存，发起新请求
+        queryClient.fetchQuery({
+            queryKey: ['singleEvent', eventId],
+            queryFn: async () => {
+                try{
+                    const token = await getToken();
+                    if (!token) throw new Error('No token');
+
+                    const response = await axios.get(API_ENDPOINTS.getEvent(eventId), {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+
+                    if (!isGetEventResponse(response.data)) {
+                        throw new Error('Invalid response format from server');
+                    }
+
+                    const event = response.data.event;
+                    callback(event);
+                    return event;
+                } catch (error) {
+                    console.error('Error fetching event by ID:', error);
+                    callback(undefined);
+                    return undefined;
+                }
+            }
+        });
+
+        console.log("getEventById3",eventId);
+
+        return undefined; // 初始返回 undefined，数据会通过 callback 返回
+    };
+
     return ({
         setWebSocketConnected,
         notifications: userDataQuery.data?.notifications ?? [],
-        userEvents: userAllEvents?.created ?? [],
-        kidEvents: userAllEvents?.participating ?? [],
-        appliedEvents: userAllEvents?.applied ?? [],
+        userEvents: userDataQuery.data?.created ?? [],
+        kidEvents: userDataQuery.data?.participating ?? [],
+        appliedEvents: userDataQuery.data?.applied ?? [],
         recommendEvents,
         matchedEvents,
         loginState,
@@ -1121,11 +1070,11 @@ const useServerData = (): ServerData => {
             searchError,
             results: searchResults
         },
-        getEventsById,
         changeEvent: {
             signupEvent,
             addComment,
             approveSignupRequest,
+            deleteEvent
         },
         getUserInfo,  // Add this to the returned object
         getKidInfo,
@@ -1140,6 +1089,7 @@ const useServerData = (): ServerData => {
         },
         setNotificationsRead,
         registerMutation,
+        getEventById,
     });
 };
 

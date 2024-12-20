@@ -9,8 +9,9 @@ import { navigateToAddKid } from '../navigation/routeHelper';
 
 const EventDetailsPage = () => {
   const params = useLocalSearchParams();
-  const { id, eventData } = params;
-  const { changeEvent, userInfo,getUserInfo,getKidInfo} = useWebSocket(); // 假设 user 对象包含孩子信息
+  const { eventId } = params;
+  const [event, setEvent] = useState<Event | null>(null);
+  const { changeEvent, userInfo,getUserInfo,getKidInfo,getEventById} = useWebSocket(); // 假设 user 对象包含孩子信息
   const [showKidSelection, setShowKidSelection] = useState(false);
   const [showAddKidInfo, setShowAddKidInfo] = useState(false);
   const [selectedKidIds, setSelectedKidIds] = useState<number[]>([]);
@@ -22,26 +23,29 @@ const EventDetailsPage = () => {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [usernames, setUsernames] = useState<{[key: number]: string}>({});
   // 使用 useMemo 来解析事件数据，避免不必要的重复解析
-  const event: Event | null = useMemo(() => {
-    if (eventData) {
+  useEffect(() => {
+    if (eventId) {
+      console.log("eventId",eventId);
       try {
-        return JSON.parse(eventData as string);
+        getEventById(Number(eventId), (event) => {
+          if (event) {
+            setEvent(event);
+          }
+        });
       } catch (error) {
         console.error('Error parsing event data:', error);
-        return null;
       }
     }
-    return null;
-  }, [eventData]);
+  }, [eventId]);
 
 
 
   // 仅在组件挂载时打印一次参数
   useEffect(() => {
-    console.log('Received params:', params);
-    console.log('ID:', id);
-    console.log('Event Data:', eventData);
-    console.log("event",event);
+    // console.log('Received params:', params);
+    console.log('ID:', eventId);
+    // console.log('Event Data:', eventData);
+    // console.log("event",event);
   }, [event]); // 空依赖数组，确保效果只运行一次
 
   useEffect(() => {
