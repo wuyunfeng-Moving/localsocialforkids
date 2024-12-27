@@ -117,12 +117,16 @@ export default function TabTwoScreen() {
     try {
         // 处理图片
         const imagesInput = inputs.find(input => input.title === 'images')?.value || [];
-        const processedImages = await Promise.all(
-            imagesInput.map(async (uri: string, index: number) => ({
-                id: index,
-                imagePath: await compressAndConvertImage(uri)
-            }))
-        );
+        let processedImages: { id: number; imageData: string }[] = [];
+
+        if (imagesInput && imagesInput.length > 0) {
+            const processedImages = await Promise.all(
+                imagesInput.map(async (uri: string, index: number) => ({
+                    id: index,
+                    imageData: await compressAndConvertImage(uri)
+                }))
+            );
+        }
 
         // 构建事件数据
         const eventData: Event = {
