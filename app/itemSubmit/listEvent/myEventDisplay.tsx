@@ -19,10 +19,10 @@ const MyEventDisplay: React.FC = () => {
     const sortedAppliedEvents = sortEventsByStartTime(appliedEvents);
 
     const handleEventPress = (event: Event) => {
-      console.log("handleEventPress", event);
+      console.log("...handleEventPress");
       router.push({
         pathname: '../events/[id]',
-        params: { id: event.id, eventData: JSON.stringify(event) }  // 序列化事件对象
+        params: { eventId: event.id}  // 序列化事件对象
       });
     };
 

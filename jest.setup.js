@@ -6,3 +6,6 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 // Add any other global mocks here 
+
+require('jest-fetch-mock').enableMocks();
+require('@testing-library/jest-dom');

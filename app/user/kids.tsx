@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, I
 import { useWebSocket } from '../context/WebSocketProvider';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 interface Kid {
   id: number;
@@ -104,10 +104,10 @@ const KidsPage: React.FC = () => {
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       // Compress and convert the image to base64
-      const manipulatedImage = await manipulateAsync(
+      const manipulatedImage = await ImageManipulator.manipulate(
         result.assets[0].uri,
         [{ resize: { width: 500 } }],
-        { compress: 0.7, format: SaveFormat.JPEG, base64: true }
+        { compress: 0.7, base64: true}
       );
 
       // Store both the local URI for preview and base64 for upload

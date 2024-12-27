@@ -226,7 +226,7 @@ export const SingleEventDisplay = ({
         
         setIsSubmittingComment(true);
         try {
-            await changeEvent.submitComment({
+            await changeEvent.addComment({
                 eventId: internalCurrentEvent.id,
                 comment: comment.trim(),
                 callback: async (success, message) => {
