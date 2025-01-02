@@ -94,7 +94,8 @@ const EventDetailsPage = () => {
 
   const getUserNameLink = (userId: number) => {
     if (!usernames[userId]) {
-      getUserInfo(userId, (userInfo) => {
+     const userinfo = getUserInfo(userId, (userInfo) => {
+        console.log("userInfo in getUserNameLink",userInfo);
         setUsernames(prev => ({
           ...prev,
           [userId]: userInfo.username
@@ -306,7 +307,7 @@ const EventDetailsPage = () => {
     return <Text>Loading event details...</Text>;
   } 
 
-  console.log("event in eventDetailsPage",event);
+  // console.log("event in eventDetailsPage",event);
 
   return (
     <View style={styles.pageContainer}>

@@ -22,7 +22,8 @@ import axios from 'axios';
 
 
 // // export const SERVERIP = "121.196.198.126";
-export const SERVERIP = "192.168.1.4";
+// export const SERVERIP = "192.168.1.4";
+export const SERVERIP = "172.31.64.2";
 // export const SERVERIP = "172.20.10.2";
 // export const SERVERIP = "192.168.1.7";
 export const PORT = 3000;
@@ -790,27 +791,31 @@ const useServerData = (): ServerData => {
         callback: (userInfo: UserInfo) => void,
         forceUpdate: boolean = false
     ): Promise<UserInfo|undefined> => {
-        const userinfoquery = useQuery({
-            queryKey: ['userInfo', userId],
-            queryFn: async () => {
-                const token = await getToken();
-                if (!token) throw new Error('No token');
+        const userInfo = queryClient.getQueryData<{id:number,userInfo:UserInfo}[]>(['userInfos'])?.find(item => item.id === userId);
 
-                const response = await axios.get(API_ENDPOINTS.getUserInfo(userId), {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                console.log("getUserInfo response...",response.data);
+        // console.log("getUserInfo userInfo",userInfo);
 
-                if (!isOtherUserInfoResponse(response.data)) {
-                    throw new Error('Invalid response format from server');
-                }
+        if(userInfo){
+            callback(userInfo.userInfo);
+        }
+        else{
+            const token = await getToken();
+            if (!token) throw new Error('No token');
 
-                return response.data.userInfo;
-            },
-            staleTime: 1000 * 60 * 5, // 5 minutes
-        });
+            const response = await axios.get(API_ENDPOINTS.getUserInfo(userId), {
+                headers: { Authorization: `Bearer ${token}` }
+            });
 
-        return userinfoquery.data;
+            if (!isOtherUserInfoResponse(response.data)) {
+                throw new Error('Invalid response format from server');
+            }
+
+            // console.log("getUserInfo response.data",response.data);
+
+            callback(response.data.userInfo);
+        }
+
+        return undefined;
     };
 
     // Add following state near other state declarations
