@@ -120,7 +120,7 @@ export default function TabTwoScreen() {
         const processedImages = await Promise.all(
             imagesInput.map(async (uri: string, index: number) => ({
                 id: index,
-                imagePath: await compressAndConvertImage(uri)
+                imageData: await compressAndConvertImage(uri)
             }))
         );
 
