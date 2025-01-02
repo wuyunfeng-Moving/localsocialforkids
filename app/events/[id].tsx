@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, TextInput, Image, Linking } from 'react-native';
 import { Link, useLocalSearchParams } from 'expo-router';
 import { useWebSocket } from '../context/WebSocketProvider';
 import { router } from 'expo-router';
@@ -22,6 +22,7 @@ const EventDetailsPage = () => {
   const [comment, setComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [usernames, setUsernames] = useState<{[key: number]: string}>({});
+  const [eventImage, setEventImage] = useState<string[]>([]);
   // 使用 useMemo 来解析事件数据，避免不必要的重复解析
   useEffect(() => {
     if (eventId) {
@@ -30,6 +31,9 @@ const EventDetailsPage = () => {
         getEventById(Number(eventId), (event) => {
           if (event) {
             setEvent(event);
+            if(event.images && event.images.length > 0){
+              setEventImage(event.images.map(image => image.imageData));
+            }
           }
         });
       } catch (error) {
@@ -95,7 +99,7 @@ const EventDetailsPage = () => {
   const getUserNameLink = (userId: number) => {
     if (!usernames[userId]) {
      const userinfo = getUserInfo(userId, (userInfo) => {
-        console.log("userInfo in getUserNameLink",userInfo);
+        // console.log("userInfo in getUserNameLink",userInfo);
         setUsernames(prev => ({
           ...prev,
           [userId]: userInfo.username
@@ -303,6 +307,28 @@ const EventDetailsPage = () => {
     });
   };
 
+  const handleLocationPress = (location: string) => {
+    // 高德地图 URL scheme
+    // 参考文档：https://lbs.amap.com/api/uri-api/guide/mobile-navigation/mobile-navi
+    const mapUrl = `androidamap://viewMap?sourceApplication=your_app_name&poiname=${encodeURIComponent(location)}&addr=${encodeURIComponent(location)}`;
+    const webUrl = `https://uri.amap.com/marker?position=&name=${encodeURIComponent(location)}&src=your_app_name`;
+
+    // 尝试打开高德地图 App
+    Linking.canOpenURL(mapUrl)
+      .then(supported => {
+        if (supported) {
+          return Linking.openURL(mapUrl);
+        } else {
+          // 如果没有安装高德地图 App，则打开网页版
+          return Linking.openURL(webUrl);
+        }
+      })
+      .catch(err => {
+        console.error('Error opening map:', err);
+        Alert.alert('提示', '无法打开地图，请确保已安装高德地图');
+      });
+  };
+
   if (!event) {
     return <Text>Loading event details...</Text>;
   } 
@@ -311,36 +337,75 @@ const EventDetailsPage = () => {
 
   return (
     <View style={styles.pageContainer}>
-      <View style={styles.headerContainer}>
-        <Text>活动主题：{event.topic}</Text>
-        <Text>创建人：{getUserNameLink(event.userId)}</Text>
-        <Text>状态：{event.status}</Text>
-        <Text>时间：{event.dateTime}</Text>
-        <Text>地点：{event.place.location}</Text>
-        <Text>最大人数：{event.place.maxNumber}</Text>
-        <Text>已经参与的孩子：
-          {event.kidIds.map((id, index) => (
-            <React.Fragment key={id}>
-              {index > 0 && ', '}
-              {getKidNameLink(id)}
-            </React.Fragment>
-          ))}
-        </Text>
-      </View>
       <ScrollView style={styles.scrollContainer}>
-        {isEventCreator && (
-          <View style={styles.applicantsSection}>
-            <Text style={styles.sectionTitle}>申请者列表</Text>
-            {event.pendingSignUps && event.pendingSignUps.length > 0 ? (
-              event.pendingSignUps.map(applicant => renderApplicantItem(applicant))
-            ) : (
-              <Text style={styles.noApplicantsText}>暂无申请者</Text>
-            )}
+        {/* Header Section with Images */}
+        <View style={styles.imageContainer}>
+          {eventImage.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {eventImage.map((image, index) => (
+                <Image 
+                  source={{ uri: image }} 
+                  style={styles.eventImage} 
+                  key={index} 
+                />
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.placeholderImage}>
+              <Ionicons name="image-outline" size={48} color="#ccc" />
+            </View>
+          )}
+        </View>
+
+        {/* Event Details Card */}
+        <View style={styles.detailsCard}>
+          <Text style={styles.eventTitle}>{event.topic}</Text>
+          <View style={styles.creatorRow}>
+            <Text style={styles.label}>创建人：</Text>
+            {getUserNameLink(event.userId)}
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusText}>{event.status}</Text>
+            </View>
           </View>
-        )}
+
+          <View style={styles.infoRow}>
+            <Ionicons name="time-outline" size={20} color="#666" />
+            <Text style={styles.infoText}>{event.dateTime}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Ionicons name="location-outline" size={20} color="#666" />
+            <TouchableOpacity onPress={() => handleLocationPress(event.place.location)}>
+              <Text style={[styles.infoText, styles.locationLink]}>{event.place.location}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Ionicons name="people-outline" size={20} color="#666" />
+            <Text style={styles.infoText}>最大人数：{event.place.maxNumber}</Text>
+          </View>
+
+          <View style={styles.participantsSection}>
+            <Text style={styles.sectionTitle}>参与的孩子</Text>
+            <View style={styles.kidsList}>
+              {event.kidIds.map((id, index) => (
+                <React.Fragment key={id}>
+                  {index > 0 && <Text style={styles.separator}>•</Text>}
+                  {getKidNameLink(id)}
+                </React.Fragment>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* Action Buttons */}
         <View style={styles.actionButtonsContainer}>
           {!isEventCreator && !isParticipant && !isApplicant && event.status !== 'ended' && (
-            <TouchableOpacity style={styles.joinButton} onPress={handleJoinRequest}>
+            <TouchableOpacity 
+              style={styles.joinButton} 
+              onPress={handleJoinRequest}
+            >
+              <Ionicons name="add-circle-outline" size={24} color="white" />
               <Text style={styles.joinButtonText}>申请加入</Text>
             </TouchableOpacity>
           )}
@@ -373,6 +438,7 @@ const EventDetailsPage = () => {
             )
           }
         </View>
+
         {renderKidSelectionModal()}
         <Modal
           visible={showSuccessMessage}
@@ -756,6 +822,109 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#666',
     marginTop: 16,
+  },
+  eventImage: {
+    width: 200,
+    height: 200,
+    resizeMode: 'cover',
+    marginBottom: 20,
+  },
+  imageContainer: {
+    height: 250,
+    backgroundColor: '#f5f5f5',
+  },
+  eventImage: {
+    width: 300,
+    height: 250,
+    resizeMode: 'cover',
+    marginRight: 8,
+  },
+  placeholderImage: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  detailsCard: {
+    backgroundColor: 'white',
+    margin: 16,
+    borderRadius: 16,
+    padding: 20,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  eventTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    marginBottom: 16,
+  },
+  creatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  label: {
+    color: '#666',
+    marginRight: 4,
+  },
+  statusBadge: {
+    backgroundColor: '#e3f2fd',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 'auto',
+  },
+  statusText: {
+    color: '#1976d2',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  infoText: {
+    marginLeft: 8,
+    color: '#444',
+    fontSize: 16,
+  },
+  participantsSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  kidsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  separator: {
+    color: '#ccc',
+    marginHorizontal: 8,
+  },
+  joinButton: {
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    elevation: 3,
+  },
+  joinButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  locationLink: {
+    color: '#007AFF',
+    textDecorationLine: 'underline',
   },
 });
 
