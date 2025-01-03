@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "my-app",
-    "slug": "my-app",
+    "name": "helpKids",
+    "slug": "helpKids",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "helpKids",
     "newArchEnabled": true,
     "userInterfaceStyle": "automatic",
     "splash": {
@@ -14,7 +14,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.wuyunfeng.helpKids"
     },
     "android": {
       "adaptiveIcon": {
@@ -34,8 +35,21 @@
       "typedRoutes": true
     },
     "packagerOpts": {
-      "sourceExts": ["js", "jsx", "ts", "tsx"],
+      "sourceExts": [
+        "js",
+        "jsx",
+        "ts",
+        "tsx"
+      ],
       "minify": false
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "6348b456-5fee-48bc-a3c3-bf8959f16f58"
+      }
     }
   }
 }

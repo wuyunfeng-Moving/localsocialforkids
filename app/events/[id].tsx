@@ -310,7 +310,7 @@ const EventDetailsPage = () => {
   const handleLocationPress = (location: string) => {
     // 高德地图 URL scheme
     // 参考文档：https://lbs.amap.com/api/uri-api/guide/mobile-navigation/mobile-navi
-    const mapUrl = `androidamap://viewMap?sourceApplication=your_app_name&poiname=${encodeURIComponent(location)}&addr=${encodeURIComponent(location)}`;
+    const mapUrl = `androidamap://viewMap?sourceApplication=&poiname=${encodeURIComponent(location)}&addr=${encodeURIComponent(location)}`;
     const webUrl = `https://uri.amap.com/marker?position=&name=${encodeURIComponent(location)}&src=your_app_name`;
 
     // 尝试打开高德地图 App
