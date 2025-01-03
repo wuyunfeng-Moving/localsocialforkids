@@ -23,8 +23,7 @@ import axios from 'axios';
 
 // // export const SERVERIP = "121.196.198.126";
 // export const SERVERIP = "192.168.1.4";
-export const SERVERIP = "172.31.64.2";
-// export const SERVERIP = "172.20.10.2";
+export const SERVERIP = "172.20.10.5";
 // export const SERVERIP = "192.168.1.7";
 export const PORT = 3000;
 export const BASE_URL = `http://${SERVERIP}:${PORT}`;
@@ -441,13 +440,13 @@ const useServerData = (): ServerData => {
             
             if(type === 'updateUserInfo'){
                 if(!isUserInfo(newUserInfo)){
-                    console.log("newUserInfo",newUserInfo);
+                    // console.log("newUserInfo",newUserInfo);
                     throw new Error('Invalid user info format');
                 }
             }
             else if(type === 'addNewEvent'){
                 if(!isEvent(newUserInfo)){
-                    console.log("newUserInfo",newUserInfo);
+                    // console.log("newUserInfo",newUserInfo);
                     throw new Error('Invalid event format');
                 }
             }
