@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useServerData, SERVERIP } from './serverData';
-import { MatchEvents, MatchEvent, ChatMessagesArray, ChatMessage, LoginState, BaseResponse, RegisterResponse } from '../types/types';
+import { MatchEvents, MatchEvent, ChatMessagesArray, ChatMessage, LoginState, BaseResponse, RegisterResponse, UserDataResponse } from '../types/types';
 import { Event,UserInfo,KidInfo } from '../types/types';
 import { UseMutationResult } from '@tanstack/react-query';
 import { Notification } from '../types/notification_types';
@@ -89,6 +89,14 @@ interface WebSocketContextValue {
     email: string;
     password: string;
   }>;
+  getServerData:{
+    activeEvents:Event[];
+    historyEvents:Event[];
+    allPendingSignUps:Event[];
+    allParticipatedEvents:Event[];
+    allCreatedEvents:Event[];
+    activeCreatedEvents:Event[];
+  }
 }
 
 // Create the context with the defined type
@@ -147,7 +155,8 @@ export const WebSocketProvider = ({ children }) => {
     followActions,
     setNotificationsRead,
     registerMutation,
-    getEventById
+    getEventById,
+    getServerData
   } = useServerData();
 
   useEffect(() => {
@@ -348,7 +357,8 @@ export const WebSocketProvider = ({ children }) => {
         createChat: chat.createChat
       },
       setNotificationsRead: setNotificationsRead,
-      registerMutation
+      registerMutation,
+      getServerData:getServerData
     }}>
       {children}
     </WebSocketContext.Provider>

@@ -6,7 +6,7 @@ import { SingleEventDisplay } from './singleEventDisplay';
 import { router } from 'expo-router';
 
 const MyEventDisplay: React.FC = () => {
-    const { userEvents, kidEvents, appliedEvents } = useWebSocket();
+    const { getServerData } = useWebSocket();
 
     const sortEventsByStartTime = (events: Event[]) => {
         return [...events].sort((a, b) => {
@@ -14,9 +14,9 @@ const MyEventDisplay: React.FC = () => {
         });
     };
 
-    const sortedUserEvents = sortEventsByStartTime(userEvents);
-    const sortedKidEvents = sortEventsByStartTime(kidEvents);
-    const sortedAppliedEvents = sortEventsByStartTime(appliedEvents);
+    const sortedUserEvents = sortEventsByStartTime(getServerData.activeCreatedEvents);
+    const sortedKidEvents = sortEventsByStartTime(getServerData.allParticipatedEvents);
+    const sortedAppliedEvents = sortEventsByStartTime(getServerData.allPendingSignUps);
 
     const handleEventPress = (event: Event) => {
       console.log("...handleEventPress");

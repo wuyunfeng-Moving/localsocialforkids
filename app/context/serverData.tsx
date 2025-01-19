@@ -23,7 +23,7 @@ import axios from 'axios';
 
 // // export const SERVERIP = "121.196.198.126";
 // export const SERVERIP = "192.168.1.4";
-export const SERVERIP = "172.20.10.5";
+export const SERVERIP = "172.31.64.2";
 // export const SERVERIP = "192.168.1.7";
 export const PORT = 3000;
 export const BASE_URL = `http://${SERVERIP}:${PORT}`;
@@ -153,8 +153,14 @@ interface ServerData {
     };
     setNotificationsRead: (notificationId: number, callback: (success: boolean, message: string) => void) => Promise<void>;
     getEventsById: (eventIds: number[], callback: (events: Event[] | undefined) => void) => Promise<void>;
-    getEventById: (eventId: number, callback: (event: Event | undefined) => void) => Event | undefined;
-    
+    getEventById: (eventId: number, callback: (event: Event | undefined) => void) => Promise<Event | undefined>;
+    getServerData:{
+        activeEvents:Event[];
+        allPendingSignUps:Event[];
+        allParticipatedEvents:Event[];
+        allCreatedEvents:Event[];
+        activeCreatedEvents:Event[];
+    };
 }
 
 // Inside useServerData, add these modified functions:
@@ -232,13 +238,6 @@ const useServerData = (): ServerData => {
         queryClient.setQueryData<Notification[]>(['notifications'], []);
     },[]);
 
-    const updateCacheUserInfo = (userInfo: UserInfo) => {
-        queryClient.setQueryData<{id:number,userInfo:UserInfo}[]>(['userInfos'], (prev) => {
-            if (!prev) return [{id:userInfo.id,userInfo}];
-            return [...prev, {id:userInfo.id,userInfo}];
-        });
-    }
-
     const updateCacheKidInfo = (kidInfo: KidInfo) => {
         queryClient.setQueryData<{id:number,kidInfo:KidInfo}[]>(['kidInfos'], (prev) => {
             if (!prev) return [{id:kidInfo.id,kidInfo}];
@@ -246,11 +245,34 @@ const useServerData = (): ServerData => {
         });
     }
 
-    const updateCacheNotifications = (notifications: Notification[]) => {
-        queryClient.setQueryData<Notification[]>(['notifications'], notifications);
+    const analyzeEvents = (allEvents:Event[],userInfo:UserInfo):{created:Event[],participating:Event[],applied:Event[]} => {
+        const userCreatedEvents = allEvents.filter(event => event.userId === userInfo.id);
+        const userKidsIds = userInfo.kidinfo.map(kid => kid.id) || [];
+        const kidsParticipatingEvents = allEvents.filter(event => 
+            event.kidIds?.some(kidId => userKidsIds.includes(kidId))
+        );
+        const userAppliedEvents = allEvents.filter(event => 
+            event.pendingSignUps?.some(signup => signup.kidIds?.some(kidId => userKidsIds.includes(kidId)))
+        );
+        return {
+            created: userCreatedEvents,
+            participating: kidsParticipatingEvents,
+            applied: userAppliedEvents
+        };
+
     }
 
-    const userDataQuery = useQuery<{userAllEvents:Event[],userInfo:UserInfo,notifications:Notification[],created:Event[],participating:Event[],applied:Event[]}>({
+    const userDataQuery = useQuery<{userAllEvents:Event[],
+                                    userInfo:UserInfo,
+                                    notifications:Notification[],
+                                    created:Event[],
+                                    participating:Event[],
+                                    applied:Event[],
+                                    allCreatedEvents:Event[],
+                                    activeCreatedEvents:Event[],
+                                    allParticipatedEvents:Event[],
+                                    allPendingSignUps:Event[]
+                                }>({
         queryKey: ['userData'],
         queryFn: async () => {
             console.log('Starting userDataQuery execution');
@@ -270,9 +292,16 @@ const useServerData = (): ServerData => {
                 }
                 
                 if (response.data.success) {
-                    const {userAllEvents,userInfo,notifications} = response.data;
+                    const {userAllEvents,
+                        userInfo,
+                        notifications,
+                        allCreatedEvents,
+                        activeCreatedEvents,
+                        allParticipatedEvents,
+                        allPendingSignUps} = response.data;
                     const {created,participating,applied} = analyzeEvents(userAllEvents,userInfo);
-                    return {userAllEvents,userInfo,notifications,created,participating,applied};
+                    return {userAllEvents,userInfo,notifications,created,participating,applied,
+                        allCreatedEvents,activeCreatedEvents,allParticipatedEvents,allPendingSignUps};
                 }
                 throw new Error('Failed to fetch user data');
             } catch (error) {
@@ -971,23 +1000,6 @@ const useServerData = (): ServerData => {
         }
     }   
 
-    const analyzeEvents = (allEvents:Event[],userInfo:UserInfo):{created:Event[],participating:Event[],applied:Event[]} => {
-        const userCreatedEvents = allEvents.filter(event => event.userId === userInfo.id);
-        const userKidsIds = userInfo.kidinfo.map(kid => kid.id) || [];
-        const kidsParticipatingEvents = allEvents.filter(event => 
-            event.kidIds?.some(kidId => userKidsIds.includes(kidId))
-        );
-        const userAppliedEvents = allEvents.filter(event => 
-            event.pendingSignUps?.some(signup => signup.kidIds?.some(kidId => userKidsIds.includes(kidId)))
-        );
-        return {
-            created: userCreatedEvents,
-            participating: kidsParticipatingEvents,
-            applied: userAppliedEvents
-        };
-
-    }
-
     const registerMutation = useMutation<RegisterResponse, Error, { username: string; email: string; password: string }>({
         mutationFn: async (credentials: { username: string; email: string; password: string }) => {
             const response = await axios.post(API_ENDPOINTS.register, credentials);
@@ -1044,6 +1056,17 @@ const useServerData = (): ServerData => {
         return undefined; // 初始返回 undefined，数据会通过 callback 返回
     };
 
+    const getHistoryEvents = async ():Promise<Event[]> =>{
+        const allEvents = userDataQuery.data?.created ?? [];
+        if(allEvents.length === 0){
+            return [];
+        }
+        const historyEvents = allEvents.filter(event => event.status === 'ended');
+        return historyEvents;
+    }
+
+    
+
     return ({
         setWebSocketConnected,
         notifications: userDataQuery.data?.notifications ?? [],
@@ -1095,6 +1118,13 @@ const useServerData = (): ServerData => {
         setNotificationsRead,
         registerMutation,
         getEventById,
+        getServerData:{
+            activeEvents:userDataQuery.data?.activeCreatedEvents ?? [],
+            allCreatedEvents:userDataQuery.data?.allCreatedEvents ?? [],
+            activeCreatedEvents:userDataQuery.data?.activeCreatedEvents ?? [],
+            allParticipatedEvents:userDataQuery.data?.allParticipatedEvents ?? [],
+            allPendingSignUps:userDataQuery.data?.allPendingSignUps ?? []
+        }
     });
 };
 
