@@ -11,7 +11,7 @@ const EventDetailsPage = () => {
   const params = useLocalSearchParams();
   const { eventId } = params;
   const [event, setEvent] = useState<Event | null>(null);
-  const { changeEvent, userInfo,getUserInfo,getKidInfo,getEventById} = useWebSocket(); // 假设 user 对象包含孩子信息
+  const { changeEvent, userInfo,getUserInfo,getKidInfo,getEventById,imagesHandle} = useWebSocket(); // 假设 user 对象包含孩子信息
   const [showKidSelection, setShowKidSelection] = useState(false);
   const [showAddKidInfo, setShowAddKidInfo] = useState(false);
   const [selectedKidIds, setSelectedKidIds] = useState<number[]>([]);
@@ -32,7 +32,9 @@ const EventDetailsPage = () => {
           if (event) {
             setEvent(event);
             if(event.images && event.images.length > 0){
-              setEventImage(event.images.map(image => image.imageData));
+              imagesHandle.getImages(event.images.map(image=>image.id)).then(images=>{
+                setEventImage(images.map(image=>image.imageData));
+              });
             }
           }
         });

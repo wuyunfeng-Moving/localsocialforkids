@@ -44,6 +44,7 @@ const API_ENDPOINTS = {
     getChatHistory: (chatId: number) => `${BASE_URL}/chats/${chatId}`,
     sendMessage: (chatId: number) => `${BASE_URL}/chats/${chatId}`,
     getEvent: (eventId: number) => `${BASE_URL}/getEvent/${eventId}`,
+    images: `${BASE_URL}/images`,
 };
 
 
@@ -161,6 +162,11 @@ interface ServerData {
         allCreatedEvents:Event[];
         activeCreatedEvents:Event[];
     };
+    imagesHandle:{
+        uploadImages:(image:string)=>Promise<{id:number}>;
+        deleteImages:(imageIds:number[])=>Promise<void>;
+        getImages:(imageIds:number[])=>Promise<{id:number,imageData:string}[]>;
+    }
 }
 
 // Inside useServerData, add these modified functions:
@@ -1065,7 +1071,63 @@ const useServerData = (): ServerData => {
         return historyEvents;
     }
 
+    const uploadImages = async (image:string):Promise<{id:number}>=>{
+        const token = await getToken();
+        if (!token) throw new Error('No token');
+
+        const response = await axios.post(API_ENDPOINTS.images, {
+            type:'uploadImages',
+            image: image
+        }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        console.log("uploadImages response",response.data);
+
+        if (!isBaseResponse(response.data)) {
+            throw new Error('Invalid response format from server');
+        }
+
+        return {id:response.data.imageId};
+
+
+    }
     
+    const deleteImages = async (imageIds:number[]):Promise<void>=>{
+        const token = await getToken();
+        if (!token) throw new Error('No token');
+
+        console.log("deleteImages imageIds",imageIds);
+        const response = await axios.post(API_ENDPOINTS.images, {
+            type:'deleteImages',
+            imageIds: imageIds
+        }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!isBaseResponse(response.data)) {
+            throw new Error('Invalid response format from server');
+        }
+    }
+
+    const getImages = async (imageIds:number[]):Promise<{id:number,imageData:string}[]>=>{
+        const token = await getToken();
+        if (!token) throw new Error('No token');
+
+        const response = await axios.post(API_ENDPOINTS.images, {
+            type:'getImages',
+            imageIds: imageIds
+        }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!isBaseResponse(response.data)) {
+            throw new Error('Invalid response format from server');
+        }
+
+        return response.data.images;
+    }
+
 
     return ({
         setWebSocketConnected,
@@ -1124,7 +1186,13 @@ const useServerData = (): ServerData => {
             activeCreatedEvents:userDataQuery.data?.activeCreatedEvents ?? [],
             allParticipatedEvents:userDataQuery.data?.allParticipatedEvents ?? [],
             allPendingSignUps:userDataQuery.data?.allPendingSignUps ?? []
+        },
+        imagesHandle:{
+            uploadImages,
+            deleteImages,
+            getImages
         }
+
     });
 };
 

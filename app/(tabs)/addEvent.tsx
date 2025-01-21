@@ -15,6 +15,7 @@ import { Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { EventImages } from '../types/baseType';
 
 const INITIAL_INPUTS = [
   { title: 'childOrder', label: '孩子姓名', value: '' },
@@ -24,7 +25,7 @@ const INITIAL_INPUTS = [
   { title: 'topic', label: '主题', value: '户外活动' },
   { title: 'description', label: '活动描述', value: '一起玩' },
   { title: 'maxNumber', label: '最大参与人数', value: 10 },
-  { title: 'images', label: '活动图片（最多3张）', value: [] },
+  { title: 'images', label: '活动图片（最多3张）', value: [], imageIds: [] },
 ];
 
 interface NewEventData {
@@ -62,7 +63,7 @@ export default function TabTwoScreen() {
   const [isLocationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [dateTimeModalVisible, setDateTimeModalVisible] = useState(false);
-  const { loginState, userInfo, update } = useWebSocket()??{};
+  const { loginState, userInfo, update,imagesHandle } = useWebSocket()??{};
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { currentRegion } = useCurrentLocation();
 
@@ -85,6 +86,21 @@ export default function TabTwoScreen() {
       });
     }
   }, [currentRegion]);
+
+  useEffect(() => {
+    return () => {
+      // Cleanup: delete all uploaded images when component unmounts
+      if(!isSubmitting){
+      const imageInput = inputs.find(input => input.title === 'images');
+      console.log("delete images",imageInput?.imageIds);
+      if (imageInput?.imageIds?.length) {
+        imageInput.imageIds.forEach(id => {
+          imagesHandle?.deleteImages([id]);
+        });
+      }
+    }
+    };
+  }, [inputs, imagesHandle]);
 
   const handleSelectLocation = useCallback((location:any) => {
     setSelectedLocation(location);
@@ -113,84 +129,90 @@ export default function TabTwoScreen() {
     setInputs(prevInputs => prevInputs.filter(input => input.title !== title));
   }, []);
 
+  const handleImageUpload = async (uri: string):Promise<number> => {
+    try {
+      const compressedImage = await compressAndConvertImage(uri);
+      const response = await imagesHandle?.uploadImages(compressedImage);
+      console.log("handleImageUpload response",response);
+      return response.id;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
+  };
+
   const addItem = async () => {
     try {
-        // 处理图片
-        const imagesInput = inputs.find(input => input.title === 'images')?.value || [];
-        let processedImages: { id: number; imageData: string }[] = [];
+      const imagesInput = inputs.find(input => input.title === 'images');
+      const imagesIds = (imagesInput?.imageIds?.map((id: number) => ({ id })) || []) as EventImages[];
 
-        if (imagesInput && imagesInput.length > 0) {
-            const processedImages = await Promise.all(
-                imagesInput.map(async (uri: string, index: number) => ({
-                    id: index,
-                    imageData: await compressAndConvertImage(uri)
-                }))
-            );
-        }
+      // 构建事件数据
+      const eventData: Event = {
+        id: -1,
+        place: {
+          location: inputs.find(input => input.title === 'location')?.value || [0, 0],
+          maxNumber: parseInt(inputs.find(input => input.title === 'maxNumber')?.value || '10', 10)
+        },
+        dateTime: inputs.find(input => input.title === 'dateTime')?.value.toISOString() || new Date().toISOString(),
+        duration: parseInt(inputs.find(input => input.title === 'duration')?.value || '1', 10),
+        topic: inputs.find(input => input.title === 'topic')?.value || '',
+        description: inputs.find(input => input.title === 'description')?.value || '',
+        kidIds: [],
+        userId: userInfo?.id,
+        status: 'preparing',
+        images: imagesIds
+      };
+      console.log("eventData",eventData);
 
-        // 构建事件数据
-        const eventData: Event = {
-            id: -1,
-            place: {
-                location: inputs.find(input => input.title === 'location')?.value || [0, 0],
-                maxNumber: parseInt(inputs.find(input => input.title === 'maxNumber')?.value || '10', 10)
-            },
-            dateTime: inputs.find(input => input.title === 'dateTime')?.value.toISOString() || new Date().toISOString(),
-            duration: parseInt(inputs.find(input => input.title === 'duration')?.value || '1', 10),
-            topic: inputs.find(input => input.title === 'topic')?.value || '',
-            description: inputs.find(input => input.title === 'description')?.value || '',
-            kidIds: [],
-            userId: userInfo?.id,
-            status: 'preparing',
-            images: processedImages
-        };
+      //clear inputs
+      setInputs(INITIAL_INPUTS);
 
-        // 添加kidIds
-        const selectedKid = userInfo?.kidinfo.find(kid => 
-            kid.name === inputs.find(input => input.title === 'childOrder')?.value
-        );
-        if (selectedKid) {
-            eventData.kidIds = [selectedKid.id];
-        }
+      // 添加kidIds
+      const selectedKid = userInfo?.kidinfo.find(kid => 
+        kid.name === inputs.find(input => input.title === 'childOrder')?.value
+      );
+      if (selectedKid) {
+        eventData.kidIds = [selectedKid.id];
+      }
 
-        // 检查必填字段
-        if (!eventData.kidIds.length || 
-            !eventData.place.location.length || 
-            !eventData.topic || 
-            !eventData.description) {
-            Alert.alert('提示', '请填写所有必填字段');
-            return;
-        }
+      // 检查必填字段
+      if (!eventData.kidIds.length || 
+        !eventData.place.location.length || 
+        !eventData.topic || 
+        !eventData.description) {
+        Alert.alert('提示', '请填写所有必填字段');
+        return;
+      }
 
-        setIsSubmitting(true);
-        update.updateUserInfo.mutate(
-            { 
-                type: 'addNewEvent', 
-                newUserInfo: eventData 
-            },
-            {
-                onSuccess: () => {
-                    setIsSubmitting(false);
-                    Alert.alert(
-                        "提交成功",
-                        "事件已成功添加",
-                        [
-                            {
-                                text: "确认",
-                                onPress: () => router.push("/(tabs)/")
-                            }
-                        ]
-                    );
-                },
-                onError: (error) => {
-                    setIsSubmitting(false);
-                    Alert.alert('错误', '提交失败: ' + error.message);
+      setIsSubmitting(true);
+      update.updateUserInfo.mutate(
+        { 
+          type: 'addNewEvent', 
+          newUserInfo: eventData 
+        },
+        {
+          onSuccess: () => {
+            setIsSubmitting(false);
+            Alert.alert(
+              "提交成功",
+              "事件已成功添加",
+              [
+                {
+                  text: "确认",
+                  onPress: () => router.push("/(tabs)/")
                 }
-            }
-        );
+              ]
+            );
+          },
+          onError: (error) => {
+            setIsSubmitting(false);
+            Alert.alert('错误', '提交失败: ' + error.message);
+          }
+        }
+      );
     } catch (error) {
-        setIsSubmitting(false);
-        Alert.alert('错误', '提交失败: ' + (error instanceof Error ? error.message : '未知错误'));
+      setIsSubmitting(false);
+      Alert.alert('错误', '提交失败: ' + (error instanceof Error ? error.message : '未知错误'));
     }
   };
 
@@ -306,15 +328,22 @@ export default function TabTwoScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {input.value.map((image, index) => (
                 <View key={index} style={styles.imageWrapper}>
-                  <Image 
-                    source={{ uri: image }} 
-                    style={styles.imagePreview} 
-                  />
+                  <Image source={{ uri: image }} style={styles.imagePreview} />
                   <TouchableOpacity 
                     style={styles.removeImageButton}
                     onPress={() => {
                       const newImages = [...input.value];
                       newImages.splice(index, 1);
+                      
+                      // Delete image from server
+                      const imageId = input.imageIds[index];
+                      if (imageId) {
+                        imagesHandle?.deleteImages([imageId]);
+                        const newImageIds = [...input.imageIds];
+                        newImageIds.splice(index, 1);
+                        handleInputChange(newImageIds, 'images', 'imageIds');
+                      }
+                      
                       handleInputChange(newImages, 'images', 'value');
                     }}
                   >
@@ -331,12 +360,16 @@ export default function TabTwoScreen() {
                         mediaTypes: ImagePicker.MediaTypeOptions.Images,
                         allowsEditing: true,
                         aspect: [4, 3],
-                        quality: 1, // 设置为1，因为我们会使用 manipulator 来压缩
+                        quality: 1,
                       });
                       
                       if (!result.canceled && result.assets && result.assets.length > 0) {
+                        const imageId = await handleImageUpload(result.assets[0].uri);
                         const newImages = [...input.value, result.assets[0].uri];
+                        const newImageIds = [...(input.imageIds || []), imageId];
+                        console.log("newImageIds",newImageIds,imageId);
                         handleInputChange(newImages, 'images', 'value');
+                        handleInputChange(newImageIds, 'images', 'imageIds');
                       }
                     } catch (error) {
                       console.error('Error picking image:', error);
@@ -363,7 +396,7 @@ export default function TabTwoScreen() {
           />
         );
     }
-  }, [isChildOrderSelecting, isDurationSelecting, selectedLocation, renderSelector, handleInputChange, userInfo]);
+  }, [isChildOrderSelecting, isDurationSelecting, selectedLocation, renderSelector, handleInputChange, userInfo, imagesHandle]);
 
   const renderedInputs = useMemo(() => inputs.map((input) => (
     <View key={input.title} style={styles.inputWrapper}>

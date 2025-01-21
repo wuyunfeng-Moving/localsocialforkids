@@ -97,6 +97,12 @@ interface WebSocketContextValue {
     allCreatedEvents:Event[];
     activeCreatedEvents:Event[];
   }
+  imagesHandle:{
+    uploadImages:(image:string)=>Promise<{id:number}>;
+    deleteImages:(imageIds:number[])=>Promise<void>;
+    getImages:(imageIds:number[])=>Promise<{id:number,imageData:string}[]>;
+  }
+
 }
 
 // Create the context with the defined type
@@ -156,7 +162,8 @@ export const WebSocketProvider = ({ children }) => {
     setNotificationsRead,
     registerMutation,
     getEventById,
-    getServerData
+    getServerData,
+    imagesHandle
   } = useServerData();
 
   useEffect(() => {
@@ -358,7 +365,8 @@ export const WebSocketProvider = ({ children }) => {
       },
       setNotificationsRead: setNotificationsRead,
       registerMutation,
-      getServerData:getServerData
+      getServerData:getServerData,
+      imagesHandle:imagesHandle
     }}>
       {children}
     </WebSocketContext.Provider>
