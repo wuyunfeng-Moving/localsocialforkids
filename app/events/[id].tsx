@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Event } from '../types/types';
 import { navigateToAddKid } from '../navigation/routeHelper';
+import { fromByteArray } from 'base64-js';
 
 const EventDetailsPage = () => {
   const params = useLocalSearchParams();
@@ -26,14 +27,38 @@ const EventDetailsPage = () => {
   // 使用 useMemo 来解析事件数据，避免不必要的重复解析
   useEffect(() => {
     if (eventId) {
-      console.log("eventId",eventId);
       try {
         getEventById(Number(eventId), (event) => {
           if (event) {
             setEvent(event);
             if(event.images && event.images.length > 0){
               imagesHandle.getImages(event.images.map(image=>image.id)).then(images=>{
-                setEventImage(images.map(image=>image.imageData));
+                const processedImages = images.map(image => {
+                  try {
+                    if (Array.isArray(image.imageData)) {
+                      const decoder = new TextDecoder('utf-8');
+                      const rawString = decoder.decode(new Uint8Array(image.imageData));
+                      
+                      const base64Data = rawString.replace(/^data:image\/jpeg;base64,/, '');
+                      return `data:image/jpeg;base64,${base64Data}`;
+                    }
+                    
+                    console.error('Unexpected image data format:', typeof image.imageData);
+                    return null;
+                  } catch (error) {
+                    console.error('Error processing image:', error);
+                    return null;
+                  }
+                }).filter(Boolean);
+                
+                if (processedImages.length > 0) {
+                  console.log('Raw data sample:', images[0].imageData.slice(0, 20));
+                  console.log('Processed URI sample:', processedImages[0].substring(0, 50));
+                }
+                
+                setEventImage(processedImages);
+              }).catch(error => {
+                console.error('Error getting images:', error);
               });
             }
           }
@@ -140,7 +165,7 @@ const EventDetailsPage = () => {
 
   const submitJoinRequest = (kidIds: number[]) => {
     changeEvent.signupEvent({
-      targetEventId: Number(id),
+      targetEventId: Number(eventId),
       reason: 'I would like to join this event',
       kidsId: kidIds,
       callback: (success, message) => {
@@ -223,7 +248,7 @@ const EventDetailsPage = () => {
           text: '确定',
           onPress: () => {
             changeEvent.approveSignupRequest({
-              eventId: Number(id),
+              eventId: Number(eventId),
               signupId: signupId,
               approved: approved,
               rejectionReason: approved ? undefined : '申请被拒绝',
@@ -295,7 +320,7 @@ const EventDetailsPage = () => {
 
     setIsSubmittingComment(true);
     changeEvent.addComment({
-      eventId: Number(id),
+      eventId: Number(eventId),
       comment: comment.trim(),
       callback: (success, message) => {
         setIsSubmittingComment(false);
@@ -344,12 +369,15 @@ const EventDetailsPage = () => {
         <View style={styles.imageContainer}>
           {eventImage.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {eventImage.map((image, index) => (
-                <Image 
-                  source={{ uri: image }} 
-                  style={styles.eventImage} 
-                  key={index} 
-                />
+              {eventImage.map((imageUri, index) => (
+                <View key={index} style={styles.imageWrapper}>
+                  <Image 
+                    source={{ uri: imageUri }} 
+                    style={styles.eventImage} 
+                    onError={(error) => console.error('Image loading error:', error.nativeEvent.error)}
+                    onLoad={() => console.log('Image loaded successfully:', index)}
+                  />
+                </View>
               ))}
             </ScrollView>
           ) : (
@@ -420,7 +448,7 @@ const EventDetailsPage = () => {
                     style={styles.chatButton} 
                     onPress={() => router.push({
                       pathname: '/chat',
-                      params: { comingChatId: chatId, eventId: id }
+                      params: { comingChatId: chatId, eventId: eventId }
                     })}
                   >
                     <Text style={styles.chatButtonText}>查看聊天:{chatId}</Text>
@@ -432,7 +460,7 @@ const EventDetailsPage = () => {
                 style={styles.chatButton} 
                 onPress={() => router.push({
                   pathname: '/chat',
-                  params: { eventId: id }
+                  params: { eventId: eventId }
                 })}
               >
                 <Ionicons name="chatbubble-outline" size={24} color="white" />
@@ -826,20 +854,13 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   eventImage: {
-    width: 200,
-    height: 200,
+    width: '100%',
+    height: '100%',
     resizeMode: 'cover',
-    marginBottom: 20,
   },
   imageContainer: {
     height: 250,
     backgroundColor: '#f5f5f5',
-  },
-  eventImage: {
-    width: 300,
-    height: 250,
-    resizeMode: 'cover',
-    marginRight: 8,
   },
   placeholderImage: {
     flex: 1,
@@ -927,6 +948,11 @@ const styles = StyleSheet.create({
   locationLink: {
     color: '#007AFF',
     textDecorationLine: 'underline',
+  },
+  imageWrapper: {
+    height: 250,
+    width: 250,
+    marginRight: 10,
   },
 });
 

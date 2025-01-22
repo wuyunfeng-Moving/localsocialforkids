@@ -165,7 +165,7 @@ interface ServerData {
     imagesHandle:{
         uploadImages:(image:string)=>Promise<{id:number}>;
         deleteImages:(imageIds:number[])=>Promise<void>;
-        getImages:(imageIds:number[])=>Promise<{id:number,imageData:string}[]>;
+        getImages:(imageIds:number[])=>Promise<{id:number,imageData:Uint8Array}[]>;
     }
 }
 
@@ -1110,7 +1110,7 @@ const useServerData = (): ServerData => {
         }
     }
 
-    const getImages = async (imageIds:number[]):Promise<{id:number,imageData:string}[]>=>{
+    const getImages = async (imageIds:number[]):Promise<{id:number,imageData:Uint8Array}[]>=>{
         const token = await getToken();
         if (!token) throw new Error('No token');
 
@@ -1125,7 +1125,15 @@ const useServerData = (): ServerData => {
             throw new Error('Invalid response format from server');
         }
 
-        return response.data.images;
+        console.log("getImages response",response.data);
+
+        const res = response.data.images.map((image: { id: number; data: any }) => ({
+            id: image.id,
+            imageData: image.data.data
+        }));
+
+        console.log("getImages res",res);
+        return res;
     }
 
 

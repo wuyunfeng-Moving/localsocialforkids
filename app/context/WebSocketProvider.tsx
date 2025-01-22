@@ -100,7 +100,7 @@ interface WebSocketContextValue {
   imagesHandle:{
     uploadImages:(image:string)=>Promise<{id:number}>;
     deleteImages:(imageIds:number[])=>Promise<void>;
-    getImages:(imageIds:number[])=>Promise<{id:number,imageData:string}[]>;
+    getImages:(imageIds:number[])=>Promise<{id:number,imageData:Uint8Array}[]>;
   }
 
 }

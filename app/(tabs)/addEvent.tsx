@@ -41,14 +41,14 @@ interface NewEventData {
 
 const compressAndConvertImage = async (uri: string): Promise<string> => {
     try {
-        // 使用 image-manipulator 压缩和转换图片
         const manipulatedImage = await manipulateAsync(
             uri,
-            [{ resize: { width: 500 } }],
-            { compress: 0.7, format: SaveFormat.JPEG, base64: true }
+            [{ resize: { width: 1000 } }], // 增加宽度以保持更好的图片质量
+            { compress: 0.8, format: SaveFormat.JPEG, base64: true }
         );
         
-        return `data:image/jpeg;base64,${manipulatedImage.base64}`;
+        // 不需要添加 data:image/jpeg;base64 前缀，因为服务器端会处理
+        return manipulatedImage.base64 || '';
     } catch (error) {
         console.error('Error compressing image:', error);
         throw error;
@@ -87,20 +87,20 @@ export default function TabTwoScreen() {
     }
   }, [currentRegion]);
 
-  useEffect(() => {
-    return () => {
-      // Cleanup: delete all uploaded images when component unmounts
-      if(!isSubmitting){
-      const imageInput = inputs.find(input => input.title === 'images');
-      console.log("delete images",imageInput?.imageIds);
-      if (imageInput?.imageIds?.length) {
-        imageInput.imageIds.forEach(id => {
-          imagesHandle?.deleteImages([id]);
-        });
-      }
-    }
-    };
-  }, [inputs, imagesHandle]);
+  // useEffect(() => {
+  //   return () => {
+  //     // Cleanup: delete all uploaded images when component unmounts
+  //     if(!isSubmitting){
+  //     const imageInput = inputs.find(input => input.title === 'images');
+  //     console.log("delete images",imageInput?.imageIds);
+  //     if (imageInput?.imageIds?.length) {
+  //       imageInput.imageIds.forEach(id => {
+  //         imagesHandle?.deleteImages([id]);
+  //       });
+  //     }
+  //   }
+  //   };
+  // }, [inputs, imagesHandle]);
 
   const handleSelectLocation = useCallback((location:any) => {
     setSelectedLocation(location);
