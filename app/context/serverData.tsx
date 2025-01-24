@@ -61,7 +61,7 @@ interface AllEvents {
     applied: Event[]
 };
 
-interface ServerData {
+export interface ServerData {
     setWebSocketConnected: (connected: boolean) => void;
     notifications: Notification[]; // 当前账号所有的通知
     userEvents: Event[]; // 当前账号所有的活动
@@ -133,12 +133,6 @@ interface ServerData {
     };
     getUserInfo: (userId: number, callback: (userInfo: UserInfo) => void) => Promise<UserInfo|undefined>;
     getKidInfo: (kidId: number, callback: (kidInfo: KidInfo) => void, forceUpdate: boolean) => Promise<void>;
-    followActions: {
-        followUser: (params: {
-            userId: number;
-            callback: (success: boolean, message: string) => void;
-        }) => Promise<void>;
-    };
     chat: {
         chatMessages: ChatMessagesArray;
         createChat: (params: {
@@ -166,7 +160,17 @@ interface ServerData {
         uploadImages:(image:string)=>Promise<{id:number}>;
         deleteImages:(imageIds:number[])=>Promise<void>;
         getImages:(imageIds:number[])=>Promise<{id:number,imageData:Uint8Array}[]>;
-    }
+    };
+    UserOperation:{
+        followUser: (params: {
+            targetUserId: number;
+            callback: (success: boolean, message: string) => void;
+        }) => Promise<void>;
+        unfollowUser: (params: {
+            targetUserId: number;
+            callback: (success: boolean, message: string) => void;
+        }) => Promise<void>;
+    };
 }
 
 // Inside useServerData, add these modified functions:
@@ -860,7 +864,7 @@ const useServerData = (): ServerData => {
 
     // Add these new functions inside serverData
     const followUser = async (params: {
-        userId: number,
+        targetUserId: number,
         callback: (success: boolean, message: string) => void
     }) => {
         try {
@@ -868,7 +872,7 @@ const useServerData = (): ServerData => {
             if (!token) throw new Error('No token');
 
             const response = await axios.post(API_ENDPOINTS.userInfo, {
-                targetUserId: params.userId,
+                targetUserId: params.targetUserId,
                 type: 'follow'
             }, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -1176,9 +1180,6 @@ const useServerData = (): ServerData => {
         },
         getUserInfo,  // Add this to the returned object
         getKidInfo,
-        followActions: {
-            followUser
-        },
         chat: {
             chatMessages,
             createChat,

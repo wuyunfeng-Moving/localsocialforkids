@@ -63,9 +63,11 @@ export default function TabTwoScreen() {
   const [isLocationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [dateTimeModalVisible, setDateTimeModalVisible] = useState(false);
-  const { loginState, userInfo, update,imagesHandle } = useWebSocket()??{};
+  const { serverData } = useWebSocket()??{};
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { currentRegion } = useCurrentLocation();
+
+  const { userInfo,imagesHandle } = serverData;
 
   useEffect(() => {
     if (userInfo && userInfo.kidinfo && userInfo.kidinfo.length > 0) {
@@ -185,7 +187,7 @@ export default function TabTwoScreen() {
       }
 
       setIsSubmitting(true);
-      update.updateUserInfo.mutate(
+      serverData.addNewEvent.mutate(
         { 
           type: 'addNewEvent', 
           newUserInfo: eventData 

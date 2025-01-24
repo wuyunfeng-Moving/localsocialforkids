@@ -6,6 +6,7 @@ import { useCurrentLocation } from '../../context/LocationContext';
 import LocationPickerModal from '../setLocation';
 import { SingleEventDisplay } from './singleEventDisplay';
 import { useRouter } from 'expo-router';
+import { Event } from '@/app/types/types';
 import { UserInfo } from '@/app/types/types';
 
 const SearchEventsDisplay = () => {
@@ -83,10 +84,11 @@ const SearchEventsDisplay = () => {
     setEndDate(currentDate);
   };
 
-  const handleEventPress = (event) => {
+  const handleEventPress = (event: Event) => {
+    // console.log("event",event,event.id);
     router.push({
       pathname: `../events/${event.id}`,
-      params: { eventData: JSON.stringify(event) }
+      params: { eventId: event.id }
     });
   };
 

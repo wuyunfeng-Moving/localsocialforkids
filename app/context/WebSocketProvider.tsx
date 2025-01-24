@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useServerData, SERVERIP } from './serverData';
+import { useServerData, SERVERIP, ServerData } from './serverData';
 import { MatchEvents, MatchEvent, ChatMessagesArray, ChatMessage, LoginState, BaseResponse, RegisterResponse, UserDataResponse } from '../types/types';
 import { Event,UserInfo,KidInfo } from '../types/types';
 import { UseMutationResult } from '@tanstack/react-query';
@@ -12,97 +12,9 @@ export interface AllEvents {
   applied: Event[];
 }
 
-interface WebSocketContextValue {
-  userInfo: UserInfo | null,
-  userEvents: Event[],
-  kidEvents: Event[],
-  appliedEvents: Event[],
-  loginState: LoginState,
-  notifications: Notification[],
-  refreshUserData: () => void,
-  login: (credentials: { email: string; password: string }) => void,
-  logout: () => Promise<void>,
-  getEventById: (eventId: number, callback: (event: Event) => void) => Promise<void>,
-  isUserDataLoading: boolean,
-  isParticipateEvent: (event:Event) => boolean,
-  getUserInfo: (userId: number,callback: (userInfo: UserInfo) => void) => Promise<UserInfo|undefined>,
-  getKidInfo: (kidId: number, callback: (kidInfo: KidInfo) => void, forceUpdate: boolean) => Promise<void>,
-  searchEvents: {
-    search: (searchParams: {
-      keyword?: string;
-      startDate?: string;
-      endDate?: string;
-      location?: [number, number];  // [latitude, longitude]
-      radius?: number;  // in kilometers
-      eventId?: number;
-      callback?: (success:boolean,message:string,events: Event[]) => void;
-    }) => Promise<void>;
-    isSearching: boolean;
-    searchError: Error | null;
-    results: Event[];
-  }
-  changeEvent: {
-    signupEvent: (signEventParams: {
-      targetEventId: number;
-      sourceEventId?: number;
-      kidsId?: number[];
-      reason: string;
-      callback: (success: boolean, message: string) => void;
-    }) => Promise<void>;
-    approveSignupRequest: (params: {
-      eventId: number;
-      signupId: number;
-      approved: boolean;
-      rejectionReason?: string;
-      callback: (success: boolean, message: string) => void;
-    }) => Promise<void>;
-    deleteEvent: (params: {
-      eventId: number,
-      callback: (success: boolean, message: string) => void
-    }) => Promise<void>;
-    addComment: (params: {
-      eventId: number;
-      comment: string;
-      callback: (success: boolean, message: string) => void;
-    }) => Promise<void>;
-  };
-  update: {
-    updateUserInfo: UseMutationResult<any, Error, any, unknown>;
-    addkidinfo: (newKidInfo: Partial<KidInfo>, callback: (success: boolean, message: string) => void) => void;
-    deletekidinfo: (kidId: number, callback: (success: boolean, message: string) => void) => void;
-  };
-  followActions: {
-    followUser: (params: { 
-      userId: number; 
-      callback: (success: boolean, message: string) => void 
-    }) => Promise<void>;
-  };
-  chat: {
-    chatMessages: ChatMessagesArray;
-    getChatHistory: (chatId: number, callback: (success: boolean, messages: ChatMessage[]) => void) => Promise<void>;
-    sendMessage: (params: { chatId: number, message: string, callback: (success: boolean, message: string) => void }) => Promise<void>;
-    createChat: (params: { eventId: number, callback: (success: boolean, message: string,chatId:number) => void }) => Promise<void>;
-  };
-  setNotificationsRead: (notificationId: number, callback: (success: boolean, message: string) => void) => Promise<void>;
-  registerMutation: UseMutationResult<RegisterResponse, Error, {
-    username: string;
-    email: string;
-    password: string;
-  }>;
-  getServerData:{
-    activeEvents:Event[];
-    historyEvents:Event[];
-    allPendingSignUps:Event[];
-    allParticipatedEvents:Event[];
-    allCreatedEvents:Event[];
-    activeCreatedEvents:Event[];
-  }
-  imagesHandle:{
-    uploadImages:(image:string)=>Promise<{id:number}>;
-    deleteImages:(imageIds:number[])=>Promise<void>;
-    getImages:(imageIds:number[])=>Promise<{id:number,imageData:Uint8Array}[]>;
-  }
-
+interface WebSocketContextValue extends Omit<ServerData, 'websocketMessageHandle' | 'setWebSocketConnected'> {
+  // Add only WebSocket-specific properties here if needed
+  serverData:ServerData;
 }
 
 // Create the context with the defined type
@@ -133,38 +45,13 @@ export const WebSocketProvider = ({ children }) => {
   const [messageHandlers, setMessageHandlers] = useState<MessageHandler[]>([]);
   const [messageQueue, setMessageQueue] = useState([]);
 
+  const serverData = useServerData();
   const { 
     setWebSocketConnected,
-    notifications,
-    userEvents,
-    kidEvents,
-    appliedEvents,
-    recommendEvents,
-    matchedEvents,
-    loginState,
-    userInfo,
     token,
     websocketMessageHandle,
-    chat,
-    updateUserInfo,
-    addkidinfo,
-    deletekidinfo,
-    login,
-    logout,
-    refreshUserData,
-    getUserInfo,
-    getKidInfo,
-    getEventsById,
-    isUserDataLoading,
-    changeEvent,
-    searchEvents,
-    followActions,
-    setNotificationsRead,
-    registerMutation,
-    getEventById,
-    getServerData,
-    imagesHandle
-  } = useServerData();
+    logout
+  } = serverData;
 
   useEffect(() => {
     messageHandlers.forEach((handler) => {
@@ -218,20 +105,20 @@ export const WebSocketProvider = ({ children }) => {
 
   const getMatchEvents: GetMatchEventsFunction = (eventId) => {
     // console.log("getMatchEvents::::",matchedEvents);
-    if (!matchedEvents) {
+    if (!serverData.matchedEvents) {
       return [];
     }
-    const result = matchedEvents[eventId] || [];
+    const result = serverData.matchedEvents[eventId] || [];
     // console.log("getMatchEvents",result);
     return result;
   };
 
   const isParticipateEvent = (event:Event) => {
-    if (!userInfo || !userInfo.kidinfo || !Array.isArray(userInfo.kidinfo)) {
+    if (!serverData.userInfo || !serverData.userInfo.kidinfo || !Array.isArray(serverData.userInfo.kidinfo)) {
       return false;
     }
 
-    return userInfo.kidinfo.some(kid => event.kidIds.includes(kid.id));
+    return serverData.userInfo.kidinfo.some(kid => event.kidIds.includes(kid.id));
   }
 
 
@@ -269,7 +156,7 @@ export const WebSocketProvider = ({ children }) => {
     socket.onclose = (event) => {
       console.log('WebSocket disconnected', event.reason);
       // Only attempt reconnection if still logged in
-      if (loginState.logined && token) {
+      if (serverData.loginState.logined && token) {
         setTimeout(() => {
           console.log('Attempting to reconnect...');
           connectWebSocket();
@@ -322,51 +209,9 @@ export const WebSocketProvider = ({ children }) => {
 
   return (
     <WebSocketContext.Provider value={{
-      userInfo: userInfo as UserInfo | null,
-      loginState: {
-        logined: loginState.logined,
-        error: loginState.error
-      },
-      getUserInfo:getUserInfo,
-      getKidInfo:getKidInfo,
-      userEvents,
-      kidEvents,
-      appliedEvents,
-      getMatchEvents,
-      isParticipateEvent,
-      getEventById,
-      login,
-      logout,
-      refreshUserData,
-      isUserDataLoading,
-      notifications,
-      data: {
-        recommendEvents,
-        matchedEvents
-      },
-      update: {
-        updateUserInfo,
-        addkidinfo,
-        deletekidinfo
-      },
-      searchEvents,
-      changeEvent: {
-        signupEvent: changeEvent.signupEvent,
-        approveSignupRequest: changeEvent.approveSignupRequest,
-        deleteEvent: changeEvent.deleteEvent,
-        addComment: changeEvent.addComment,
-      },
-      followActions,
-      chat:{
-        chatMessages: chat.chatMessages,
-        getChatHistory: chat.getChatHistory,
-        sendMessage: chat.sendMessage,
-        createChat: chat.createChat
-      },
-      setNotificationsRead: setNotificationsRead,
-      registerMutation,
-      getServerData:getServerData,
-      imagesHandle:imagesHandle
+      ...serverData,
+      serverData:serverData,
+      // Override or add any WebSocket-specific properties here if needed
     }}>
       {children}
     </WebSocketContext.Provider>

@@ -36,10 +36,19 @@ export default function UserScreen() {
             onPress={() => router.push("../user/following")}
         >
             <View style={styles.sectionHeader}>
-                <FontAwesome name="users" size={24} color="#007AFF" style={styles.sectionIcon} />
-                <Text style={styles.sectionTitle}>我的关注</Text>
+                {/* <FontAwesome name="users" size={24} color="#007AFF" style={styles.sectionIcon} /> */}
+                <Text style={styles.sectionTitle}>我的关注:{userInfo?.following.length}</Text>
             </View>
-            <Text style={styles.sectionSubtitle}>查看您关注的用户</Text>
+            {/* <Text style={styles.sectionSubtitle}>查看您关注的用户</Text> */}
+        </TouchableOpacity>
+    );
+
+    const renderFollowerSection = () => (
+        <TouchableOpacity 
+            style={styles.section} 
+            onPress={() => router.push("../user/followers")}
+        >
+            <Text style={styles.sectionTitle}>我的粉丝:{userInfo?.followers.length}</Text>
         </TouchableOpacity>
     );
 
@@ -49,6 +58,7 @@ export default function UserScreen() {
                 <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                     {renderUserInfoWithPhoto()}
                     {renderFollowingSection()}
+                    {renderFollowerSection()}
                     <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                         <Text style={styles.logoutButtonText}>登出</Text>
                     </TouchableOpacity>

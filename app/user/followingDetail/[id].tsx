@@ -7,7 +7,7 @@ import { useWebSocket } from '../../context/WebSocketProvider';
 const FollowingUserPage: React.FC = () => {
   const { id } = useLocalSearchParams();
   const [currentUserInfo, setCurrentUserInfo] = useState<UserInfo | null>(null);
-  const { getUserInfo,userInfo:myUserInfo,update } = useWebSocket();
+  const { getUserInfo,userInfo:myUserInfo,update,serverData } = useWebSocket();
   const [isFollowing,setIsFollowing] = useState(false);
   useEffect(() => {
     const userId = typeof id === 'string' ? parseInt(id) : 0;
@@ -20,19 +20,25 @@ const FollowingUserPage: React.FC = () => {
   const handleFollowToggle = async () => {
     try {
       if (isFollowing) {
-        update.updateUserInfo.mutate({
-          type: 'updateUserInfo',
-          newUserInfo: {
-            ...myUserInfo,
-            following: myUserInfo?.following?.filter(followingId => followingId !== parseInt(id as string)) || [],
+        serverData.UserOperation.unfollowUser({
+          targetUserId: parseInt(id as string),
+          callback: (success, message) => {
+            if (success) {
+              setIsFollowing(false);
+            } else {
+              Alert.alert('错误', message);
+            }
           }
         });
       } else {
-        update.updateUserInfo.mutate({
-          type: 'updateUserInfo',
-          newUserInfo: {
-            ...myUserInfo,
-            following: [...(myUserInfo?.following || []), parseInt(id as string)],
+        serverData.UserOperation.followUser({
+          targetUserId: parseInt(id as string),
+          callback: (success, message) => {
+            if (success) {
+              setIsFollowing(true);
+            } else {
+              Alert.alert('错误', message);
+            }
           }
         });
       }
