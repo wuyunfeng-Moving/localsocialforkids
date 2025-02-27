@@ -23,7 +23,7 @@ import axios from 'axios';
 
 // // export const SERVERIP = "121.196.198.126";
 // export const SERVERIP = "192.168.1.4";
-export const SERVERIP = "172.31.64.2";
+export const SERVERIP = "172.31.73.137";
 // export const SERVERIP = "192.168.1.7";
 export const PORT = 3000;
 export const BASE_URL = `http://${SERVERIP}:${PORT}`;
@@ -166,10 +166,10 @@ export interface ServerData {
             targetUserId: number;
             callback: (success: boolean, message: string) => void;
         }) => Promise<void>;
-        unfollowUser: (params: {
-            targetUserId: number;
-            callback: (success: boolean, message: string) => void;
-        }) => Promise<void>;
+        // unfollowUser: (params: {
+        //     targetUserId: number;
+        //     callback: (success: boolean, message: string) => void;
+        // }) => Promise<void>;
     };
 }
 
@@ -1200,6 +1200,9 @@ const useServerData = (): ServerData => {
             uploadImages,
             deleteImages,
             getImages
+        },
+        UserOperation:{
+            followUser
         }
 
     });

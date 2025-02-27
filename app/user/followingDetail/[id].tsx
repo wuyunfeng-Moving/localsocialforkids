@@ -7,7 +7,7 @@ import { useWebSocket } from '../../context/WebSocketProvider';
 const FollowingUserPage: React.FC = () => {
   const { id } = useLocalSearchParams();
   const [currentUserInfo, setCurrentUserInfo] = useState<UserInfo | null>(null);
-  const { getUserInfo,userInfo:myUserInfo,update,serverData } = useWebSocket();
+  const { getUserInfo,userInfo:myUserInfo,serverData } = useWebSocket();
   const [isFollowing,setIsFollowing] = useState(false);
   useEffect(() => {
     const userId = typeof id === 'string' ? parseInt(id) : 0;

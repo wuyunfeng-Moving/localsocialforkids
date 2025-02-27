@@ -210,8 +210,10 @@ export const WebSocketProvider = ({ children }) => {
   return (
     <WebSocketContext.Provider value={{
       ...serverData,
-      serverData:serverData,
-      // Override or add any WebSocket-specific properties here if needed
+      serverData: serverData,
+      getMatchEvents: getMatchEvents,
+      isParticipateEvent: isParticipateEvent,
+      update: serverData.updateUserInfo
     }}>
       {children}
     </WebSocketContext.Provider>

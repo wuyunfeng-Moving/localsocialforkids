@@ -187,7 +187,7 @@ export default function TabTwoScreen() {
       }
 
       setIsSubmitting(true);
-      serverData.addNewEvent.mutate(
+      serverData.updateUserInfo.mutate(
         { 
           type: 'addNewEvent', 
           newUserInfo: eventData 

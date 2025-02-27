@@ -8,7 +8,7 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 export default function KidPage() {
   const { id } = useLocalSearchParams();
-  const { update, userInfo, getKidInfo } = useWebSocket();
+  const { updateUserInfo, userInfo, getKidInfo, deletekidinfo } = useWebSocket();
   const [kid, setKid] = useState<KidInfo | null>(null);
   const router = useRouter();
 
@@ -40,12 +40,12 @@ export default function KidPage() {
 
         console.log('newUserInfo', newUserInfo);
 
-        update.updateUserInfo.mutate({
+        updateUserInfo.mutate({
           type: 'updateUserInfo',
           newUserInfo: newUserInfo
         }, {
           onSuccess: () => router.back(),
-          onError: (error) => console.error(error)
+          onError: (error:any) => console.error(error)
         });
       } else {
         // No changes were made
@@ -56,7 +56,7 @@ export default function KidPage() {
 
   const handleDelete = async () => {
     if (kid) {
-      update.deletekidinfo(kid.id, (success, message) => {
+      deletekidinfo.mutate(kid.id, (success, message) => {
         if (!success) {
           console.error(message);
         } else {
