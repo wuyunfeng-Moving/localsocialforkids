@@ -12,8 +12,12 @@ const LoginScreen = ({ closeModal, isModal = false }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const { login, loginState, userInfo } = useWebSocket();
+  const { login, loginState, userInfo, serverData } = useWebSocket();
   const router = useRouter();
+
+  const isThisAccountLogin = (email: string) => {
+    return serverData.accounts.find(account => account.email === email);
+}
 
   useEffect(() => {
     console.log("loginState and userInfo changed:", {
@@ -22,11 +26,11 @@ const LoginScreen = ({ closeModal, isModal = false }) => {
       userInfoEmail: userInfo?.email
     });
     
-    if (loginState.logined && userInfo && Object.keys(userInfo).length > 0) {
-      console.log("Login successful, closing modal");
+    if (loginState.logined && userInfo && Object.keys(userInfo).length > 0 && isThisAccountLogin(email)) {
+      // console.log("Login successful, closing modal");
       handleClose();
     } else if (loginState.error) {
-      console.log("Login error:", loginState.error);
+      // console.log("Login error:", loginState.error);
       setError(loginState.error);
     }
   }, [loginState, userInfo]);

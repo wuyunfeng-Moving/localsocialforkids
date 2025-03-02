@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useServerData, SERVERIP, ServerData } from './serverData';
+import { useServerData, ServerData } from './serverData';
+import { SERVERIP } from './config';
 import { MatchEvents, MatchEvent, ChatMessagesArray, ChatMessage, LoginState, BaseResponse, RegisterResponse, UserDataResponse } from '../types/types';
 import { Event,UserInfo,KidInfo } from '../types/types';
 import { UseMutationResult } from '@tanstack/react-query';

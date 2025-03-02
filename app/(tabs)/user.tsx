@@ -6,10 +6,74 @@ import UserInfoScreen from "@/app/itemSubmit/user/userinfo";
 import { useWebSocket } from '@/app/context/WebSocketProvider';
 import { router } from 'expo-router';
 
+const AccountSwitcher = () => {
+    const { serverData} = useWebSocket();
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+    const handleAccountSwitch = async (token: string) => {
+        await serverData.setCurrentToken(token);
+        setIsDropdownOpen(false);
+    };
+
+    const handleAddAccount = () => {
+        router.push("../itemSubmit/user/login");
+    };
+
+    return (
+        <View style={styles.accountSwitcherContainer}>
+            <TouchableOpacity 
+                style={styles.dropdownButton}
+                onPress={() => setIsDropdownOpen(!isDropdownOpen)}
+            >
+                <Text style={styles.dropdownButtonText}>
+                    切换账号 ({serverData.accounts.length})
+                </Text>
+                <FontAwesome 
+                    name={isDropdownOpen ? "chevron-up" : "chevron-down"} 
+                    size={16} 
+                    color="#333" 
+                />
+            </TouchableOpacity>
+
+            {isDropdownOpen && (
+                <View style={styles.dropdownContent}>
+                    {serverData.accounts.map((account, index) => (
+                        <TouchableOpacity
+                            key={index}
+                            style={[
+                                styles.accountItem,
+                                account.token === serverData.token && styles.activeAccount
+                            ]}
+                            onPress={() => handleAccountSwitch(account.token)}
+                        >
+                            <Text style={[
+                                styles.accountEmail,
+                                account.token === serverData.token && styles.activeAccountText
+                            ]}>
+                                {account.email}
+                            </Text>
+                            {account.token === serverData.token && (
+                                <FontAwesome name="check" size={16} color="#007AFF" />
+                            )}
+                        </TouchableOpacity>
+                    ))}
+                    <TouchableOpacity
+                        style={styles.addAccountButton}
+                        onPress={handleAddAccount}
+                    >
+                        <FontAwesome name="plus" size={16} color="#007AFF" />
+                        <Text style={styles.addAccountText}>添加新账号</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+        </View>
+    );
+};
+
 export default function UserScreen() {
     const [isAddingKid, setIsAddingKid] = useState(false);
 
-    const { loginState, userEvents,logout,userInfo } = useWebSocket();
+    const { loginState, userEvents,logout,userInfo, serverData } = useWebSocket();
 
     useEffect(() => {
         if (!loginState.logined) {
@@ -22,11 +86,7 @@ export default function UserScreen() {
 
     const renderUserInfoWithPhoto = () => (
         <View style={styles.section}>
-            <View style={styles.userInfoPhotoContainer}>
-                <View style={styles.userInfoContainer}>
-                    <UserInfoScreen />
-                </View>
-            </View>
+            <UserInfoScreen />
         </View>
     );
 
@@ -56,6 +116,7 @@ export default function UserScreen() {
         <View style={styles.container}>
             {userInfo && userInfo.email? (
                 <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+                    <AccountSwitcher />
                     {renderUserInfoWithPhoto()}
                     {renderFollowingSection()}
                     {renderFollowerSection()}
@@ -180,30 +241,63 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
-    photoContainer: {
-        alignItems: 'center',
-        marginTop: 16,
+    accountSwitcherContainer: {
+        marginBottom: 16,
     },
-    userPhoto: {
-        width: 150,
-        height: 150,
-        borderRadius: 75,
-    },
-    userInfoPhotoContainer: {
+    dropdownButton: {
         flexDirection: 'row',
+        alignItems: 'center',
         justifyContent: 'space-between',
+        backgroundColor: '#fff',
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#ddd',
+    },
+    dropdownButtonText: {
+        fontSize: 16,
+        color: '#333',
+    },
+    dropdownContent: {
+        position: 'absolute',
+        top: '100%',
+        left: 0,
+        right: 0,
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        marginTop: 4,
+        zIndex: 1000,
+        elevation: 5,
+    },
+    accountItem: {
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
     },
-    userInfoContainer: {
-        flex: 1,
-        marginRight: 16,
+    activeAccount: {
+        backgroundColor: '#f0f9ff',
     },
-    photoContainer: {
+    accountEmail: {
+        fontSize: 16,
+        color: '#333',
+    },
+    activeAccountText: {
+        color: '#007AFF',
+        fontWeight: 'bold',
+    },
+    addAccountButton: {
+        flexDirection: 'row',
         alignItems: 'center',
+        padding: 12,
+        gap: 8,
     },
-    userPhoto: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+    addAccountText: {
+        fontSize: 16,
+        color: '#007AFF',
     },
 });

@@ -19,14 +19,11 @@ import { Event, UserInfo, Events, AuthenticationMessage,
 import * as SecureStore from 'expo-secure-store';
 import {useQuery,useMutation,useQueryClient, UseMutationResult} from "@tanstack/react-query";
 import axios from 'axios';
+import {BASE_URL} from './config';
+import { authManager } from './auth';
+import { Paragraph } from 'react-native-paper';
 
 
-// // export const SERVERIP = "121.196.198.126";
-// export const SERVERIP = "192.168.1.4";
-export const SERVERIP = "172.31.73.137";
-// export const SERVERIP = "192.168.1.7";
-export const PORT = 3000;
-export const BASE_URL = `http://${SERVERIP}:${PORT}`;
 
 // Add new API endpoints configuration
 const API_ENDPOINTS = {
@@ -70,6 +67,8 @@ export interface ServerData {
     recommendEvents: RecommendEvents; // 推荐的活动
     matchedEvents: MatchEvents; // 匹配的活动
     loginState: LoginState; // 登录状态
+    accounts: {email: string, token: string}[]; // 当前账号的账户列表
+    setCurrentToken: (token: string) => Promise<boolean>;//true if success
     userInfo: UserInfo | undefined; // 当前账号的信息
     refreshUserData: () => void; // 刷新当前账号的信息
     token: string | null; // 当前账号的token
@@ -175,7 +174,7 @@ export interface ServerData {
 
 // Inside useServerData, add these modified functions:
 const useServerData = (): ServerData => {
-
+    const auth = authManager();
     const [recommendEvents, setRecommendEvents] = useState<RecommendEvents>([
         {
             event: {
@@ -238,7 +237,6 @@ const useServerData = (): ServerData => {
         error: ''
     });
     const [webSocketConnected,setWebSocketConnected] = useState(false);
-    const [token, setToken] = useState<string | null>(null);
     const queryClient = useQueryClient();
 
     useEffect(()=>{
@@ -283,11 +281,11 @@ const useServerData = (): ServerData => {
                                     allParticipatedEvents:Event[],
                                     allPendingSignUps:Event[]
                                 }>({
-        queryKey: ['userData'],
+        queryKey: ['userData',auth.currentToken],
         queryFn: async () => {
             console.log('Starting userDataQuery execution');
-            const token = await getToken();
-            console.log('Token retrieved:', token ? 'exists' : 'null');
+            const token = auth.currentToken;
+            console.log('Token retrieved:', token);
             
             if (!token) throw new Error('no1 token');
             
@@ -332,49 +330,20 @@ const useServerData = (): ServerData => {
         }
     },[webSocketConnected,userDataQuery.isSuccess]);
 
-    useEffect(() => {
-        const fetchTokenAndVerify = async () => {
-            const tempToken = await getToken();
-            if (tempToken) {
-                try {
-                    const response = await axios.post(API_ENDPOINTS.verifyToken, {}, {
-                        headers: { Authorization: `Bearer ${tempToken}` }
-                    });
-                    if (response.data.success) {
-                        setToken(tempToken);
 
-                        userDataQuery.refetch().then(()=>{
-                            console.log("userDataQuery refetch success");
-                        });
-                    } else {
-                        throw new Error('Token verification failed');
-                    }
-                } catch (error) {
-                    console.error('Token verification error:', error);
-                    await clearAllData();
-                }
-            } else {
-                await clearAllData();
-            }
-        };
-
-        fetchTokenAndVerify();
-    }, []); // 仅在组件挂载时运行
-
-    const storeToken = async (token:string) => {
-        try {
-            await SecureStore.setItemAsync('userToken', token);
-            setToken(token); // Update state immediately after storing
-        } catch (e) {
-            console.error('Error saving token:', e);
-        }
-    };
+    // const storeToken = async (token:string) => {
+    //     try {
+    //         await SecureStore.setItemAsync('userToken', token);
+    //         setToken(token); // Update state immediately after storing
+    //     } catch (e) {
+    //         console.error('Error saving token:', e);
+    //     }
+    // };
 
     const getToken = async () => {
         try {
-            const token = await SecureStore.getItemAsync('userToken');
-            // console.log('getToken called, current token:', token);
-            return token;
+            console.log("getToken:", auth.currentToken);
+            return auth.currentToken;
         } catch (e) {
             console.error('Error reading token:', e);
             return null;
@@ -556,39 +525,10 @@ const useServerData = (): ServerData => {
             console.error('Logout error:', error);
         }
     });
-
-    const loginMutation = useMutation<LoginResponse,Error, { email: string; password: string }>({
-        mutationFn: async (credentials: { email: string; password: string }) => {
-
-            const response = await axios.post(API_ENDPOINTS.login, credentials);
-
-            console.log("login response",response.data);
-            if (!isLoginResponse(response.data)) {
-                throw new Error('Invalid response format from server');
-            }
-
-            return response.data;
-        },
-        onSuccess: async (data) => {
-            if (data.success) {
-                console.log("login success",data.token);
-                await storeToken(data.token);
-                userDataQuery.refetch().then(()=>{
-                    console.log("userDataQuery refetch success");
-                });
-            } else {
-                console.warn("Login failed:", data.message);
-            }
-        },
-        onError: (error) => {
-            console.error('Login error:', error);
-        }
-    });
+        
 
     const clearAllData = async () => {
         setLoginState({ logined: false, error: 'Token verification failed' });
-        setToken(null);
-        await SecureStore.deleteItemAsync('userToken');
         queryClient.clear();
         setFollowing([]);
         setRecommendEvents([]);
@@ -1154,7 +1094,7 @@ const useServerData = (): ServerData => {
             ? userDataQuery.data.userInfo 
             : undefined,
         refreshUserData: userDataQuery.refetch,
-        token,
+        token: auth.currentToken,
         isUserDataLoading: userDataQuery.isLoading,
         isError: userDataQuery.isError,
         error: userDataQuery.error,
@@ -1162,10 +1102,9 @@ const useServerData = (): ServerData => {
         updateUserInfo,
         addkidinfo,
         deletekidinfo,
-        login: loginMutation.mutate,
-        logout: logoutMutation.mutate,
-        isLoggingIn: loginMutation.isPending,
-        loginError: loginMutation.error,
+        login: auth.login,
+        logout: auth.logout,
+        // register: auth.register,
         searchEvents: {
             search: searchEvents,
             isSearching,
@@ -1203,7 +1142,9 @@ const useServerData = (): ServerData => {
         },
         UserOperation:{
             followUser
-        }
+        },
+        accounts: auth.accounts,
+        setCurrentToken: auth.switchAccount
 
     });
 };
