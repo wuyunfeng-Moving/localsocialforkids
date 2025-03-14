@@ -312,26 +312,35 @@ const EventDetailsPage = () => {
     );
   }, [event, userInfo]);
 
-  const handleSubmitComment = () => {
-    if (!comment.trim()) {
-      Alert.alert('提示', '请输入评论内容');
-      return;
-    }
-
+  const handleSubmitComment = async () => {
+    if (!comment.trim()) return;
+    
     setIsSubmittingComment(true);
-    changeEvent.addComment({
-      eventId: Number(eventId),
-      comment: comment.trim(),
-      callback: (success, message) => {
-        setIsSubmittingComment(false);
-        if (success) {
-          setComment(''); // Clear input
-          Alert.alert('成功', '评论已发布');
-        } else {
-          Alert.alert('失败', message || '评论发布失败');
+    
+    try {
+      await changeEvent.addComment({
+        eventId: Number(eventId),
+        comment: comment.trim(),
+        callback: (success, message) => {
+          if (success) {
+            setComment('');
+            // 在评论成功后重新获取事件数据
+            getEventById(Number(eventId), (updatedEvent) => {
+              if (updatedEvent) {
+                setEvent(updatedEvent);
+              }
+            });
+          } else {
+            Alert.alert('评论失败', message);
+          }
+          setIsSubmittingComment(false);
         }
-      }
-    });
+      });
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+      Alert.alert('评论失败', '提交评论时发生错误');
+      setIsSubmittingComment(false);
+    }
   };
 
   const handleLocationPress = (location: string) => {
