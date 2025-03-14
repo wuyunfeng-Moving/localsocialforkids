@@ -15,7 +15,7 @@ import { Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { EventImages } from '../types/baseType';
+import { EventImages, Event } from '../types/baseType';
 
 const INITIAL_INPUTS = [
   { title: 'childOrder', label: '孩子姓名', value: '' },
@@ -145,6 +145,49 @@ export default function TabTwoScreen() {
 
   const addItem = async () => {
     try {
+      // Validate required fields first
+      const validationErrors = [];
+      
+      // Check kid selection
+      const childOrderInput = inputs.find(input => input.title === 'childOrder');
+      if (!childOrderInput?.value) {
+        validationErrors.push('请选择孩子姓名');
+      }
+      
+      // Check location
+      const locationInput = inputs.find(input => input.title === 'location');
+      if (!locationInput?.value || !locationInput.value.length) {
+        validationErrors.push('请选择活动地点');
+      }
+      
+      // Check topic
+      const topicInput = inputs.find(input => input.title === 'topic');
+      if (!topicInput?.value) {
+        validationErrors.push('请输入活动主题');
+      }
+      
+      // Check description
+      const descriptionInput = inputs.find(input => input.title === 'description');
+      if (!descriptionInput?.value) {
+        validationErrors.push('请输入活动描述');
+      }
+      
+      // Check max number
+      const maxNumberInput = inputs.find(input => input.title === 'maxNumber');
+      if (!maxNumberInput?.value || maxNumberInput.value <= 0) {
+        validationErrors.push('请输入有效的最大参与人数');
+      }
+      
+      // If there are validation errors, show them and return
+      if (validationErrors.length > 0) {
+        Alert.alert(
+          '表单不完整', 
+          validationErrors.join('\n'),
+          [{ text: '确定', style: 'default' }]
+        );
+        return;
+      }
+
       const imagesInput = inputs.find(input => input.title === 'images');
       const imagesIds = (imagesInput?.imageIds?.map((id: number) => ({ id })) || []) as EventImages[];
 
@@ -166,27 +209,20 @@ export default function TabTwoScreen() {
       };
       console.log("eventData",eventData);
 
-      //clear inputs
-      setInputs(INITIAL_INPUTS);
-
       // 添加kidIds
       const selectedKid = userInfo?.kidinfo.find(kid => 
         kid.name === inputs.find(input => input.title === 'childOrder')?.value
       );
       if (selectedKid) {
         eventData.kidIds = [selectedKid.id];
-      }
-
-      // 检查必填字段
-      if (!eventData.kidIds.length || 
-        !eventData.place.location.length || 
-        !eventData.topic || 
-        !eventData.description) {
-        Alert.alert('提示', '请填写所有必填字段');
+      } else {
+        Alert.alert('错误', '无法找到所选孩子的信息，请重新选择');
         return;
       }
 
+      // 设置提交状态
       setIsSubmitting(true);
+      
       serverData.updateUserInfo.mutate(
         { 
           type: 'addNewEvent', 
@@ -195,6 +231,28 @@ export default function TabTwoScreen() {
         {
           onSuccess: () => {
             setIsSubmitting(false);
+            
+            // // 成功后再清空输入 - 移到这里
+            // setInputs(JSON.parse(JSON.stringify(INITIAL_INPUTS)).map(input => {
+            //   // 保持日期对象的正确类型
+            //   if (input.title === 'dateTime') {
+            //     return { ...input, value: new Date() };
+            //   }
+            //   // 如果有当前位置，重新设置位置
+            //   if (input.title === 'location' && currentRegion) {
+            //     return { ...input, value: [currentRegion.longitude, currentRegion.latitude] };
+            //   }
+            //   return input;
+            // }));
+            
+            // 重置选中的位置
+            if (currentRegion) {
+              setSelectedLocation({
+                longitude: currentRegion.longitude,
+                latitude: currentRegion.latitude,
+              });
+            }
+            
             Alert.alert(
               "提交成功",
               "事件已成功添加",
