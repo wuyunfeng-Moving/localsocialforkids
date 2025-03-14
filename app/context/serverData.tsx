@@ -966,19 +966,19 @@ const useServerData = (): ServerData => {
         },
     });
 
-    const getEventById = async (eventId: number, callback: (event: Event | undefined) => void) => {
-        // 首先检查缓存
-        const cachedEvent = queryClient.getQueryData(['singleEvent', eventId]) as Event | undefined;
-        if (cachedEvent) {
-            callback(cachedEvent);
-            return cachedEvent;
-        }
+    const getEventById = async (eventId: number, callback: (event: Event | undefined) => void): Promise<Event | undefined> => {
+        try {
+            // 首先检查缓存
+            // const cachedEvent = queryClient.getQueryData(['singleEvent', eventId]) as Event | undefined;
+            // if (cachedEvent) {
+            //     callback(cachedEvent);
+            //     return cachedEvent;
+            // }
 
-        // 如果没有缓存，发起新请求
-        queryClient.fetchQuery({
-            queryKey: ['singleEvent', eventId],
-            queryFn: async () => {
-                try{
+            // 如果没有缓存，发起新请求
+            const event = await queryClient.fetchQuery({
+                queryKey: ['singleEvent', eventId],
+                queryFn: async () => {
                     const token = await getToken();
                     if (!token) throw new Error('No token');
 
@@ -990,20 +990,17 @@ const useServerData = (): ServerData => {
                         throw new Error('Invalid response format from server');
                     }
 
-                    const event = response.data.event;
-                    callback(event);
-                    return event;
-                } catch (error) {
-                    console.error('Error fetching event by ID:', error);
-                    callback(undefined);
-                    return undefined;
+                    return response.data.event;
                 }
-            }
-        });
+            });
 
-        console.log("getEventById3",eventId);
-
-        return undefined; // 初始返回 undefined，数据会通过 callback 返回
+            callback(event);
+            return event;
+        } catch (error) {
+            console.error('Error fetching event by ID:', error);
+            callback(undefined);
+            return undefined;
+        }
     };
 
     const getHistoryEvents = async ():Promise<Event[]> =>{

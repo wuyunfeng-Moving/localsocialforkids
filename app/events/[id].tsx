@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, TextInput, Image, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, TextInput, Image, Linking, KeyboardAvoidingView, Platform } from 'react-native';
 import { Link, useLocalSearchParams } from 'expo-router';
 import { useWebSocket } from '../context/WebSocketProvider';
 import { router } from 'expo-router';
@@ -172,6 +172,12 @@ const EventDetailsPage = () => {
         if (success) {
           console.log('Successfully signed up for the event');
           setShowSuccessMessage(true);
+          // Refresh event data to show the updated status
+          getEventById(Number(eventId), (updatedEvent) => {
+            if (updatedEvent) {
+              setEvent(updatedEvent);
+            }
+          });
           setTimeout(() => setShowSuccessMessage(false), 3000); // 3秒后自动关闭
         } else {
           console.error('Failed to sign up:', message);
@@ -255,6 +261,12 @@ const EventDetailsPage = () => {
               callback: (success, message) => {
                 if (success) {
                   Alert.alert('成功', approved ? '已接受申请' : '已拒绝申请');
+                  // Refresh event data to show the updated status
+                  getEventById(Number(eventId), (updatedEvent) => {
+                    if (updatedEvent) {
+                      setEvent(updatedEvent);
+                    }
+                  });
                 } else {
                   Alert.alert('失败', message);
                 }
@@ -326,6 +338,12 @@ const EventDetailsPage = () => {
         setIsSubmittingComment(false);
         if (success) {
           setComment(''); // Clear input
+          // Refresh event data to show the new comment
+          getEventById(Number(eventId), (updatedEvent) => {
+            if (updatedEvent) {
+              setEvent(updatedEvent);
+            }
+          });
           Alert.alert('成功', '评论已发布');
         } else {
           Alert.alert('失败', message || '评论发布失败');
@@ -363,7 +381,11 @@ const EventDetailsPage = () => {
   // console.log("event in eventDetailsPage",event);
 
   return (
-    <View style={styles.pageContainer}>
+    <KeyboardAvoidingView 
+      style={styles.pageContainer}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
       <ScrollView style={styles.scrollContainer}>
         {/* Header Section with Images */}
         <View style={styles.imageContainer}>
@@ -507,6 +529,14 @@ const EventDetailsPage = () => {
           </View>
         </Modal>
 
+        {/* Display pending applications if user is the event creator */}
+        {isEventCreator && event.pendingSignUps && event.pendingSignUps.length > 0 && (
+          <View style={styles.applicantsSection}>
+            <Text style={styles.sectionTitle}>待处理的申请</Text>
+            {event.pendingSignUps.map(applicant => renderApplicantItem(applicant))}
+          </View>
+        )}
+
         <View style={styles.commentSection}>
           <Text style={styles.sectionTitle}>评论</Text>
           <View style={styles.commentInputContainer}>
@@ -549,7 +579,7 @@ const EventDetailsPage = () => {
           )}
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
