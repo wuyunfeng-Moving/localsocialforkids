@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useWebSocket} from '../../context/WebSocketProvider';
 import { Event } from "@/app/types/types";
@@ -7,6 +7,9 @@ import { router } from 'expo-router';
 
 const MyEventDisplay: React.FC = () => {
     const { getServerData } = useWebSocket();
+    const [sortedUserEvents, setSortedUserEvents] = useState<Event[]>([]);
+    const [sortedKidEvents, setSortedKidEvents] = useState<Event[]>([]);
+    const [sortedAppliedEvents, setSortedAppliedEvents] = useState<Event[]>([]);
 
     const sortEventsByStartTime = (events: Event[]) => {
         return [...events].sort((a, b) => {
@@ -14,9 +17,11 @@ const MyEventDisplay: React.FC = () => {
         });
     };
 
-    const sortedUserEvents = sortEventsByStartTime(getServerData.activeCreatedEvents);
-    const sortedKidEvents = sortEventsByStartTime(getServerData.allParticipatedEvents);
-    const sortedAppliedEvents = sortEventsByStartTime(getServerData.allPendingSignUps);
+    useEffect(()=>{
+        setSortedUserEvents(sortEventsByStartTime(getServerData.activeCreatedEvents));
+        setSortedKidEvents(sortEventsByStartTime(getServerData.allParticipatedEvents));
+        setSortedAppliedEvents(sortEventsByStartTime(getServerData.allPendingSignUps));
+    },[getServerData]);
 
     const handleEventPress = (event: Event) => {
       console.log("...handleEventPress");
