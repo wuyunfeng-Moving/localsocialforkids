@@ -13,9 +13,20 @@ export interface AllEvents {
   applied: Event[];
 }
 
+export interface MatchEvent {
+  id: number;
+  // 添加其他必要字段
+}
+
+export type MatchEvents = {
+  [eventId: number]: MatchEvent[];
+};
+
 interface WebSocketContextValue extends Omit<ServerData, 'websocketMessageHandle' | 'setWebSocketConnected'> {
-  // Add only WebSocket-specific properties here if needed
-  serverData:ServerData;
+  serverData: ServerData;
+  getMatchEvents: (eventId: number) => MatchEvent[];
+  isParticipateEvent: (event: Event) => boolean;
+  updateUserInfo: (userInfo: UserInfo) => void;
 }
 
 // Create the context with the defined type
@@ -214,7 +225,7 @@ export const WebSocketProvider = ({ children }) => {
       serverData: serverData,
       getMatchEvents: getMatchEvents,
       isParticipateEvent: isParticipateEvent,
-      update: serverData.updateUserInfo
+      updateUserInfo: serverData.updateUserInfo
     }}>
       {children}
     </WebSocketContext.Provider>

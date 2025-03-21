@@ -3,10 +3,11 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
+    "prestart": "node scripts/ensure-assets.js",
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
+    "android": "npm run prestart && expo start --android",
+    "ios": "npm run prestart && expo start --ios",
+    "web": "npm run prestart && expo start --web",
     "test": "jest --watchAll"
   },
   "dependencies": {
